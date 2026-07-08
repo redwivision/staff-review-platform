@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile containing roles and metadata.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "email": { "type": "string" },
+        "isLeader": { "type": "boolean" },
+        "isAdmin": { "type": "boolean" },
+        "createdAt": { "type": "number" }
+      },
+      "required": ["uid", "name", "role", "email", "isLeader"]
+    },
+    "DevelopmentReview": {
+      "title": "DevelopmentReview",
+      "description": "Quarterly review filled by a team member or leader.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "quarter": { "type": "string" },
+        "year": { "type": "string" },
+        "status": { "type": "string" },
+        "staffMemberName": { "type": "string" },
+        "ministryAssignment": { "type": "string" },
+        "supervisorName": { "type": "string" },
+        "monthsCovered": { "type": "string" },
+        "heart": { "type": "object" },
+        "personalLife": { "type": "object" },
+        "relationalLife": { "type": "object" },
+        "ministryEffectiveness": { "type": "object" },
+        "lastUpdatedBy": { "type": "string" },
+        "updatedAt": { "type": "number" },
+        "leaderSectionComments": { "type": "object" }
+      },
+      "required": ["userId", "quarter", "year", "status"]
+    },
+    "QuarterlySummary": {
+      "title": "QuarterlySummary",
+      "description": "Summary created by the Team Leader evaluating a staff member.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "quarter": { "type": "string" },
+        "year": { "type": "string" },
+        "date": { "type": "string" },
+        "dateJoinedStaff": { "type": "string" },
+        "reviewerNamePosition": { "type": "string" },
+        "supervisedBySince": { "type": "string" },
+        "presentPositionSince": { "type": "string" },
+        "suggestions": { "type": "array" },
+        "pdp": { "type": "object" },
+        "cmo": { "type": "array" },
+        "kda": { "type": "array" },
+        "evaluation": { "type": "object" },
+        "updatedAt": { "type": "number" }
+      },
+      "required": ["userId", "quarter", "year"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Chronological edit and submission audit logs.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "staffName": { "type": "string" },
+        "editedBy": { "type": "string" },
+        "editorUid": { "type": "string" },
+        "activityType": { "type": "string" },
+        "quarter": { "type": "string" },
+        "year": { "type": "string" },
+        "action": { "type": "string" },
+        "timestamp": { "type": "number" }
+      },
+      "required": ["id", "userId", "staffName", "editedBy", "editorUid", "activityType", "quarter", "year", "action", "timestamp"]
+    }
+  },
+  "firestore": {
+    "/users/{uid}": {
+      "schema": "User",
+      "description": "Users of the review application."
+    },
+    "/developmentReviews/{reviewId}": {
+      "schema": "DevelopmentReview",
+      "description": "Staff Development Review Forms filled out by members and leaders."
+    },
+    "/quarterlySummaries/{summaryId}": {
+      "schema": "QuarterlySummary",
+      "description": "Summary forms compiled by team leaders."
+    },
+    "/activityLogs/{logId}": {
+      "schema": "ActivityLog",
+      "description": "Activity logs of reviews and summaries edits."
+    }
+  }
+}

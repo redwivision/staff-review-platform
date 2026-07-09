@@ -15,12 +15,8 @@ export const options = {
 };
 
 export default function () {
-  // We hit the hosting URL (assuming it's deployed or running locally)
-  // Since we don't have the final hosting URL yet, we mock with localhost
-  // Replace with your real Firebase Hosting URL before the pitch!
-  const url = 'http://localhost:5173';
-  
-  const res = http.get(url);
+  const baseUrl = __ENV.BASE_URL || 'http://127.0.0.1:3000';
+  const res = http.get(baseUrl);
   
   check(res, {
     'is status 200': (r) => r.status === 200,

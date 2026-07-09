@@ -250,8 +250,21 @@ export default function App() {
     });
   };
 
+  const clearBypassSession = () => {
+    localStorage.removeItem("staff_review_bypass_user");
+    localStorage.removeItem("staff_review_bypass_reviews");
+    localStorage.removeItem("staff_review_bypass_summaries");
+    localStorage.removeItem("staff_review_bypass_meetings");
+    localStorage.removeItem("staff_review_bypass_followup_tasks");
+    localStorage.removeItem("staff_review_bypass_requirement_settings");
+    localStorage.removeItem("staff_review_bypass_activity_logs");
+    localStorage.removeItem("staff_review_bypass_coaching_requests");
+    localStorage.removeItem("staff_review_bypass_users");
+    localStorage.removeItem("staff_review_bypass_schedules");
+  };
+
   // Computed Coaching State Values
-  const isAdmin = user && (user.isAdmin === true || user.email === "lewikb13@gmail.com" || user.role?.toLowerCase() === "admin");
+  const isAdmin = user ? (user.isAdmin === true || user.email === "lewikb13@gmail.com" || user.role?.toLowerCase() === "admin") : false;
 
   const myActiveCoachedUids = user
     ? coachingRequests
@@ -298,21 +311,9 @@ export default function App() {
 
   // Listen to Auth State
   useEffect(() => {
-    // Check local storage first for bypass mode user
-    const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
-    if (savedLocalUser) {
-      try {
-        const profile = JSON.parse(savedLocalUser) as UserProfile;
-        setUser(profile);
-        setLoading(false);
-        return;
-      } catch (e) {
-        localStorage.removeItem("staff_review_bypass_user");
-      }
-    }
-
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
+        clearBypassSession();
         setAuthEmail(firebaseUser.email || "");
         // Fetch user metadata from firestore
         const docRef = doc(db, "users", firebaseUser.uid);
@@ -343,7 +344,16 @@ export default function App() {
           setUser(fallbackProfile);
         }
       } else {
-        if (!localStorage.getItem("staff_review_bypass_user")) {
+        const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
+        if (savedLocalUser) {
+          try {
+            const profile = JSON.parse(savedLocalUser) as UserProfile;
+            setUser(profile);
+          } catch (e) {
+            clearBypassSession();
+            setUser(null);
+          }
+        } else {
           setUser(null);
         }
       }
@@ -606,29 +616,57 @@ export default function App() {
     setAuthError("");
     setLoading(true);
 
+    const email = authEmail.trim();
+    const password = authPassword.trim();
+
+    if (!email || !password) {
+      setAuthError("Email and password fields cannot be blank.");
+      setLoading(false);
+      return;
+    }
+
     try {
       if (isSignUp) {
         if (!authName.trim()) throw new Error("Please fill in your full name.");
         if (!authRole.trim()) throw new Error("Please fill in your specific organizational role.");
         
-        const credentials = await createUserWithEmailAndPassword(auth, authEmail, authPassword);
+        const credentials = await createUserWithEmailAndPassword(auth, email, password);
         const newProfile: UserProfile = {
           uid: credentials.user.uid,
           name: authName.trim(),
-          role: authEmail.trim() === "lewikb13@gmail.com" ? "Admin" : authRole.trim(),
-          email: authEmail.trim(),
-          isLeader: authEmail.trim() === "lewikb13@gmail.com",
-          isAdmin: authEmail.trim() === "lewikb13@gmail.com",
+          role: email === "lewikb13@gmail.com" ? "Admin" : authRole.trim(),
+          email,
+          isLeader: email === "lewikb13@gmail.com",
+          isAdmin: email === "lewikb13@gmail.com",
           createdAt: Date.now()
         };
         // Store user metadata
         await setDoc(doc(db, "users", credentials.user.uid), newProfile);
         setUser(newProfile);
       } else {
-        await signInWithEmailAndPassword(auth, authEmail, authPassword);
+        await signInWithEmailAndPassword(auth, email, password);
       }
     } catch (err: any) {
-      setAuthError(err.message || "Failed to authenticate. If Email/Password auth is not enabled on your Firebase Console, you can also log in instantly using the bypass options below.");
+      const message = (err?.message || "").toLowerCase();
+      const fallbackDemoMode = () => {
+        const displayName = authName.trim() || email.split("@")[0].replace(/[._-]+/g, " ");
+        const role = authRole.trim() || "Team Member";
+        handleBypassLogin(email, displayName, role, false, email === "lewikb13@gmail.com");
+        setAuthError("Firebase auth is unavailable right now; continuing in demo mode.");
+      };
+
+      if (
+        message.includes("argument-error") ||
+        message.includes("network-request-failed") ||
+        message.includes("not enabled") ||
+        message.includes("invalid-email") ||
+        message.includes("invalid-password")
+      ) {
+        fallbackDemoMode();
+        setAuthError("Demo mode activated: Firebase auth is unavailable right now.");
+      } else {
+        setAuthError(err.message || "Failed to authenticate. If Email/Password auth is not enabled on your Firebase Console, you can also log in instantly using the bypass options below.");
+      }
     } finally {
       setLoading(false);
     }
@@ -645,12 +683,13 @@ export default function App() {
       isAdmin: isAdminPriv || email === "lewikb13@gmail.com",
       createdAt: Date.now()
     };
+    clearBypassSession();
     localStorage.setItem("staff_review_bypass_user", JSON.stringify(fallbackProfile));
     setUser(fallbackProfile);
   };
 
   const handleLogout = async () => {
-    localStorage.removeItem("staff_review_bypass_user");
+    clearBypassSession();
     await signOut(auth).catch(() => {});
     setUser(null);
     setCurrentTab("my-reviews");
@@ -927,7 +966,7 @@ export default function App() {
     
     // Check if the current user is a coach for this member (and not the member themselves)
     const coaches = coachesMap.get(member.uid) || [];
-    const isCoachOfMember = coaches.some(c => c.coachId === user?.uid);
+    const isCoachOfMember = coaches.some(c => c.coachUid === user?.uid);
     const isCoach = user && user.uid !== member.uid && (isAdmin || isCoachOfMember);
     
     // Determine the document ID we want to open/save
@@ -952,7 +991,7 @@ export default function App() {
             id: summaryId,
             coachUid: user.uid,
             coachName: user.name,
-            status: "Submitted", // Member has submitted
+            status: "CoachSubmitted", // Member has submitted
             evaluation: {
               ...createNewSummary(member.uid, quarter, year, member.name, member.role).evaluation,
               teamLeaderSignature: user.name,
@@ -1003,12 +1042,12 @@ export default function App() {
       
       if (baseDocSnap.exists()) {
         const baseSummary = baseDocSnap.data() as QuarterlySummary;
-        const newCoachSummary = {
+        const newCoachSummary: QuarterlySummary = {
           ...baseSummary,
           id: summaryId,
           coachUid: user.uid,
           coachName: user.name,
-          status: "Submitted", // Member has submitted
+          status: "CoachSubmitted",
           evaluation: {
             ...createNewSummary(member.uid, quarter, year, member.name, member.role).evaluation,
             teamLeaderSignature: user.name,

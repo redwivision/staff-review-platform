@@ -1,4 +1,7 @@
 # Africa Region Staff Quarterly Review Platform
+
+![CI Load and UI Test](https://github.com/redwivision/staff-review-platform/actions/workflows/ci-load.yml/badge.svg)
+
 ### System Architecture & Technical Documentation
 
 This interactive digital portal optimizes and manages the staff development review process for National Ministries in the Africa Region. It transitions a traditionally manual, offline, or highly disjointed process (previously conducted via separate Word/PDF forms or complex Google Forms) into a single, unified, real-time application.

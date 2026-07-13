@@ -10,12 +10,12 @@ import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
 const metaEnv = (import.meta as any).env || {};
 
 const firebaseConfig = {
-  apiKey: metaEnv.VITE_FIREBASE_API_KEY || "AIzaSyDNQ_rkec2pKTuCGA9rNHvIF7nHxk_zxVU",
-  authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN || "staff-review-app.firebaseapp.com",
-  projectId: metaEnv.VITE_FIREBASE_PROJECT_ID || "staff-review-app",
-  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET || "staff-review-app.firebasestorage.app",
-  messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID || "286978294310",
-  appId: metaEnv.VITE_FIREBASE_APP_ID || "1:286978294310:web:98db62f0af5a94a2e81ce7"
+  apiKey: metaEnv.VITE_FIREBASE_API_KEY,
+  authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN ,
+  projectId: metaEnv.VITE_FIREBASE_PROJECT_ID ,
+  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: metaEnv.VITE_FIREBASE_APP_ID
 };
 
 // Initialize Firebase App

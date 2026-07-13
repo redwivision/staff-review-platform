@@ -7,3 +7,4 @@ coverage/
 .env*
 !.env.example
 .antigravity/
+/Users/Learning/Desktop/staff_review_platform/staff-review-platform/firebase-applet-config.json

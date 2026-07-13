@@ -1674,12 +1674,23 @@ export default function App() {
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&sf=true&output=xml`;
   };
 
+  const DemoBanner = () => (
+  <div className="bg-red-500 text-white p-2 rounded-lg text-center font-sans text-sm font-semibold z-50 sticky top-0">
+    DEMO MODE: This is a demo and is meant to show the idea not the functionalities
+  </div>
+);
+
   if (loading) {
     return (
-      <div id="loading-fallback" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-mono text-xs text-slate-500 gap-3">
+      <>
+        <DemoBanner/>
+        <div id="loading-fallback" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-mono text-xs text-slate-500 gap-3">
         <div className="w-8 h-8 border-4 border-slate-300 border-t-slate-800 rounded-full animate-spin"></div>
         <span>Synchronizing Review Workspace...</span>
       </div>
+      
+      
+      </>
     );
   }
 
@@ -1914,6 +1925,7 @@ export default function App() {
       </nav>
 
       {/* CORE VIEWPORT */}
+      <DemoBanner />
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Global Coaching Invitation Banner */}
         {pendingInvitationsCount > 0 && (

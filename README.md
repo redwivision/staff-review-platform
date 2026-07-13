@@ -35,29 +35,35 @@ The platform supports three tiers of accessibility, governed by database metadat
   * The owner is automatically hardcoded as a Team Leader in Firestore security rules to ensure they can fully test and manage all roles.
 
 ---
+### Tech Stack
 
-## 2. Directory Structure & Key Code Modules
+* Frontend: React, Tailwind CSS
+* Backend: Firebase (Authentication, Firestore)
+* Build Tool: Vite
+* Programming Language: TypeScript
 
-```
-├── .env.example                  # Documents required runtime secret bindings (GEMINI_API_KEY, APP_URL)
-├── firebase-blueprint.json       # Blueprint mapping Firestore entity schemas and security criteria
-├── firestore.rules               # Production-ready Cloud Firestore access policy
-├── metadata.json                 # Core application configuration, frames, and capabilities
-├── package.json                  # Manages Vite, React, Tailwind CSS, Express, and Firebase dependencies
-├── tsconfig.json                 # TypeScript compiler specifications
-├── vite.config.ts                # Vite build engine configuration
+### Directory Structure & Key Code Modules
+
+```bash
+├── .env.example # Documents required runtime secret bindings (GEMINI_API_KEY, APP_URL)
+├── firebase-blueprint.json # Blueprint mapping Firestore entity schemas and security criteria
+├── firestore.rules # Production-ready Cloud Firestore access policy
+├── metadata.json # Core application configuration, frames, and capabilities
+├── package.json # Manages Vite, React, Tailwind CSS, Express, and Firebase dependencies
+├── tsconfig.json # TypeScript compiler specifications
+├── vite.config.ts # Vite build engine configuration
 ├── src/
-│   ├── main.tsx                  # Primary React mounting entry point
-│   ├── App.tsx                   # Master application hub (Auth routing, Dashboards, Modals, Calendar sync)
-│   ├── firebase.ts               # Firebase App, Authentication, and Multi-Database client instance
-│   ├── types.ts                  # Shared type definitions mapping form structures
-│   ├── constants.ts              # Canonical content of the quadrants (bullets, self-reflection guide questions)
-│   ├── utils.ts                  # Clean initializers for new review/summary records
-│   ├── index.css                 # Global CSS styles including Google Font imports and Tailwind configurations
+│   ├── main.tsx # Primary React mounting entry point
+│   ├── App.tsx # Master application hub (Auth routing, Dashboards, Modals, Calendar sync)
+│   ├── firebase.ts # Firebase App, Authentication, and Multi-Database client instance
+│   ├── types.ts # Shared type definitions mapping form structures
+│   ├── constants.ts # Canonical content of the quadrants (bullets, self-reflection guide questions)
+│   ├── utils.ts # Clean initializers for new review/summary records
+│   ├── index.css # Global CSS styles including Google Font imports and Tailwind configurations
 │   └── components/
-│       ├── ReviewFormEditor.tsx  # Fully featured, multi-tab quadrants editor
+│       ├── ReviewFormEditor.tsx # Fully featured, multi-tab quadrants editor
 │       ├── SummaryFormEditor.tsx # Comprehensive summary form with exact PDP, CMO, and KDA mappings
-│       └── UserManagement.tsx    # Administrator user access and role promotion directory
+│       └── UserManagement.tsx # Administrator user access and role promotion directory
 ```
 
 ---

@@ -2279,7 +2279,7 @@ export default function App() {
           <div className="text-center space-y-3">
             <div className="mx-auto w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-md border border-slate-100 overflow-hidden">
               <img
-                src="/src/assets/images/asseso_logo_1784013633353.jpg"
+                src="/src/assets/images/asseso_logo.jpg"
                 alt="Asseso Logo"
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
@@ -2480,7 +2480,7 @@ export default function App() {
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center overflow-hidden border border-slate-800">
                 <img
-                  src="/src/assets/images/asseso_logo_1784013633353.jpg"
+                  src="/src/assets/images/asseso_logo.jpg"
                   alt="Asseso Logo"
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"

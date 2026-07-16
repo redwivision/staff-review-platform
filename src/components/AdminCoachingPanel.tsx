@@ -103,28 +103,9 @@ export default function AdminCoachingPanel({
       }
     });
 
-    const toApprove: CoachingRequest[] = [];
-    const skippedOverloaded: CoachingRequest[] = [];
+    const toApprove: CoachingRequest[] = [...pending];
 
-    pending.forEach(req => {
-      const coach = req.coachName;
-      const currentLoad = currentLoads[coach] || 0;
-      // If load is less than 3, we can approve
-      if (currentLoad < 3) {
-        toApprove.push(req);
-        currentLoads[coach] = currentLoad + 1; // Increment as we plan to approve it
-      } else {
-        skippedOverloaded.push(req);
-      }
-    });
-
-    if (toApprove.length === 0) {
-      setError("No nominations could be approved because all nominated coaches are already at or exceed their limit (3 active/pending assignments).");
-      return;
-    }
-
-    const confirmMsg = `Are you sure you want to approve ${toApprove.length} of the ${pending.length} pending nominations in bulk?` + 
-      (skippedOverloaded.length > 0 ? `\n\n(${skippedOverloaded.length} nominations will be skipped because those coaches already have 3 or more active/pending assignments.)` : "");
+    const confirmMsg = `Are you sure you want to approve all ${toApprove.length} pending nominations in bulk?`;
 
     if (!confirm(confirmMsg)) {
       return;
@@ -137,8 +118,7 @@ export default function AdminCoachingPanel({
         await onApproveNomination(req.id);
         successCount++;
       }
-      alert(`Successfully approved ${successCount} coach nominations!` + 
-        (skippedOverloaded.length > 0 ? ` Skipped ${skippedOverloaded.length} because those coaches have too many requests.` : ""));
+      alert(`Successfully approved ${successCount} coach nominations!`);
     } catch (err: any) {
       setError(err.message || "An error occurred during bulk approval.");
     } finally {
@@ -194,7 +174,7 @@ export default function AdminCoachingPanel({
                 Coach Load & Balance
               </h3>
               <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                Detect repetitions and check if anyone is overloaded.
+                Monitor coach assignments and workload distributions.
               </p>
             </div>
           </div>
@@ -207,16 +187,11 @@ export default function AdminCoachingPanel({
                 .sort((a, b) => b[1].total - a[1].total)
                 .map(([coach, load]) => {
                   const isRegistered = registeredUsers.some(u => u.name.toLowerCase() === coach.toLowerCase());
-                  const overload = load.active + load.pendingCoach > 3;
 
                   return (
                     <div
                       key={coach}
-                      className={`p-3 rounded-xl border transition-colors ${
-                        overload
-                          ? "bg-amber-50/40 dark:bg-amber-950/10 border-amber-200 dark:border-amber-900"
-                          : "bg-slate-50 dark:bg-slate-950 border-slate-150 dark:border-slate-850"
-                      }`}
+                      className="p-3 rounded-xl border bg-slate-50 dark:bg-slate-950 border-slate-150 dark:border-slate-850 transition-colors"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-extrabold text-xs text-slate-800 dark:text-slate-200 truncate" title={coach}>

@@ -1,5 +1,6 @@
 import { jsPDF } from "jspdf";
 import { UserProfile, QuarterlySummary } from "../types";
+import { DEVELOPMENT_REVIEW_SECTIONS } from "../constants";
 
 export interface PDFExportOptions {
   isDefaultOnly?: boolean;
@@ -274,13 +275,20 @@ export function exportEvaluationToPDF(
       const changesText = quarter === "2nd" ? `Changes Needed: ${item?.changesNeeded || "None"}` : "";
       const nextStepText = quarter === "3rd" ? `Next Growth Step: ${item?.nextStep || "None"}` : "";
 
+      // Focus and guide questions text
+      const bulletsText = `Core Focus: ${DEVELOPMENT_REVIEW_SECTIONS[cat]?.bullets.join(", ") || ""}`;
+      const questionsText = `Self-Reflection Guide: ${DEVELOPMENT_REVIEW_SECTIONS[cat]?.questions.join(" • ") || ""}`;
+
+      const linesBullets = doc.splitTextToSize(bulletsText, usableWidth - 10);
+      const linesQuestions = doc.splitTextToSize(questionsText, usableWidth - 10);
+
       const linesObj = doc.splitTextToSize(objText, usableWidth - 10);
       const linesTarget = doc.splitTextToSize(targetText, usableWidth - 10);
       const linesProgress = progressText ? doc.splitTextToSize(progressText, usableWidth - 10) : [];
       const linesChanges = changesText ? doc.splitTextToSize(changesText, usableWidth - 10) : [];
       const linesNext = nextStepText ? doc.splitTextToSize(nextStepText, usableWidth - 10) : [];
 
-      let cardHeight = 6 + (linesObj.length + linesTarget.length) * 4 + 4;
+      let cardHeight = 6 + (linesBullets.length + linesQuestions.length) * 3.5 + 2 + (linesObj.length + linesTarget.length) * 4 + 4;
       if (quarter === "2nd") cardHeight += (linesProgress.length + linesChanges.length) * 4 + 4;
       if (quarter === "3rd") cardHeight += linesNext.length * 4 + 4;
 
@@ -298,12 +306,24 @@ export function exportEvaluationToPDF(
       doc.setTextColor(79, 70, 229); // Indigo-600
       doc.text(catLabel, marginX + 4, y + 5);
 
+      let curY = y + 9;
+
+      // Draw focus and guide questions reference
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(6.5);
+      doc.setTextColor(100, 116, 139); // slate-500
+      doc.text(linesBullets, marginX + 4, curY);
+      curY += linesBullets.length * 3.5;
+
+      doc.setFont("helvetica", "italic");
+      doc.text(linesQuestions, marginX + 4, curY);
+      curY += linesQuestions.length * 3.5 + 2;
+
       // Write text details
       doc.setFont("helvetica", "normal");
       doc.setFontSize(7.5);
       doc.setTextColor(51, 65, 85); // slate-700
       
-      let curY = y + 9;
       doc.text(linesObj, marginX + 4, curY);
       curY += linesObj.length * 4;
       

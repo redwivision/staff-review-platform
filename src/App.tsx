@@ -27,7 +27,6 @@ import { QUARTER_INFO } from "./constants";
 import ReviewFormEditor from "./components/ReviewFormEditor";
 import SummaryFormEditor from "./components/SummaryFormEditor";
 import UserManagement from "./components/UserManagement";
-import FollowUpDashboard from "./components/FollowUpDashboard";
 import ActivityLogList from "./components/ActivityLog";
 import CoachingNominations from "./components/CoachingNominations";
 import CoachingInvitations from "./components/CoachingInvitations";
@@ -153,7 +152,10 @@ export default function App() {
   }, [coachingRequests]);
 
   // Navigation / UI active states
-  const [currentTab, setCurrentTab] = useState<"my-reviews" | "team-reviews" | "follow-up" | "admin" | "meetings">("my-reviews");
+  const [currentTab, setCurrentTab] = useState<"my-reviews" | "team-reviews" | "admin" | "meetings">("my-reviews");
+  const [adminSubTab, setAdminSubTab] = useState<"tracking" | "control" | "users">("tracking");
+  const [selectedQuarter, setSelectedQuarter] = useState<"1st" | "2nd" | "3rd">("1st");
+  const [selectedYear, setSelectedYear] = useState<string>("2025-2026");
   const [selectedStaffUid, setSelectedStaffUid] = useState<string | null>(null);
   const [activeReview, setActiveReview] = useState<DevelopmentReview | null>(null);
   const [activeSummary, setActiveSummary] = useState<QuarterlySummary | null>(null);
@@ -250,21 +252,8 @@ export default function App() {
     });
   };
 
-  const clearBypassSession = () => {
-    localStorage.removeItem("staff_review_bypass_user");
-    localStorage.removeItem("staff_review_bypass_reviews");
-    localStorage.removeItem("staff_review_bypass_summaries");
-    localStorage.removeItem("staff_review_bypass_meetings");
-    localStorage.removeItem("staff_review_bypass_followup_tasks");
-    localStorage.removeItem("staff_review_bypass_requirement_settings");
-    localStorage.removeItem("staff_review_bypass_activity_logs");
-    localStorage.removeItem("staff_review_bypass_coaching_requests");
-    localStorage.removeItem("staff_review_bypass_users");
-    localStorage.removeItem("staff_review_bypass_schedules");
-  };
-
   // Computed Coaching State Values
-  const isAdmin = user ? (user.isAdmin === true || user.email === "lewikb13@gmail.com" || user.role?.toLowerCase() === "admin") : false;
+  const isAdmin = user && (user.isAdmin === true || user.email === "lewikb13@gmail.com" || user.role?.toLowerCase() === "admin");
 
   const myActiveCoachedUids = user
     ? coachingRequests
@@ -311,9 +300,21 @@ export default function App() {
 
   // Listen to Auth State
   useEffect(() => {
+    // Check local storage first for bypass mode user
+    const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
+    if (savedLocalUser) {
+      try {
+        const profile = JSON.parse(savedLocalUser) as UserProfile;
+        setUser(profile);
+        setLoading(false);
+        return;
+      } catch (e) {
+        localStorage.removeItem("staff_review_bypass_user");
+      }
+    }
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        clearBypassSession();
         setAuthEmail(firebaseUser.email || "");
         // Fetch user metadata from firestore
         const docRef = doc(db, "users", firebaseUser.uid);
@@ -344,16 +345,7 @@ export default function App() {
           setUser(fallbackProfile);
         }
       } else {
-        const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
-        if (savedLocalUser) {
-          try {
-            const profile = JSON.parse(savedLocalUser) as UserProfile;
-            setUser(profile);
-          } catch (e) {
-            clearBypassSession();
-            setUser(null);
-          }
-        } else {
+        if (!localStorage.getItem("staff_review_bypass_user")) {
           setUser(null);
         }
       }
@@ -616,57 +608,29 @@ export default function App() {
     setAuthError("");
     setLoading(true);
 
-    const email = authEmail.trim();
-    const password = authPassword.trim();
-
-    if (!email || !password) {
-      setAuthError("Email and password fields cannot be blank.");
-      setLoading(false);
-      return;
-    }
-
     try {
       if (isSignUp) {
         if (!authName.trim()) throw new Error("Please fill in your full name.");
         if (!authRole.trim()) throw new Error("Please fill in your specific organizational role.");
         
-        const credentials = await createUserWithEmailAndPassword(auth, email, password);
+        const credentials = await createUserWithEmailAndPassword(auth, authEmail, authPassword);
         const newProfile: UserProfile = {
           uid: credentials.user.uid,
           name: authName.trim(),
-          role: email === "lewikb13@gmail.com" ? "Admin" : authRole.trim(),
-          email,
-          isLeader: email === "lewikb13@gmail.com",
-          isAdmin: email === "lewikb13@gmail.com",
+          role: authEmail.trim() === "lewikb13@gmail.com" ? "Admin" : authRole.trim(),
+          email: authEmail.trim(),
+          isLeader: authEmail.trim() === "lewikb13@gmail.com",
+          isAdmin: authEmail.trim() === "lewikb13@gmail.com",
           createdAt: Date.now()
         };
         // Store user metadata
         await setDoc(doc(db, "users", credentials.user.uid), newProfile);
         setUser(newProfile);
       } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        await signInWithEmailAndPassword(auth, authEmail, authPassword);
       }
     } catch (err: any) {
-      const message = (err?.message || "").toLowerCase();
-      const fallbackDemoMode = () => {
-        const displayName = authName.trim() || email.split("@")[0].replace(/[._-]+/g, " ");
-        const role = authRole.trim() || "Team Member";
-        handleBypassLogin(email, displayName, role, false, email === "lewikb13@gmail.com");
-        setAuthError("Firebase auth is unavailable right now; continuing in demo mode.");
-      };
-
-      if (
-        message.includes("argument-error") ||
-        message.includes("network-request-failed") ||
-        message.includes("not enabled") ||
-        message.includes("invalid-email") ||
-        message.includes("invalid-password")
-      ) {
-        fallbackDemoMode();
-        setAuthError("Demo mode activated: Firebase auth is unavailable right now.");
-      } else {
-        setAuthError(err.message || "Failed to authenticate. If Email/Password auth is not enabled on your Firebase Console, you can also log in instantly using the bypass options below.");
-      }
+      setAuthError(err.message || "Failed to authenticate. If Email/Password auth is not enabled on your Firebase Console, you can also log in instantly using the bypass options below.");
     } finally {
       setLoading(false);
     }
@@ -683,13 +647,12 @@ export default function App() {
       isAdmin: isAdminPriv || email === "lewikb13@gmail.com",
       createdAt: Date.now()
     };
-    clearBypassSession();
     localStorage.setItem("staff_review_bypass_user", JSON.stringify(fallbackProfile));
     setUser(fallbackProfile);
   };
 
   const handleLogout = async () => {
-    clearBypassSession();
+    localStorage.removeItem("staff_review_bypass_user");
     await signOut(auth).catch(() => {});
     setUser(null);
     setCurrentTab("my-reviews");
@@ -744,8 +707,8 @@ export default function App() {
       return;
     }
 
-    if (userNominations.length >= 5) {
-      setModalError("Validation Error: You can choose a maximum of 5 coaches.");
+    if (userNominations.length >= 1) {
+      setModalError("Validation Error: You can only nominate exactly 1 coach or TL.");
       return;
     }
 
@@ -966,7 +929,7 @@ export default function App() {
     
     // Check if the current user is a coach for this member (and not the member themselves)
     const coaches = coachesMap.get(member.uid) || [];
-    const isCoachOfMember = coaches.some(c => c.coachUid === user?.uid);
+    const isCoachOfMember = coaches.some(c => c.coachId === user?.uid);
     const isCoach = user && user.uid !== member.uid && (isAdmin || isCoachOfMember);
     
     // Determine the document ID we want to open/save
@@ -991,7 +954,7 @@ export default function App() {
             id: summaryId,
             coachUid: user.uid,
             coachName: user.name,
-            status: "CoachSubmitted", // Member has submitted
+            status: "Submitted", // Member has submitted
             evaluation: {
               ...createNewSummary(member.uid, quarter, year, member.name, member.role).evaluation,
               teamLeaderSignature: user.name,
@@ -1042,12 +1005,12 @@ export default function App() {
       
       if (baseDocSnap.exists()) {
         const baseSummary = baseDocSnap.data() as QuarterlySummary;
-        const newCoachSummary: QuarterlySummary = {
+        const newCoachSummary = {
           ...baseSummary,
           id: summaryId,
           coachUid: user.uid,
           coachName: user.name,
-          status: "CoachSubmitted",
+          status: "Submitted", // Member has submitted
           evaluation: {
             ...createNewSummary(member.uid, quarter, year, member.name, member.role).evaluation,
             teamLeaderSignature: user.name,
@@ -1674,30 +1637,25 @@ export default function App() {
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${text}&dates=${dates}&details=${details}&sf=true&output=xml`;
   };
 
-  const DemoBanner = () => (
-  <div className="bg-red-500 text-white p-2 rounded-lg text-center font-sans text-sm font-semibold z-50 sticky top-0">
-    DEMO MODE: This is a demo and is meant to show the idea not the functionalities
-  </div>
-);
-
   if (loading) {
     return (
-      <>
-        <DemoBanner/>
-        <div id="loading-fallback" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-mono text-xs text-slate-500 gap-3">
+      <div id="loading-fallback" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-mono text-xs text-slate-500 gap-3 relative">
+        <div className="w-full bg-amber-500 text-slate-950 font-bold text-center py-2 text-xs md:text-sm tracking-wide shadow-sm flex items-center justify-center gap-1.5 px-4 absolute top-0 left-0">
+          <span>⚠️ DEMO MODE: This is a demo and is meant to show the idea not the functionalities</span>
+        </div>
         <div className="w-8 h-8 border-4 border-slate-300 border-t-slate-800 rounded-full animate-spin"></div>
         <span>Synchronizing Review Workspace...</span>
       </div>
-      
-      
-      </>
     );
   }
 
   // LOGIN / SIGN UP LAYOUT
   if (!user) {
     return (
-      <div id="auth-page" className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 flex flex-col items-center justify-center p-6 transition-colors duration-200 relative">
+      <div id="auth-page" className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 flex flex-col items-center justify-center p-6 transition-colors duration-200 relative pt-16">
+        <div className="w-full bg-amber-500 text-slate-950 font-bold text-center py-2 text-xs md:text-sm tracking-wide shadow-sm flex items-center justify-center gap-1.5 px-4 absolute top-0 left-0 z-50">
+          <span>⚠️ DEMO MODE: This is a demo and is meant to show the idea not the functionalities</span>
+        </div>
         <div className="absolute top-4 right-4">
           <button
             id="auth-theme-toggle-btn"
@@ -1714,15 +1672,20 @@ export default function App() {
         </div>
 
         <div className="w-full max-w-md bg-white rounded-2xl shadow-xl border border-slate-150 p-8 space-y-6">
-          <div className="text-center space-y-2">
-            <div className="mx-auto w-12 h-12 bg-slate-900 text-white rounded-xl flex items-center justify-center font-sans font-bold text-xl shadow-md">
-              DR
+          <div className="text-center space-y-3">
+            <div className="mx-auto w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-md border border-slate-100 overflow-hidden">
+              <img
+                src="/src/assets/images/asseso_logo_1784013633353.jpg"
+                alt="Asseso Logo"
+                className="w-full h-full object-cover"
+                referrerPolicy="no-referrer"
+              />
             </div>
             <h1 className="text-2xl font-sans font-extrabold tracking-tight text-slate-900">
-              Staff Development Review
+              Asseso
             </h1>
-            <p className="text-sm text-slate-500">
-              Africa Region National Ministries Evaluation Portal
+            <p className="text-sm text-slate-500 font-medium">
+              Africa Region Staff Development Portal
             </p>
           </div>
 
@@ -1869,16 +1832,29 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 dark:text-slate-100 flex flex-col font-sans text-slate-800 transition-colors duration-200">
+      {/* DEMO MODE BANNER */}
+      <div className="w-full bg-amber-500 text-slate-950 font-bold text-center py-2 text-xs md:text-sm tracking-wide shadow-sm flex items-center justify-center gap-1.5 px-4 z-50">
+        <span>⚠️ DEMO MODE: This is a demo and is meant to show the idea not the functionalities</span>
+      </div>
+
       {/* GLOBAL NAVBAR */}
       <nav className="bg-slate-950 text-white border-b border-slate-800 sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-white text-slate-950 rounded-lg flex items-center justify-center font-bold text-sm">
-                DR
+              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center overflow-hidden border border-slate-800">
+                <img
+                  src="/src/assets/images/asseso_logo_1784013633353.jpg"
+                  alt="Asseso Logo"
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
               </div>
               <div>
-                <h1 className="text-sm font-bold tracking-tight">Staff Quarterly Development</h1>
+                <h1 className="text-sm font-bold tracking-tight flex items-center gap-1.5">
+                  Asseso
+                  <span className="text-[9px] uppercase tracking-wider bg-indigo-900/60 text-indigo-200 px-1.5 py-0.5 rounded font-mono font-medium">Development</span>
+                </h1>
                 <p className="text-[10px] text-slate-400 font-mono">Africa Region National Ministries</p>
               </div>
             </div>
@@ -1925,7 +1901,6 @@ export default function App() {
       </nav>
 
       {/* CORE VIEWPORT */}
-      <DemoBanner />
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Global Coaching Invitation Banner */}
         {pendingInvitationsCount > 0 && (
@@ -2012,20 +1987,6 @@ export default function App() {
                     }`}
                   >
                     Team Evaluation Center
-                  </button>
-                )}
-
-                 {isAdmin && (
-                  <button
-                    id="tab-btn-follow-up"
-                    onClick={() => setCurrentTab("follow-up")}
-                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all ${
-                      currentTab === "follow-up" 
-                        ? "bg-indigo-600 text-white shadow shadow-indigo-200 dark:shadow-none" 
-                        : "text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
-                    }`}
-                  >
-                    Follow Up for Follow Up
                   </button>
                 )}
 
@@ -2275,6 +2236,14 @@ export default function App() {
                               <span className="text-slate-500 font-medium">Review Summary</span>
                               {!isSubmitted ? (
                                 <span className="text-[11px] text-slate-400 font-mono italic">Complete Dev Form First</span>
+                              ) : (!summary && !reviewSchedules[qKey]?.notifyAll) ? (
+                                <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-bold flex items-center gap-1">
+                                  🔒 Locked by Admin
+                                </span>
+                              ) : (summary && (summary.status !== "Submitted" && summary.status !== "CoachSubmitted") && !reviewSchedules[qKey]?.notifyAll) ? (
+                                <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-bold flex items-center gap-1">
+                                  🔒 Locked by Admin
+                                </span>
                               ) : !summary ? (
                                 <button
                                   id={`start-my-summary-${qKey}`}
@@ -3517,27 +3486,91 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB: FOLLOW UP FOR FOLLOW UP */}
-            {isAdmin && currentTab === "follow-up" && (
-              <div className="animate-fade-in">
-                <FollowUpDashboard
-                  tasks={followUpTasks}
-                  onSaveTask={handleSaveFollowUpTask}
-                  onResetDefaults={handleResetFollowUpDefaults}
-                  isLeaderView={isAdmin}
-                  staffProfiles={filteredStaffProfiles}
-                  allReviews={allReviews}
-                  allSummaries={allSummaries}
-                  coachingRequests={coachingRequests}
-                />
-              </div>
-            )}
-
             {/* TAB: ADMIN */}
             {isAdmin && currentTab === "admin" && (
-              <div className="space-y-8 animate-fade-in">
-                {/* Completion Requirements Admin Card */}
-                <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-3 transition-colors duration-200">
+              <div className="space-y-6 animate-fade-in">
+                {/* Admin Subtabs Bar */}
+                <div className="border-b border-slate-200 dark:border-slate-800 pb-px flex gap-4">
+                  <button
+                    id="admin-subtab-tracking"
+                    onClick={() => setAdminSubTab("tracking")}
+                    className={`pb-3 text-sm font-bold border-b-2 transition-all ${
+                      adminSubTab === "tracking"
+                        ? "border-amber-500 text-amber-600 dark:text-amber-400"
+                        : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    }`}
+                  >
+                    Oversight Compliance & Reports
+                  </button>
+                  <button
+                    id="admin-subtab-control"
+                    onClick={() => setAdminSubTab("control")}
+                    className={`pb-3 text-sm font-bold border-b-2 transition-all ${
+                      adminSubTab === "control"
+                        ? "border-amber-500 text-amber-600 dark:text-amber-400"
+                        : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    }`}
+                  >
+                    Deadlines & Requirements
+                  </button>
+                  <button
+                    id="admin-subtab-users"
+                    onClick={() => setAdminSubTab("users")}
+                    className={`pb-3 text-sm font-bold border-b-2 transition-all ${
+                      adminSubTab === "users"
+                        ? "border-amber-500 text-amber-600 dark:text-amber-400"
+                        : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    }`}
+                  >
+                    User Management Directory
+                  </button>
+                </div>
+
+                {adminSubTab === "tracking" && (
+                  <div className="space-y-4 animate-fade-in">
+                    {/* Quarter & Year Selector */}
+                    <div className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 p-4 rounded-xl shadow-sm">
+                      <div>
+                        <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">Oversight & Compliance Filters</h3>
+                        <p className="text-xs text-slate-400">Select reporting boundary for analysis & exports</p>
+                      </div>
+                      <div className="flex gap-3">
+                        <select
+                          value={selectedQuarter}
+                          onChange={(e) => setSelectedQuarter(e.target.value as any)}
+                          className="px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500 font-bold"
+                        >
+                          <option value="1st">1st Quarter</option>
+                          <option value="2nd">2nd Quarter</option>
+                          <option value="3rd">3rd Quarter</option>
+                        </select>
+                        <select
+                          value={selectedYear}
+                          onChange={(e) => setSelectedYear(e.target.value)}
+                          className="px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500 font-bold"
+                        >
+                          <option value="2024-2025">2024/2025</option>
+                          <option value="2025-2026">2025/2026</option>
+                          <option value="2026-2027">2026/2027</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <AdminReports
+                      registeredUsers={staffProfiles}
+                      allReviews={allReviews}
+                      allSummaries={allSummaries}
+                      coachingRequests={coachingRequests}
+                      currentQuarter={selectedQuarter}
+                      currentYear={selectedYear.replace("-", "/")}
+                    />
+                  </div>
+                )}
+
+                {adminSubTab === "control" && (
+                  <div className="space-y-6 animate-fade-in">
+                    {/* Completion Requirements Admin Card */}
+                    <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-3 transition-colors duration-200">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
                     <h4 className="font-sans text-sm text-slate-800 dark:text-slate-200 font-bold">Evaluation Submission Requirements & Rules</h4>
@@ -3699,17 +3732,24 @@ export default function App() {
                   </div>
                 </div>
 
-                 <AdminCoachingPanel 
+                <AdminCoachingPanel 
                   coachingRequests={coachingRequests}
                   onApproveNomination={handleApproveCoachingRequest}
                   onRejectNomination={handleRejectCoachingRequest}
                   registeredUsers={staffProfiles}
                 />
+              </div>
+            )}
+
+            {adminSubTab === "users" && (
+              <div className="animate-fade-in">
                 <UserManagement currentUser={user} />
               </div>
             )}
           </div>
         )}
+      </div>
+    )}
       </main>
 
       {/* SCHEDULE MODAL */}
@@ -3826,7 +3866,7 @@ export default function App() {
               </h3>
               <p className="text-xs text-indigo-100 mt-1.5 leading-relaxed">
                 Thank you for completing and submitting your quarterly development review. 
-                <strong className="block mt-1 font-semibold">Next Step: You are required to nominate your preferred coach(es) to guide your reflection session.</strong>
+                <strong className="block mt-1 font-semibold">Next Step: You are required to nominate your preferred coach or TL to guide your reflection session.</strong>
               </p>
             </div>
 
@@ -3835,7 +3875,7 @@ export default function App() {
               {(() => {
                 const userNominations = coachingRequests.filter(req => req.memberId === user.uid);
                 const count = userNominations.length;
-                const isCompliant = count >= 2 && count <= 5;
+                const isCompliant = count === 1;
                 return (
                   <div className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${
                     isCompliant 
@@ -3852,10 +3892,10 @@ export default function App() {
                         Coaching Nomination Requirement
                       </h4>
                       <p className="text-xs mt-1 leading-relaxed">
-                        Each staff member must nominate <strong>between 2 and 5 coaches</strong>. Currently, you have nominated <span className="font-bold font-mono text-sm underline">{count}</span> {count === 1 ? "coach" : "coaches"}.
+                        Each staff member must nominate <strong>exactly 1 coach or TL</strong>. Currently, you have nominated <span className="font-bold font-mono text-sm underline">{count}</span> {count === 1 ? "coach" : "coaches"}.
                         {!isCompliant && (
                           <span className="block mt-1 font-semibold text-amber-700 dark:text-amber-400">
-                            ⚠️ Please nominate at least {2 - count} more {2 - count === 1 ? "coach" : "coaches"} to complete this step.
+                            ⚠️ Please nominate exactly 1 coach to complete this step.
                           </span>
                         )}
                       </p>
@@ -3868,7 +3908,7 @@ export default function App() {
               <div className="space-y-4">
                 <div className="space-y-2 relative">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 font-mono uppercase">
-                    Select and Nominate Coach
+                    Select and Nominate Coach / TL
                   </label>
                   
                   {modalError && (
@@ -3894,7 +3934,7 @@ export default function App() {
                         onFocus={() => setShowModalSuggestions(true)}
                         placeholder="Type or select a coach's name..."
                         className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-850 bg-slate-50 dark:bg-slate-950 px-3 py-2.5"
-                        disabled={coachingRequests.filter(req => req.memberId === user.uid).length >= 5}
+                        disabled={coachingRequests.filter(req => req.memberId === user.uid).length >= 1}
                       />
                       {showModalSuggestions && modalSearchName.trim() !== "" && (
                         <div className="absolute top-full left-0 right-0 z-30 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg max-h-40 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-850">
@@ -3931,7 +3971,7 @@ export default function App() {
                     </div>
                     <button
                       type="submit"
-                      disabled={!modalSearchName.trim() || coachingRequests.filter(req => req.memberId === user.uid).length >= 5}
+                      disabled={!modalSearchName.trim() || coachingRequests.filter(req => req.memberId === user.uid).length >= 1}
                       className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0 flex items-center gap-1.5 shadow"
                     >
                       <UserPlus className="w-4 h-4" />
@@ -3943,11 +3983,11 @@ export default function App() {
                 {/* Current Nominated Coaches list */}
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono uppercase">
-                    Your Coach Nominations
+                    Your Coach Nomination
                   </h4>
                   {coachingRequests.filter(req => req.memberId === user.uid).length === 0 ? (
                     <p className="text-xs text-slate-400 italic bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
-                      No coaches nominated yet. Please nominate at least 2 coaches.
+                      No coach nominated yet. Please nominate exactly 1 coach or TL.
                     </p>
                   ) : (
                     <div className="grid grid-cols-1 gap-2">
@@ -3984,7 +4024,7 @@ export default function App() {
             {/* Footer */}
             <div className="bg-slate-50 dark:bg-slate-950 border-t border-slate-150 dark:border-slate-850 p-6 flex flex-col sm:flex-row sm:justify-between items-center gap-4">
               <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono text-center sm:text-left">
-                💡 Fill and confirm at least 2 coaches to save.
+                💡 Nominate exactly 1 coach or TL to complete this step.
               </span>
               <button
                 type="button"
@@ -3993,9 +4033,9 @@ export default function App() {
                   setModalSearchName("");
                   setModalError("");
                 }}
-                disabled={coachingRequests.filter(req => req.memberId === user.uid).length < 2}
+                disabled={coachingRequests.filter(req => req.memberId === user.uid).length !== 1}
                 className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 ${
-                  coachingRequests.filter(req => req.memberId === user.uid).length >= 2
+                  coachingRequests.filter(req => req.memberId === user.uid).length === 1
                     ? "bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
                     : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed"
                 }`}

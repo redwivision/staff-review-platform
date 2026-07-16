@@ -35,7 +35,6 @@ export interface DevelopmentReview {
 
 export interface PDPQuarterItem {
   goal: string;
-  objective?: string;
   desiredResult: string;
   progressMade?: string; // For 2nd Quarter
   changesNeeded?: string; // For 2nd Quarter
@@ -59,9 +58,6 @@ export interface CMOQuarterItem {
 
 export interface KDAQuarterItem {
   assignment: string;
-  keyDeliverable?: string;
-  comments?: string;
-  percentageProgress?: number;
   progressMade?: string; // For 2nd Quarter
   changesNeeded?: string; // For 2nd Quarter
   nextStep?: string; // For 3rd Quarter

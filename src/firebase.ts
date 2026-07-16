@@ -5,7 +5,7 @@ import {
   browserSessionPersistence, 
   inMemoryPersistence 
 } from "firebase/auth";
-import { getFirestore, doc, getDocFromServer } from "firebase/firestore";
+import { initializeFirestore, doc, getDocFromServer } from "firebase/firestore";
 
 const metaEnv = (import.meta as any).env || {};
 
@@ -13,9 +13,9 @@ const firebaseConfig = {
   apiKey: metaEnv.VITE_FIREBASE_API_KEY,
   authDomain: metaEnv.VITE_FIREBASE_AUTH_DOMAIN ,
   projectId: metaEnv.VITE_FIREBASE_PROJECT_ID ,
-  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: metaEnv.VITE_FIREBASE_APP_ID
+  storageBucket: metaEnv.VITE_FIREBASE_STORAGE_BUCKET ,
+  messagingSenderId: metaEnv.VITE_FIREBASE_MESSAGING_SENDER_ID ,
+  appId: metaEnv.VITE_FIREBASE_APP_ID 
 };
 
 // Initialize Firebase App
@@ -26,8 +26,14 @@ export const auth = initializeAuth(app, {
   persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence]
 });
 
-// Initialize Cloud Firestore without custom dbId (default database)
-export const db = getFirestore(app);
+// Initialize Cloud Firestore with the custom database ID provided in the configuration or fallback
+const dbId = metaEnv.VITE_FIREBASE_DATABASE_ID !== undefined 
+  ? metaEnv.VITE_FIREBASE_DATABASE_ID 
+  : "ai-studio-088a9055-1adc-4b5d-a0e0-916c6a5a40e9";
+
+export const db = dbId 
+  ? initializeFirestore(app, { experimentalForceLongPolling: true }, dbId)
+  : initializeFirestore(app, { experimentalForceLongPolling: true });
 
 // Validate Connection to Firestore (Prerequisite check from Firebase skill)
 async function testConnection() {

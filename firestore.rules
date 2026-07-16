@@ -28,9 +28,7 @@ service cloud.firestore {
 
     // Rules for Users collection
     match /users/{userId} {
-      allow read: if isAuthenticated(); 
-      allow create: if isOwner(userId);
-      allow update, delete: if isOwner(userId) || isAdmin();
+      allow read, write: if isAuthenticated(); // To allow signup, simple role checks, and toggling of roles by lewikb13@gmail.com
     }
 
     // Rules for Development Reviews

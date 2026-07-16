@@ -50,8 +50,8 @@ export default function CoachingNominations({
       return;
     }
 
-    if (myRequests.length >= 5) {
-      setError("Validation Error: You can choose a maximum of 5 coaches.");
+    if (myRequests.length >= 1) {
+      setError("Validation Error: You can only nominate exactly 1 coach or TL.");
       return;
     }
 
@@ -74,19 +74,19 @@ export default function CoachingNominations({
           <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
           <div>
             <h3 className="font-sans font-extrabold text-slate-900 dark:text-slate-100 text-base">
-              My Coaching Nominations
+              My Coaching Nomination
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Choose 2 to 5 coaches to guide you. Admin will verify and then notify them to accept or decline.
+              Choose exactly 1 coach or TL to guide you. Admin will verify and notify them to accept or decline.
             </p>
           </div>
         </div>
         <span className={`text-[10px] font-mono px-2.5 py-1 rounded-full font-bold ${
-          myRequests.length >= 2 && myRequests.length <= 5
+          myRequests.length === 1
             ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900"
             : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-900"
         }`}>
-          {myRequests.length} of 5 Chosen {myRequests.length < 2 && "• Min 2 Required"}
+          {myRequests.length} of 1 Chosen {myRequests.length === 0 && "• 1 Required"}
         </span>
       </div>
 
@@ -98,10 +98,10 @@ export default function CoachingNominations({
       )}
 
       {/* Nomination Form */}
-      {myRequests.length < 5 && (
+      {myRequests.length < 1 && (
         <form onSubmit={handleSubmit} className="space-y-2 relative">
           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 font-mono uppercase">
-            Nominate a New Coach
+            Nominate your Coach or TL
           </label>
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -114,7 +114,7 @@ export default function CoachingNominations({
                 }}
                 onFocus={() => setShowSuggestions(true)}
                 placeholder="Enter coach's full name..."
-                className="w-full text-sm rounded-xl"
+                className="w-full text-sm rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"
                 disabled={loading}
               />
               {showSuggestions && newCoachName.trim() !== "" && suggestions.length > 0 && (
@@ -154,7 +154,7 @@ export default function CoachingNominations({
       {myRequests.length === 0 ? (
         <div className="text-center p-8 bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
           <Users className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
-          <p className="text-xs text-slate-500 dark:text-slate-400">No coaches nominated yet. Please nominate between 2 and 5 coaches to act as your leaders.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">No coach nominated yet. Please nominate exactly 1 coach or TL to guide your evaluation process.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

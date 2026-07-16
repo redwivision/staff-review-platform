@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { QuarterlySummary, PDPQuarterItem, CMOQuarterItem, KDAQuarterItem } from "../types";
-import { QUARTER_INFO } from "../constants";
-import { ClipboardList, Star, RefreshCw, Layers, CheckSquare, Save, UserCheck, ShieldAlert, ArrowLeftRight } from "lucide-react";
+import { QUARTER_INFO, DEVELOPMENT_REVIEW_SECTIONS } from "../constants";
+import { ClipboardList, Star, RefreshCw, Layers, CheckSquare, Save, UserCheck, ShieldAlert, ArrowLeftRight, HelpCircle } from "lucide-react";
 
 interface SummaryFormEditorProps {
   summary: QuarterlySummary;
@@ -619,10 +619,43 @@ export default function SummaryFormEditor({
                 const catData = formData.pdp[category];
 
                 return (
-                  <div key={category} className="bg-slate-50 rounded-xl p-5 border border-slate-150 space-y-4">
-                    <h4 className="font-sans font-bold text-slate-800 text-base border-b border-slate-200 pb-2 capitalize">
+                  <div key={category} className="bg-slate-50 dark:bg-slate-950 rounded-xl p-5 border border-slate-150 dark:border-slate-850 space-y-4">
+                    <h4 className="font-sans font-bold text-slate-800 dark:text-slate-200 text-base border-b border-slate-200 dark:border-slate-800 pb-2 capitalize">
                       {categoryLabel} Priority
                     </h4>
+
+                    {/* Descriptions and Self-Reflecting Questions */}
+                    {DEVELOPMENT_REVIEW_SECTIONS[category] && (
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 bg-white dark:bg-slate-900 rounded-xl p-4 border border-slate-200 dark:border-slate-800 text-xs">
+                        <div className="lg:col-span-5 space-y-2">
+                          <h5 className="font-sans font-bold text-indigo-700 dark:text-indigo-450 border-b border-slate-100 dark:border-slate-800 pb-1 uppercase tracking-wider text-[10px]">
+                            Core Focus Areas
+                          </h5>
+                          <ul className="space-y-1.5 text-slate-600 dark:text-slate-400">
+                            {DEVELOPMENT_REVIEW_SECTIONS[category].bullets.map((b, idx) => (
+                              <li key={idx} className="flex items-start gap-1.5">
+                                <span className="text-indigo-400 dark:text-indigo-500 font-mono text-[10px] mt-0.5">{idx + 1}.</span>
+                                <span className="leading-relaxed">{b}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div className="lg:col-span-7 bg-slate-50/50 dark:bg-slate-950/40 rounded-lg p-3 border border-slate-150 dark:border-slate-850 space-y-2">
+                          <h5 className="font-sans font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider text-[9px] flex items-center gap-1">
+                            <HelpCircle className="w-3 h-3 text-slate-400" />
+                            Self-Reflection Guide Questions
+                          </h5>
+                          <div className="space-y-2 text-slate-700 dark:text-slate-300">
+                            {DEVELOPMENT_REVIEW_SECTIONS[category].questions.map((q, idx) => (
+                              <p key={idx} className="leading-relaxed pl-2.5 border-l-2 border-slate-200 dark:border-slate-800">
+                                {q}
+                              </p>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <div>

@@ -3,6 +3,7 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
+import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
@@ -11,6 +12,18 @@ async function startServer() {
   const PORT = 3000;
 
   app.use(express.json());
+
+  // Set up rate limiting for APIs
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // limit each IP to 100 requests per windowMs
+    standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+    legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+    message: { error: "Too many requests from this IP, please try again after 15 minutes." }
+  });
+
+  // Apply rate limiting to all API routes
+  app.use("/api/", apiLimiter);
 
   // API routes FIRST
   app.post("/api/gemini/synthesize", async (req, res) => {

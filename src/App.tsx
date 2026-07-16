@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "motion/react";
 import { 
   createUserWithEmailAndPassword, 
   signInWithEmailAndPassword, 
@@ -65,7 +66,8 @@ import {
   TrendingUp,
   TrendingDown,
   Download,
-  BellRing
+  BellRing,
+  Database
 } from "lucide-react";
 
 export default function App() {
@@ -161,6 +163,17 @@ export default function App() {
   const [activeSummary, setActiveSummary] = useState<QuarterlySummary | null>(null);
   const [activeSummaryStaffName, setActiveSummaryStaffName] = useState("");
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [useMockData, setUseMockData] = useState<boolean>(() => {
+    return localStorage.getItem("staff_review_use_mock_data") === "true";
+  });
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => {
+      setToast(null);
+    }, 5000);
+  };
 
   // Follow-Up & Dynamic Requirements States
   const [followUpTasks, setFollowUpTasks] = useState<FollowUpTask[]>([]);
@@ -170,11 +183,44 @@ export default function App() {
     relationalLifeRequired: true,
     ministryEffectivenessRequired: true
   });
-  const [reviewSchedules, setReviewSchedules] = useState<Record<string, { startDate: string; dueDate: string; notifyAll: boolean; notificationMessage?: string }>>({
-    "1st": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "" },
-    "2nd": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "" },
-    "3rd": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "" }
+  const [reviewSchedules, setReviewSchedules] = useState<Record<string, { 
+    startDate: string; 
+    dueDate: string; 
+    notifyAll: boolean; 
+    notificationMessage?: string;
+    quarterlyUnlocked?: boolean;
+    quarterlyUnlockDate?: string;
+    quarterlyUnlockTime?: string;
+    updatedAt?: number;
+  }>>({
+    "1st": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined },
+    "2nd": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined },
+    "3rd": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined }
   });
+
+  const isQuarterlyUnlockedForUser = (qKey: string) => {
+    const sched = reviewSchedules[qKey];
+    if (!sched) return false;
+    
+    // 1. Check if explicitly unlocked manually
+    if (sched.quarterlyUnlocked) return true;
+    
+    // 2. Check if a scheduled unlock date (and optional time) is set and passed
+    if (sched.quarterlyUnlockDate) {
+      const now = new Date();
+      let unlockDateTimeStr = sched.quarterlyUnlockDate;
+      if (sched.quarterlyUnlockTime) {
+        unlockDateTimeStr += `T${sched.quarterlyUnlockTime}`;
+      } else {
+        unlockDateTimeStr += `T00:00:00`;
+      }
+      const unlockTime = new Date(unlockDateTimeStr);
+      if (!isNaN(unlockTime.getTime()) && now >= unlockTime) {
+        return true;
+      }
+    }
+    return false;
+  };
 
   // Scheduler modal / form state
   const [showScheduler, setShowScheduler] = useState(false);
@@ -300,6 +346,14 @@ export default function App() {
 
   // Listen to Auth State
   useEffect(() => {
+    // If it's a completely fresh tab/session, clear the bypass user and sign out of Firebase auth
+    // so they are forced to start at the login page.
+    if (!sessionStorage.getItem("has_init_session")) {
+      localStorage.removeItem("staff_review_bypass_user");
+      signOut(auth).catch(() => {});
+      sessionStorage.setItem("has_init_session", "true");
+    }
+
     // Check local storage first for bypass mode user
     const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
     if (savedLocalUser) {
@@ -517,12 +571,15 @@ export default function App() {
       const schedulesRef = collection(db, "reviewSchedules");
       unsubSchedules = onSnapshot(schedulesRef, (snapshot) => {
         const schedulesMap: any = {
-          "1st": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "" },
-          "2nd": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "" },
-          "3rd": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "" }
+          "1st": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined },
+          "2nd": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined },
+          "3rd": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined }
         };
         snapshot.forEach(doc => {
-          schedulesMap[doc.id] = doc.data();
+          schedulesMap[doc.id] = {
+            ...schedulesMap[doc.id],
+            ...doc.data()
+          };
         });
         setReviewSchedules(schedulesMap);
       });
@@ -637,6 +694,528 @@ export default function App() {
   };
 
   // Bypass Authentication Login Helper
+  const seedMockDataToLocalStorage = () => {
+    // 1. Users list
+    const mockUsers: UserProfile[] = [
+      {
+        uid: "bypass_lewikb13_gmail_com",
+        name: "Lewis KB",
+        role: "Platform Owner",
+        email: "lewikb13@gmail.com",
+        isLeader: true,
+        isAdmin: true,
+        createdAt: Date.now()
+      },
+      {
+        uid: "bypass_leader_example_com",
+        name: "Sarah Leader",
+        role: "Regional Coordinator",
+        email: "leader@example.com",
+        isLeader: true,
+        createdAt: Date.now()
+      },
+      {
+        uid: "bypass_john_staff_example_com",
+        name: "John Staff",
+        role: "Ministry Coordinator",
+        email: "john.staff@example.com",
+        isLeader: false,
+        createdAt: Date.now()
+      },
+      {
+        uid: "bypass_anna_coordinator_example_com",
+        name: "Anna Coordinator",
+        role: "National Coordinator",
+        email: "anna.coord@example.com",
+        isLeader: false,
+        createdAt: Date.now()
+      },
+      {
+        uid: "bypass_peter_field_example_com",
+        name: "Peter Field Officer",
+        role: "Field Representative",
+        email: "peter.field@example.com",
+        isLeader: false,
+        createdAt: Date.now()
+      }
+    ];
+    localStorage.setItem("staff_review_bypass_users", JSON.stringify(mockUsers));
+
+    // 2. Coaching requests (approved and accepted so Sarah Leader is their coach)
+    const mockRequests: CoachingRequest[] = [
+      {
+        id: "req_bypass_john_staff_example_com_Sarah_Leader",
+        memberId: "bypass_john_staff_example_com",
+        memberName: "John Staff",
+        memberEmail: "john.staff@example.com",
+        coachName: "Sarah Leader",
+        status: "approved",
+        acceptedByCoach: "accepted",
+        coachUid: "bypass_leader_example_com",
+        updatedAt: Date.now()
+      },
+      {
+        id: "req_bypass_anna_coordinator_example_com_Sarah_Leader",
+        memberId: "bypass_anna_coordinator_example_com",
+        memberName: "Anna Coordinator",
+        memberEmail: "anna.coord@example.com",
+        coachName: "Sarah Leader",
+        status: "approved",
+        acceptedByCoach: "accepted",
+        coachUid: "bypass_leader_example_com",
+        updatedAt: Date.now()
+      },
+      {
+        id: "req_bypass_peter_field_example_com_Sarah_Leader",
+        memberId: "bypass_peter_field_example_com",
+        memberName: "Peter Field Officer",
+        memberEmail: "peter.field@example.com",
+        coachName: "Sarah Leader",
+        status: "approved",
+        acceptedByCoach: "accepted",
+        coachUid: "bypass_leader_example_com",
+        updatedAt: Date.now()
+      },
+      {
+        id: "req_bypass_leader_example_com_Lewis_KB",
+        memberId: "bypass_leader_example_com",
+        memberName: "Sarah Leader",
+        memberEmail: "leader@example.com",
+        coachName: "Lewis KB",
+        status: "approved",
+        acceptedByCoach: "accepted",
+        coachUid: "bypass_lewikb13_gmail_com",
+        updatedAt: Date.now()
+      }
+    ];
+    localStorage.setItem("staff_review_bypass_coaching_requests", JSON.stringify(mockRequests));
+
+    // 3. Reviews:
+    const mockReviews: DevelopmentReview[] = [
+      // John Staff - 1st Quarter - Submitted
+      {
+        id: "bypass_john_staff_example_com_1st_2025-2026",
+        userId: "bypass_john_staff_example_com",
+        quarter: "1st",
+        year: "2025-2026",
+        status: "Submitted",
+        staffMemberName: "John Staff",
+        ministryAssignment: "Campus Discipleship",
+        supervisorName: "Sarah Leader",
+        monthsCovered: "July - October 2025",
+        heart: {
+          strengths: ["Consistently starts the day with deep prayer", "Deeply cares about individual student growth", "Eager to learn and digest spiritual reading"],
+          needsImprovement: ["Occasionally neglects Sabbath rest under peak deadlines", "Hesitant to ask team members for prayer support", "Slowing down to reflect on learnings"],
+          suggestedActionPoints: ["Schedule a monthly Sabbath reflection day", "Share one personal prayer need in weekly standup", "Keep a learning journal"]
+        },
+        personalLife: {
+          strengths: ["Highly disciplined gym and exercise routine", "Healthy boundaries between work and family hours", "Keeps a simple, humble lifestyle"],
+          needsImprovement: ["Inconsistent hydration and eating habits on campus", "Struggles with sleep consistency", "Reluctant to delegate trivial household chores"],
+          suggestedActionPoints: ["Set a daily water intake tracker", "Adhere to a 10 PM screens-off routine", "Involve family members in meal preparation"]
+        },
+        relationalLife: {
+          strengths: ["Warm, welcoming, and easy to build trust with", "Speaks with encouragement and constructive words", "Quick to apologize when mistakes happen"],
+          needsImprovement: ["Overcommitting to social visits out of guilt", "Occasionally delayed with team email responses", "Difficult conversation avoidance"],
+          suggestedActionPoints: ["Limit social commitments to 2 per week", "Dedicate the first 30 mins of the day to emails", "Use a structured talking-points frame for tough meetings"]
+        },
+        ministryEffectiveness: {
+          strengths: ["Leads dynamic, well-attended student Bible studies", "Mobilizes student volunteers beautifully", "Outstanding coordination of campus events"],
+          needsImprovement: ["Late submission of weekly progress trackers", "Handling complex financial tracking/expense reports", "Setting strategic, measurable local ministry goals"],
+          suggestedActionPoints: ["Fill and submit logs every Friday afternoon", "Spend 1 hour with team administrative assistant", "Draft quarterly local objectives with coach"]
+        },
+        updatedAt: Date.now() - 3600 * 24 * 5 * 1000,
+        lastUpdatedBy: "John Staff",
+        leaderSectionComments: {
+          "heart": "John, your heart for God and students is beautiful. Keep up this depth!",
+          "personalLife": "Excellent work protecting your family time, John.",
+          "relationalLife": "Your transparency is a gift to the team.",
+          "ministryEffectiveness": "Your campus outreach was stellar. Let's make sure administrative tracking is done weekly."
+        }
+      },
+      // John Staff - 2nd Quarter - Draft
+      {
+        id: "bypass_john_staff_example_com_2nd_2025-2026",
+        userId: "bypass_john_staff_example_com",
+        quarter: "2nd",
+        year: "2025-2026",
+        status: "Draft",
+        staffMemberName: "John Staff",
+        ministryAssignment: "Campus Discipleship",
+        supervisorName: "Sarah Leader",
+        monthsCovered: "November 2025 - February 2026",
+        heart: {
+          strengths: ["Great energy in small groups", "Reflective personal prayers", ""],
+          needsImprovement: ["Needs more consistent devotional routine", "", ""],
+          suggestedActionPoints: ["Read recommended book by end of month", "", ""]
+        },
+        personalLife: {
+          strengths: ["Exercise routine remains solid", "", ""],
+          needsImprovement: ["Sleep schedules are fluctuating", "", ""],
+          suggestedActionPoints: ["Prepare meals in advance", "", ""]
+        },
+        relationalLife: {
+          strengths: ["Very reliable colleague", "", ""],
+          needsImprovement: ["Team chat communication is slow", "", ""],
+          suggestedActionPoints: ["Check Slack twice daily", "", ""]
+        },
+        ministryEffectiveness: {
+          strengths: ["Event attendance grew by 20%", "", ""],
+          needsImprovement: ["Needs clearer reporting patterns", "", ""],
+          suggestedActionPoints: ["Submit reports on Friday", "", ""]
+        },
+        updatedAt: Date.now() - 3600 * 12 * 1000,
+        lastUpdatedBy: "John Staff"
+      },
+      // Anna Coordinator - 1st Quarter - Submitted
+      {
+        id: "bypass_anna_coordinator_example_com_1st_2025-2026",
+        userId: "bypass_anna_coordinator_example_com",
+        quarter: "1st",
+        year: "2025-2026",
+        status: "Submitted",
+        staffMemberName: "Anna Coordinator",
+        ministryAssignment: "National Office Administration",
+        supervisorName: "Sarah Leader",
+        monthsCovered: "July - October 2025",
+        heart: {
+          strengths: ["Exceptional integrity and alignment", "Calm spirit in times of transition", "Nurturing attitude towards staff"],
+          needsImprovement: ["Overly self-critical during stressful weeks", "Finding quiet hours in a busy workspace", "Hesitancy to express weariness"],
+          suggestedActionPoints: ["Book a quiet workspace afternoon on Tuesdays", "Commit to monthly peer-group sessions", "Write weekly reflections"]
+        },
+        personalLife: {
+          strengths: ["Highly organized household planner", "Consistent evening walks", "Protects weekend rest fully"],
+          needsImprovement: ["Struggles to turn off work notifications on phone", "Irregular lunch breaks due to back-to-back calls", "Lack of recreational hobbies outside work"],
+          suggestedActionPoints: ["Disable work apps after 6:00 PM", "Block out a solid hour at 1:00 PM for lunch", "Enroll in a non-work local pottery class"]
+        },
+        relationalLife: {
+          strengths: ["Superb active listener", "Always supports and builds up the team leadership", "Extremely dependable teammate"],
+          needsImprovement: ["Reluctant to ask for help when overwhelmed", "Takes responsibility for others' shortcomings", "Hesitant to challenge poor work habits in peers"],
+          suggestedActionPoints: ["Delegate 3 admin tasks to support staff", "Practice clear boundaries on role descriptions", "Read 'Fierce Conversations' and outline strategies"]
+        },
+        ministryEffectiveness: {
+          strengths: ["Flawless coordination of national operations", "Brings absolute clarity to complex logistics", "Exceptional volunteer onboarding pipelines"],
+          needsImprovement: ["Prone to over-polishing spreadsheets/slides", "Balancing long-term planning with daily requests", "Training other coordinators in database tools"],
+          suggestedActionPoints: ["Set a time-limit for non-crucial presentation slides", "Allocate 20% of work week to high-level system strategy", "Record 5 quick video tutorials for other coordinators"]
+        },
+        updatedAt: Date.now() - 3600 * 24 * 8 * 1000,
+        lastUpdatedBy: "Anna Coordinator"
+      }
+    ];
+    localStorage.setItem("staff_review_bypass_reviews", JSON.stringify(mockReviews));
+
+    // 4. Summaries:
+    const mockSummaries: QuarterlySummary[] = [
+      // John Staff - 1st Quarter - Submitted
+      {
+        id: "bypass_john_staff_example_com_1st_2025-2026_summary",
+        userId: "bypass_john_staff_example_com",
+        status: "Submitted",
+        coachUid: "bypass_leader_example_com",
+        coachName: "Sarah Leader",
+        quarter: "1st",
+        year: "2025-2026",
+        date: new Date(Date.now() - 3600 * 24 * 3 * 1000).toISOString().split("T")[0],
+        staffName: "John Staff",
+        teamLeaderName: "Sarah Leader",
+        dateJoinedStaff: "2023-05-15",
+        reviewerNamePosition: "Sarah Leader (Regional Coordinator)",
+        supervisedBySince: "2024-01-01",
+        presentPositionSince: "2023-06-01",
+        position: "Ministry Coordinator",
+        suggestions: [
+          "I recommend providing more collaborative spaces for leaders across different zones to share resource packages.",
+          "We could simplify the volunteer screening form to speed up our welcome pipeline."
+        ],
+        pdp: {
+          heart: {
+            goal: "Establish consistent, deep devotional habits daily",
+            desiredResult: "30 minutes of undisturbed prayer and bible reading every morning before starting work",
+            progressMade: "Managed about 4 days a week on average, but saw a massive difference on days completed.",
+            changesNeeded: "Keep phone completely turned off in another room during the first hour of the day."
+          },
+          personalLife: {
+            goal: "Consistently protect personal boundaries and family time",
+            desiredResult: "At least one full rest day with absolutely zero work emails/Slack checking",
+            progressMade: "Saturdays have been kept almost entirely clean of work interaction.",
+            changesNeeded: "Explain boundaries explicitly to key student leaders so they respect weekend hours."
+          },
+          relationalLife: {
+            goal: "Develop confidence in initiating healthy crucial conversations",
+            desiredResult: "Directly resolve team tensions or volunteer friction within 48 hours instead of delaying",
+            progressMade: "Had a positive discussion with our local volunteer leader regarding late event prep.",
+            changesNeeded: "Practice scripting the first two opening lines before the meeting to stay calm and structured."
+          }
+        },
+        cmo: [
+          {
+            objective: "Launch 2 brand new small-group fellowships",
+            desiredResult: "15+ active student attendees participating in weekly sessions across both groups",
+            progressMade: "Groups successfully launched! We currently have 18 registered and active students.",
+            changesNeeded: "Encourage 2 senior students to co-lead so we build an active handoff plan.",
+            percentageAchieved: 100
+          },
+          {
+            objective: "Host the annual Fall Welcome Outreach Drive",
+            desiredResult: "Reach 500 freshman contacts and follow up with at least 150 within 5 days",
+            progressMade: "Reached 520 students, followed up with 110. Great team effort, but follow-up was delayed.",
+            changesNeeded: "Automate the initial follow-up welcome text via email-to-sms templates.",
+            percentageAchieved: 80
+          }
+        ],
+        kda: [
+          {
+            assignment: "Coordinate student leadership training cohort",
+            progressMade: "Ran 4 separate modules covering basic discipleship. 12 student leaders graduated.",
+            changesNeeded: "Start the registration and manual printing process one week earlier next season."
+          }
+        ],
+        evaluation: {
+          overallEffectiveness: "",
+          strengths: ["", "", ""],
+          weaknesses: ["", "", ""],
+          lackConfidence: "",
+          readyForGreaterResp: "",
+          greaterRespDetails: { position: "", when: "" },
+          recommendReassignment: "",
+          reassignmentDetails: { positionLocation: "", why: "" },
+          teamLeaderSignature: "",
+          teamLeaderSignatureDate: "",
+          formReviewedByNameSigDate: ""
+        },
+        updatedAt: Date.now() - 3600 * 24 * 3 * 1000
+      },
+      // Anna Coordinator - 1st Quarter - CoachSubmitted (fully evaluated and completed!)
+      {
+        id: "bypass_anna_coordinator_example_com_1st_2025-2026_summary",
+        userId: "bypass_anna_coordinator_example_com",
+        status: "CoachSubmitted",
+        coachUid: "bypass_leader_example_com",
+        coachName: "Sarah Leader",
+        quarter: "1st",
+        year: "2025-2026",
+        date: new Date(Date.now() - 3600 * 24 * 7 * 1000).toISOString().split("T")[0],
+        staffName: "Anna Coordinator",
+        teamLeaderName: "Sarah Leader",
+        dateJoinedStaff: "2021-08-01",
+        reviewerNamePosition: "Sarah Leader (Regional Coordinator)",
+        supervisedBySince: "2022-01-01",
+        presentPositionSince: "2021-09-01",
+        position: "National Coordinator",
+        suggestions: [
+          "More budget allocated to database automation scripts will save coordinators roughly 5 hours weekly.",
+          "We need a centralized repository for sharing meeting minutes with regional heads."
+        ],
+        pdp: {
+          heart: {
+            goal: "Maintain peace and focus amid heavy logistics schedules",
+            desiredResult: "Spend 20 mins daily doing reflective silence and devotional tracking",
+            progressMade: "Outstanding. Anna has established a serene workspace routine that is inspiring.",
+            changesNeeded: "Keep protecting morning schedule from early phone calls."
+          },
+          personalLife: {
+            goal: "Establish clear evening work boundaries",
+            desiredResult: "Zero work calls after 6 PM, focus on hobbies and recovery",
+            progressMade: "Extremely consistent. Anna reported much higher energy levels and clearer thinking.",
+            changesNeeded: "Continue using do-not-disturb automated phone schedules."
+          },
+          relationalLife: {
+            goal: "Constructive feedback delivery to administrative support staff",
+            desiredResult: "Provide 1-on-1 development reviews for our assistants with clear action logs",
+            progressMade: "Successfully conducted reviews with both support team members.",
+            changesNeeded: "Create a simple template for them to self-rate before meeting."
+          }
+        },
+        cmo: [
+          {
+            objective: "Coordinate the National Leaders Conference",
+            desiredResult: "250+ delegates registered, perfect logistics scoring above 90% in surveys",
+            progressMade: "Exceeded all expectations! 280 attended, logistics review scored 96% positive.",
+            changesNeeded: "Source catering vendors earlier to negotiate a 10% volume discount.",
+            percentageAchieved: 100
+          },
+          {
+            objective: "Migrate database to the new central server",
+            desiredResult: "Clean transition with zero data loss and all regional logins verified",
+            progressMade: "Migration complete. Data verified. 3 accounts required login troubleshooting.",
+            changesNeeded: "Send out simple, clear self-reset instructions in advance next time.",
+            percentageAchieved: 95
+          }
+        ],
+        kda: [
+          {
+            assignment: "Revamp National Internship Guidebook",
+            progressMade: "Finished draft, secured design signoff, and printed 200 copies.",
+            changesNeeded: "Collaborate earlier with local printer to ensure fast delivery."
+          }
+        ],
+        evaluation: {
+          overallEffectiveness: "One of the best",
+          strengths: ["Flawless administrative detail", "Exceptional crisis coordination", "Encouraging and team-focused demeanor"],
+          weaknesses: ["Takes on too much responsibility directly", "Reluctance to push back on unrealistic deadlines", "Over-formatting administrative sheets"],
+          lackConfidence: "Technical server setup and API routing",
+          readyForGreaterResp: "Yes",
+          greaterRespDetails: {
+            position: "Director of National Operations",
+            when: "Next fiscal year budget approval"
+          },
+          recommendReassignment: "No",
+          reassignmentDetails: {
+            positionLocation: "",
+            why: ""
+          },
+          teamLeaderSignature: "Sarah Leader",
+          teamLeaderSignatureDate: new Date(Date.now() - 3600 * 24 * 7 * 1000).toISOString().split("T")[0],
+          formReviewedByNameSigDate: "Lewis KB (Admin) - Approved on " + new Date(Date.now() - 3600 * 24 * 6 * 1000).toLocaleDateString(),
+          formReviewedBy: "bypass_lewikb13_gmail_com",
+          formReviewedByDate: new Date(Date.now() - 3600 * 24 * 6 * 1000).toISOString().split("T")[0]
+        },
+        updatedAt: Date.now() - 3600 * 24 * 6 * 1000
+      }
+    ];
+    localStorage.setItem("staff_review_bypass_summaries", JSON.stringify(mockSummaries));
+
+    // 5. Meetings:
+    const mockMeetings = [
+      {
+        id: "meet_john_1",
+        staffUid: "bypass_john_staff_example_com",
+        staffName: "John Staff",
+        coachUid: "bypass_leader_example_com",
+        coachName: "Sarah Leader",
+        date: "2026-07-20",
+        time: "10:00",
+        topic: "1st Quarter Development Review Discussion",
+        status: "Scheduled",
+        notes: "Let's review the strengths and action points in the Heart and Ministry sections.",
+        createdAt: Date.now()
+      },
+      {
+        id: "meet_anna_1",
+        staffUid: "bypass_anna_coordinator_example_com",
+        staffName: "Anna Coordinator",
+        coachUid: "bypass_leader_example_com",
+        coachName: "Sarah Leader",
+        date: "2026-07-12",
+        time: "14:00",
+        topic: "Quarterly Evaluation Compilation Meeting",
+        status: "Completed",
+        notes: "Completed the evaluation compilation. Anna is doing an outstanding job.",
+        createdAt: Date.now() - 3600 * 24 * 4 * 1000
+      }
+    ];
+    localStorage.setItem("staff_review_bypass_meetings", JSON.stringify(mockMeetings));
+
+    // 6. Follow-up tasks:
+    const mockTasks: FollowUpTask[] = [
+      {
+        id: "task_john_heart",
+        focus: "1.Heart (Sabbath Day Reflection)",
+        coachLeader: "Sarah Leader",
+        coaches: ["Sarah Leader", "John Staff"],
+        currentStage: "Pre event",
+        status: "In progress",
+        dueDate: "October, 2026",
+        coordinatorFollowup: "John has scheduled a quiet weekend reflection day on his calendar.",
+        updatedAt: Date.now(),
+        userId: "bypass_john_staff_example_com",
+        staffName: "John Staff",
+        quarter: "1st",
+        year: "2025-2026"
+      },
+      {
+        id: "task_john_ministry",
+        focus: "4. Ministry (Expense reports)",
+        coachLeader: "Sarah Leader",
+        coaches: ["Sarah Leader"],
+        currentStage: "Post event",
+        status: "Completed",
+        dueDate: "September, 2026",
+        coordinatorFollowup: "John met with the admin team and successfully resolved all outstanding receipts.",
+        updatedAt: Date.now(),
+        userId: "bypass_john_staff_example_com",
+        staffName: "John Staff",
+        quarter: "1st",
+        year: "2025-2026"
+      }
+    ];
+    localStorage.setItem("staff_review_bypass_followup_tasks", JSON.stringify(mockTasks));
+
+    // 7. Activity logs:
+    const mockLogs: ActivityLog[] = [
+      {
+        id: "log_1",
+        userId: "bypass_john_staff_example_com",
+        staffName: "John Staff",
+        editedBy: "John Staff",
+        editorUid: "bypass_john_staff_example_com",
+        activityType: "review",
+        quarter: "1st",
+        year: "2025-2026",
+        action: "Draft Saved",
+        timestamp: Date.now() - 3600 * 24 * 6 * 1000
+      },
+      {
+        id: "log_2",
+        userId: "bypass_john_staff_example_com",
+        staffName: "John Staff",
+        editedBy: "John Staff",
+        editorUid: "bypass_john_staff_example_com",
+        activityType: "review",
+        quarter: "1st",
+        year: "2025-2026",
+        action: "Submitted Form",
+        timestamp: Date.now() - 3600 * 24 * 5 * 1000
+      },
+      {
+        id: "log_3",
+        userId: "bypass_john_staff_example_com",
+        staffName: "John Staff",
+        editedBy: "John Staff",
+        editorUid: "bypass_john_staff_example_com",
+        activityType: "summary",
+        quarter: "1st",
+        year: "2025-2026",
+        action: "Draft Saved",
+        timestamp: Date.now() - 3600 * 24 * 4 * 1000
+      },
+      {
+        id: "log_4",
+        userId: "bypass_john_staff_example_com",
+        staffName: "John Staff",
+        editedBy: "John Staff",
+        editorUid: "bypass_john_staff_example_com",
+        activityType: "summary",
+        quarter: "1st",
+        year: "2025-2026",
+        action: "Submitted Form",
+        timestamp: Date.now() - 3600 * 24 * 3 * 1000
+      },
+      {
+        id: "log_5",
+        userId: "bypass_anna_coordinator_example_com",
+        staffName: "Anna Coordinator",
+        editedBy: "Sarah Leader",
+        editorUid: "bypass_leader_example_com",
+        activityType: "summary",
+        quarter: "1st",
+        year: "2025-2026",
+        action: "Compiled Summary (Evaluation Submitted)",
+        timestamp: Date.now() - 3600 * 24 * 1 * 1000
+      }
+    ];
+    localStorage.setItem("staff_review_bypass_activity_logs", JSON.stringify(mockLogs));
+  };
+
+  const clearMockDataFromLocalStorage = () => {
+    localStorage.removeItem("staff_review_bypass_reviews");
+    localStorage.removeItem("staff_review_bypass_summaries");
+    localStorage.removeItem("staff_review_bypass_meetings");
+    localStorage.removeItem("staff_review_bypass_followup_tasks");
+    localStorage.removeItem("staff_review_bypass_coaching_requests");
+    localStorage.removeItem("staff_review_bypass_activity_logs");
+    localStorage.removeItem("staff_review_bypass_users");
+  };
+
   const handleBypassLogin = (email: string, name: string, role: string, isLeader: boolean, isAdminPriv?: boolean) => {
     const fallbackProfile: UserProfile = {
       uid: "bypass_" + email.replace(/[@.]/g, "_"),
@@ -647,6 +1226,13 @@ export default function App() {
       isAdmin: isAdminPriv || email === "lewikb13@gmail.com",
       createdAt: Date.now()
     };
+
+    if (useMockData) {
+      seedMockDataToLocalStorage();
+    } else {
+      clearMockDataFromLocalStorage();
+    }
+
     localStorage.setItem("staff_review_bypass_user", JSON.stringify(fallbackProfile));
     setUser(fallbackProfile);
   };
@@ -1545,8 +2131,26 @@ export default function App() {
   };
 
   // Save Review Period schedule/deadlines
-  const handleSaveReviewSchedule = async (quarter: "1st" | "2nd" | "3rd", startDate: string, dueDate: string, notifyAll: boolean, notificationMessage: string) => {
-    const scheduleData = { startDate, dueDate, notifyAll, notificationMessage, updatedAt: Date.now() };
+  const handleSaveReviewSchedule = async (
+    quarter: "1st" | "2nd" | "3rd", 
+    startDate: string, 
+    dueDate: string, 
+    notifyAll: boolean, 
+    notificationMessage: string,
+    quarterlyUnlocked?: boolean,
+    quarterlyUnlockDate?: string,
+    quarterlyUnlockTime?: string
+  ) => {
+    const scheduleData = { 
+      startDate, 
+      dueDate, 
+      notifyAll, 
+      notificationMessage, 
+      quarterlyUnlocked: !!quarterlyUnlocked,
+      quarterlyUnlockDate: quarterlyUnlockDate || "",
+      quarterlyUnlockTime: quarterlyUnlockTime || "",
+      updatedAt: Date.now() 
+    };
     
     if (user?.uid.startsWith("bypass_")) {
       const updatedSchedules = {
@@ -1555,17 +2159,17 @@ export default function App() {
       };
       localStorage.setItem("staff_review_bypass_schedules", JSON.stringify(updatedSchedules));
       setReviewSchedules(updatedSchedules);
-      alert(`${quarter} Quarter Review schedule saved successfully (Bypass Mode)!`);
+      showToast(`${quarter} Quarter Review schedule saved successfully (Bypass Mode)!`, "success");
       return;
     }
 
     try {
       const docRef = doc(db, "reviewSchedules", quarter);
       await setDoc(docRef, scheduleData);
-      alert(`${quarter} Quarter Review schedule saved successfully!`);
+      showToast(`${quarter} Quarter Review schedule saved successfully!`, "success");
     } catch (e) {
       console.error("Failed to save schedule", e);
-      alert("Failed to save schedule. Check console/permissions.");
+      showToast(`Failed to save schedule. Check console/permissions. Error: ${e instanceof Error ? e.message : String(e)}`, "error");
     }
   };
 
@@ -1774,12 +2378,44 @@ export default function App() {
           </div>
 
           {/* Development & Testing Bypasses */}
-          <div className="border-t border-slate-100 pt-5 space-y-3.5">
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3.5">
+            {/* Toggle Switch for Mock Data */}
+            <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/40 dark:border-indigo-900/40 rounded-2xl p-4 flex items-center justify-between gap-4">
+              <div className="space-y-0.5 text-left">
+                <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Database className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+                  Mock Data (fake data for testing)
+                </span>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
+                  Toggle on to automatically pre-populate the workspace with rich testing data.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  id="mock-data-toggle"
+                  checked={useMockData}
+                  onChange={(e) => {
+                    const checked = e.target.checked;
+                    setUseMockData(checked);
+                    localStorage.setItem("staff_review_use_mock_data", checked ? "true" : "false");
+                    if (checked) {
+                      showToast("Mock data enabled! Bypassing will now seed beautiful testing data.", "success");
+                    } else {
+                      showToast("Mock data disabled.", "success");
+                    }
+                  }}
+                  className="sr-only peer"
+                />
+                <div className="w-11 h-6 bg-slate-200 dark:bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 dark:after:border-slate-600 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+              </label>
+            </div>
+
             <div className="text-center space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full font-mono">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-950/40 px-2.5 py-0.5 rounded-full font-mono">
                 Development Bypass
               </span>
-              <p className="text-[11px] text-slate-500 max-w-xs mx-auto">
+              <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
                 No Firebase Configuration required! Click below to immediately log in and test each workspace role:
               </p>
             </div>
@@ -2112,7 +2748,7 @@ export default function App() {
                           </div>
                           <a
                             id={`add-cal-btn-${m.id}`}
-                            href={generateGoogleCalendarLink(m)}
+                            href={generateGoogleCalendarLink(m).startsWith("https://calendar.google.com") ? generateGoogleCalendarLink(m) : "#"}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="w-full text-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
@@ -2217,14 +2853,19 @@ export default function App() {
                             </div>
                           )}
 
-                          <div className="mt-6 space-y-3.5">
+                          <div className="mt-6 space-y-4">
                             {/* Review Form link */}
-                            <div className="flex justify-between items-center text-sm">
-                              <span className="text-slate-500">Development Form</span>
+                            <div className="flex justify-between items-start gap-4 text-sm">
+                              <div className="flex flex-col">
+                                <span className="text-slate-800 dark:text-slate-200 font-bold">Monthly Form</span>
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
+                                  This monthly form is done every month between you and your coach
+                                </span>
+                              </div>
                               <button
                                 id={`edit-my-review-${qKey}`}
                                 onClick={() => handleSelectMyReview(qKey)}
-                                className="text-xs font-bold text-slate-800 hover:text-slate-950 flex items-center gap-1 bg-slate-100 hover:bg-slate-200 px-2.5 py-1.5 rounded-md transition-all"
+                                className="text-xs font-bold text-slate-800 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2.5 py-1.5 rounded-md transition-all shrink-0 mt-0.5"
                               >
                                 {isSubmitted ? "View Form" : "Fill/Edit Form"}
                                 <ChevronRight className="w-3.5 h-3.5" />
@@ -2232,64 +2873,69 @@ export default function App() {
                             </div>
 
                             {/* Summary Form link */}
-                            <div className="flex justify-between items-center text-sm border-t border-slate-100 pt-3">
-                              <span className="text-slate-500 font-medium">Review Summary</span>
-                              {!isSubmitted ? (
-                                <span className="text-[11px] text-slate-400 font-mono italic">Complete Dev Form First</span>
-                              ) : (!summary && !reviewSchedules[qKey]?.notifyAll) ? (
-                                <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-bold flex items-center gap-1">
-                                  🔒 Locked by Admin
+                            <div className="flex justify-between items-start gap-4 text-sm border-t border-slate-100 dark:border-slate-800 pt-3">
+                              <div className="flex flex-col">
+                                <span className="text-slate-800 dark:text-slate-200 font-bold">Quarterly Form</span>
+                                <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
+                                  This form is done quarterly and will be submitted to HR.
                                 </span>
-                              ) : (summary && (summary.status !== "Submitted" && summary.status !== "CoachSubmitted") && !reviewSchedules[qKey]?.notifyAll) ? (
-                                <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-bold flex items-center gap-1">
-                                  🔒 Locked by Admin
-                                </span>
-                              ) : !summary ? (
-                                <button
-                                  id={`start-my-summary-${qKey}`}
-                                  onClick={() => handleSelectStaffSummary(user, qKey as "1st" | "2nd" | "3rd")}
-                                  className="text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white animate-pulse px-2.5 py-1.5 rounded-md transition-all shadow-sm flex items-center gap-1 cursor-pointer"
-                                >
-                                  Fill Summary (Required)
-                                  <ChevronRight className="w-3.5 h-3.5" />
-                                </button>
-                              ) : (summary.status !== "Submitted" && summary.status !== "CoachSubmitted") ? (
-                                <button
-                                  id={`resume-my-summary-${qKey}`}
-                                  onClick={() => {
-                                    setActiveSummary(summary);
-                                    setActiveSummaryStaffName(user.name);
-                                  }}
-                                  className="text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white animate-pulse px-2.5 py-1.5 rounded-md transition-all shadow-sm flex items-center gap-1 cursor-pointer"
-                                >
-                                  Resume Summary (Required)
-                                  <ChevronRight className="w-3.5 h-3.5" />
-                                </button>
-                              ) : summary.status === "Submitted" ? (
-                                <button
-                                  id={`view-my-submitted-summary-${qKey}`}
-                                  onClick={() => {
-                                    setActiveSummary(summary);
-                                    setActiveSummaryStaffName(user.name);
-                                  }}
-                                  className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-md transition-all border border-blue-200 cursor-pointer"
-                                >
-                                  Submitted to Coach
-                                  <ChevronRight className="w-3.5 h-3.5" />
-                                </button>
-                              ) : (
-                                <button
-                                  id={`view-my-eval-${qKey}`}
-                                  onClick={() => {
-                                    setActiveSummary(summary);
-                                    setActiveSummaryStaffName(user.name);
-                                  }}
-                                  className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-md transition-all border border-emerald-200 cursor-pointer"
-                                >
-                                  View Evaluation
-                                  <ChevronRight className="w-3.5 h-3.5" />
-                                </button>
-                              )}
+                              </div>
+                              <div className="shrink-0 mt-0.5">
+                                {(summary && (summary.status === "Submitted" || summary.status === "CoachSubmitted")) ? (
+                                  summary.status === "Submitted" ? (
+                                    <button
+                                      id={`view-my-submitted-summary-${qKey}`}
+                                      onClick={() => {
+                                        setActiveSummary(summary);
+                                        setActiveSummaryStaffName(user.name);
+                                      }}
+                                      className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-md transition-all border border-blue-200 cursor-pointer"
+                                    >
+                                      Submitted to Coach
+                                      <ChevronRight className="w-3.5 h-3.5" />
+                                    </button>
+                                  ) : (
+                                    <button
+                                      id={`view-my-eval-${qKey}`}
+                                      onClick={() => {
+                                        setActiveSummary(summary);
+                                        setActiveSummaryStaffName(user.name);
+                                      }}
+                                      className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-md transition-all border border-emerald-200 cursor-pointer"
+                                    >
+                                      View Evaluation
+                                      <ChevronRight className="w-3.5 h-3.5" />
+                                    </button>
+                                  )
+                                ) : !isQuarterlyUnlockedForUser(qKey) ? (
+                                  <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-bold flex items-center gap-1">
+                                    🔒 Locked by Admin
+                                  </span>
+                                ) : !isSubmitted ? (
+                                  <span className="text-[11px] text-slate-400 font-mono italic">Complete Monthly Form First</span>
+                                ) : !summary ? (
+                                  <button
+                                    id={`start-my-summary-${qKey}`}
+                                    onClick={() => handleSelectStaffSummary(user, qKey as "1st" | "2nd" | "3rd")}
+                                    className="text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white animate-pulse px-2.5 py-1.5 rounded-md transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+                                  >
+                                    Fill Summary (Required)
+                                    <ChevronRight className="w-3.5 h-3.5" />
+                                  </button>
+                                ) : (
+                                  <button
+                                    id={`resume-my-summary-${qKey}`}
+                                    onClick={() => {
+                                      setActiveSummary(summary);
+                                      setActiveSummaryStaffName(user.name);
+                                    }}
+                                    className="text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white animate-pulse px-2.5 py-1.5 rounded-md transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+                                  >
+                                    Resume Summary (Required)
+                                    <ChevronRight className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -3185,9 +3831,16 @@ export default function App() {
                                         label = "Pending Coach";
                                         icon = <Clock className="w-3.5 h-3.5 shrink-0" />;
                                       } else {
-                                        badgeClass = "bg-slate-50 hover:bg-slate-100/80 text-slate-400 border-slate-100 dark:bg-slate-900 dark:text-slate-500 dark:border-slate-800";
-                                        label = "Not Started";
-                                        icon = <HelpCircle className="w-3.5 h-3.5 shrink-0" />;
+                                        const isUnlocked = isQuarterlyUnlockedForUser(quarter);
+                                        if (isUnlocked) {
+                                          badgeClass = "bg-slate-50 hover:bg-slate-100/80 text-slate-400 border-slate-100 dark:bg-slate-900 dark:text-slate-500 dark:border-slate-800";
+                                          label = "Not Started";
+                                          icon = <HelpCircle className="w-3.5 h-3.5 shrink-0" />;
+                                        } else {
+                                          badgeClass = "bg-amber-50/50 hover:bg-amber-100/40 text-amber-600 dark:bg-amber-950/10 dark:text-amber-400 border-amber-100/35 dark:border-amber-900/30";
+                                          label = "🔒 Locked";
+                                          icon = <Lock className="w-3 h-3 shrink-0 text-amber-500" />;
+                                        }
                                       }
 
                                       return (
@@ -3409,7 +4062,18 @@ export default function App() {
                                   return (
                                     <div key={qKey} className="bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-800/80 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors">
                                       <div>
-                                        <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{QUARTER_INFO[qKey].name} Review</span>
+                                        <div className="flex items-center gap-2 mb-1.5">
+                                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{QUARTER_INFO[qKey].name} Review</span>
+                                          {!isQuarterlyUnlockedForUser(qKey) ? (
+                                            <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/25 px-1.5 py-0.5 rounded border border-amber-200/20 flex items-center gap-0.5">
+                                              🔒 Locked by Admin
+                                            </span>
+                                          ) : (
+                                            <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/25 px-1.5 py-0.5 rounded border border-emerald-200/20 flex items-center gap-0.5">
+                                              🔓 Unlocked
+                                            </span>
+                                          )}
+                                        </div>
                                         
                                         {mReview && (
                                           <div className="flex items-center gap-2 mt-1.5 mb-2 bg-white/70 dark:bg-slate-900/60 border border-slate-100 dark:border-slate-800 rounded-lg py-1 px-2 w-fit">
@@ -3717,15 +4381,89 @@ export default function App() {
                                 />
                               </div>
                             )}
+
+                            {/* Unlock Quarterly Form Control */}
+                            <div className="border-t border-slate-100 dark:border-slate-800/60 pt-3 mt-1.5 space-y-2.5">
+                              <span className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                                Quarterly Form Lock/Unlock
+                              </span>
+                              
+                              <label className="flex items-center gap-2 cursor-pointer select-none">
+                                <input 
+                                  type="checkbox"
+                                  checked={sched.quarterlyUnlocked || false}
+                                  onChange={(e) => {
+                                    setReviewSchedules(prev => ({
+                                      ...prev,
+                                      [qKey]: { ...prev[qKey], quarterlyUnlocked: e.target.checked }
+                                    }));
+                                  }}
+                                  className="rounded text-amber-600 focus:ring-amber-500 w-3.5 h-3.5 border-slate-300 dark:border-slate-800"
+                                />
+                                <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                  🔓 Unlock Instantly
+                                </span>
+                              </label>
+
+                              <div className="space-y-1">
+                                <label className="block text-[9px] font-semibold text-slate-400 dark:text-slate-500">
+                                  Scheduled Unlock Date
+                                </label>
+                                <input 
+                                  type="date"
+                                  value={sched.quarterlyUnlockDate || ""}
+                                  onChange={(e) => {
+                                    setReviewSchedules(prev => ({
+                                      ...prev,
+                                      [qKey]: { ...prev[qKey], quarterlyUnlockDate: e.target.value }
+                                    }));
+                                  }}
+                                  className="w-full border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-[11px] bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none"
+                                />
+                              </div>
+
+                              <div className="space-y-1">
+                                <label className="block text-[9px] font-semibold text-slate-400 dark:text-slate-500">
+                                  Scheduled Unlock Time
+                                </label>
+                                <input 
+                                  type="time"
+                                  value={sched.quarterlyUnlockTime || ""}
+                                  onChange={(e) => {
+                                    setReviewSchedules(prev => ({
+                                      ...prev,
+                                      [qKey]: { ...prev[qKey], quarterlyUnlockTime: e.target.value }
+                                    }));
+                                  }}
+                                  className="w-full border border-slate-200 dark:border-slate-800 rounded-lg px-2 py-1 text-[11px] bg-slate-50 dark:bg-slate-900 text-slate-800 dark:text-slate-200 focus:outline-none"
+                                />
+                              </div>
+                            </div>
                           </div>
 
                           <button
                             type="button"
-                            onClick={() => handleSaveReviewSchedule(qKey, sched.startDate, sched.dueDate, sched.notifyAll, sched.notificationMessage || "")}
+                            onClick={() => handleSaveReviewSchedule(
+                              qKey, 
+                              sched.startDate, 
+                              sched.dueDate, 
+                              sched.notifyAll, 
+                              sched.notificationMessage || "",
+                              sched.quarterlyUnlocked || false,
+                              sched.quarterlyUnlockDate || "",
+                              sched.quarterlyUnlockTime || ""
+                            )}
                             className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer mt-3"
                           >
                             Save {qKey} Schedule
                           </button>
+
+                          {sched.updatedAt && (
+                            <div className="mt-2 flex items-center justify-center gap-1 px-2 py-1 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-900/50 rounded-lg text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                              <span>Saved: {new Date(sched.updatedAt).toLocaleTimeString()}</span>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -4710,6 +5448,38 @@ export default function App() {
           </div>
         </div>
       )}
+      {/* TOAST NOTIFICATION */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            id="toast-notification"
+            className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3.5 rounded-2xl shadow-xl border backdrop-blur-md max-w-sm ${
+              toast.type === "success"
+                ? "bg-emerald-50/95 dark:bg-emerald-950/95 text-emerald-800 dark:text-emerald-100 border-emerald-200/50 dark:border-emerald-900/50"
+                : "bg-rose-50/95 dark:bg-rose-950/95 text-rose-800 dark:text-rose-100 border-rose-200/50 dark:border-rose-900/50"
+            }`}
+          >
+            {toast.type === "success" ? (
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+            ) : (
+              <AlertCircle className="w-5 h-5 text-rose-600 dark:text-rose-400 shrink-0" />
+            )}
+            <div className="flex-1 text-xs font-semibold leading-normal font-sans">
+              {toast.message}
+            </div>
+            <button
+              onClick={() => setToast(null)}
+              className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors p-0.5 rounded-md"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

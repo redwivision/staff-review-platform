@@ -542,3 +542,53 @@ The review comment said: "From the first information page will include: Date of 
 1. `src/components/SummaryFormEditor.tsx` — Redesigned header tab
 2. `src/components/AdminReports.tsx` — Updated admin report labels
 3. `src/utils/pdfExport.ts` — Updated PDF export labels
+
+---
+
+## 15. Known Limitations (Current MVP)
+
+These are known gaps with planned improvements for the next iteration:
+
+### Notifications
+- No email or push notifications for submissions, evaluations, or deadline reminders
+- **Planned:** Firebase Cloud Functions + SendGrid for email triggers
+
+### File Attachments
+- Reviews and summaries are text-only — no ability to upload documents, images, or evidence
+- **Planned:** Firebase Storage integration for file uploads
+
+### Role Flexibility
+- A user has a single role (Staff, Coach, or Admin) — no hybrid roles (e.g., staff who is also a coach)
+- **Planned:** Multi-role support with granular permissions
+
+### Quarter Structure
+- Quarters follow a hardcoded July–June fiscal calendar
+- **Planned:** Admin-configurable quarter definitions for different organizational calendars
+
+### Offline Mode
+- The bypass/offline mode (localStorage) is for development and testing only — not a real offline feature
+- **Planned:** Service worker + Firebase offline persistence for genuine offline capability
+
+### AI Synthesis
+- The Gemini AI review synthesis generates a first draft that requires human review and editing before sharing
+- **Planned:** Multi-pass AI with human-in-the-loop feedback and custom prompt templates
+
+### PDF Export
+- PDFs use a static template layout — no custom branding, logos, or layout options
+- **Planned:** Configurable PDF templates with org branding
+
+### Mobile Experience
+- Web-only, no native mobile app — responsive design works on mobile browsers but no push notifications or native gestures
+- **Planned:** React Native or PWA with push notifications
+
+### Coach Assignment
+- Coach-staff matching is manual — admins approve coaching requests one by one
+- **Planned:** Automatic matching based on department, availability, or org hierarchy
+
+### Audit Trail
+- Activity logs track edits and submissions, but deletes are blocked by security rules — no soft-delete or recovery mechanism
+- **Planned:** Soft-delete with audit logging and admin recovery tools
+
+### Data Migration
+- No import/export tool for migrating from legacy systems (spreadsheets, paper forms)
+- **Planned:** CSV/Excel import wizard for bulk onboarding

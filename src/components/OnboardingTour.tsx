@@ -87,12 +87,18 @@ export default function OnboardingTour({ isAdmin, isLeader, onComplete }: Onboar
       onComplete?.();
     });
 
-    // Small delay so the DOM is fully rendered
-    const timer = setTimeout(() => {
-      tour.start();
-    }, 800);
+    // Wait for target elements to exist before starting
+    const startTour = () => {
+      const target = document.querySelector("#tab-btn-my-reviews");
+      if (target) {
+        tour.start();
+        return;
+      }
+      retryTimer = setTimeout(startTour, 300);
+    };
 
-    return () => clearTimeout(timer);
+    let retryTimer = setTimeout(startTour, 1200);
+    return () => clearTimeout(retryTimer);
   }, [isAdmin, isLeader, onComplete]);
 
   return null;

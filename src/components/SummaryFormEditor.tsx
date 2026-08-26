@@ -837,9 +837,37 @@ export default function SummaryFormEditor({
                 Critical Mission Objectives (Your Role Priorities This Year)
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Provide up to 3 role priorities, assessing their results, progress, or evaluation.
+                List your top 3 role priorities for this period and report on the results, progress, or evaluation of each.
               </p>
             </div>
+
+            {/* Ministry Effectiveness Context — same description as the monthly form */}
+            {DEVELOPMENT_REVIEW_SECTIONS.ministryEffectiveness && (
+              <div className="bg-indigo-50/60 rounded-xl p-5 border border-indigo-100 space-y-4">
+                <div>
+                  <ul className="space-y-1.5 text-xs text-indigo-800">
+                    {DEVELOPMENT_REVIEW_SECTIONS.ministryEffectiveness.bullets.map((b, i) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <span className="text-indigo-400 font-mono text-[10px] mt-0.5">{i + 1}.</span>
+                        <span>{b}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div className="bg-white rounded-lg p-4 border border-indigo-100 shadow-sm space-y-2">
+                  <h5 className="text-[10px] font-semibold uppercase tracking-wider text-indigo-400">
+                    Self-Reflection Guide
+                  </h5>
+                  <div className="space-y-1.5 text-xs text-slate-700">
+                    {DEVELOPMENT_REVIEW_SECTIONS.ministryEffectiveness.questions.map((q, i) => (
+                      <p key={i} className="leading-relaxed pl-3 border-l-2 border-indigo-200">
+                        {q}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-6">
               {[0, 1, 2].map(index => {

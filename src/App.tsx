@@ -799,6 +799,17 @@ export default function App() {
         acceptedByCoach: "accepted",
         coachUid: "bypass_lewikb13_gmail_com",
         updatedAt: Date.now()
+      },
+      {
+        id: "req_bypass_peter_field_example_com_Sarah_Leader",
+        memberId: "bypass_peter_field_example_com",
+        memberName: "Peter Field Officer",
+        memberEmail: "peter.field@example.com",
+        coachName: "Sarah Leader",
+        status: "approved",
+        acceptedByCoach: "accepted",
+        coachUid: "bypass_leader_example_com",
+        updatedAt: Date.now()
       }
     ];
     localStorage.setItem("staff_review_bypass_coaching_requests", JSON.stringify(mockRequests));
@@ -845,40 +856,6 @@ export default function App() {
           "ministryEffectiveness": "Your campus outreach was stellar. Let's make sure administrative tracking is done weekly."
         }
       },
-      // John Staff - 2nd Quarter - Draft
-      {
-        id: "bypass_john_staff_example_com_2nd_2025-2026",
-        userId: "bypass_john_staff_example_com",
-        quarter: "2nd",
-        year: "2025-2026",
-        status: "Draft",
-        staffMemberName: "John Staff",
-        ministryAssignment: "Campus Discipleship",
-        supervisorName: "Sarah Leader",
-        monthsCovered: "November 2025 - February 2026",
-        heart: {
-          strengths: ["Great energy in small groups", "Reflective personal prayers", ""],
-          needsImprovement: ["Needs more consistent devotional routine", "", ""],
-          suggestedActionPoints: ["Read recommended book by end of month", "", ""]
-        },
-        personalLife: {
-          strengths: ["Exercise routine remains solid", "", ""],
-          needsImprovement: ["Sleep schedules are fluctuating", "", ""],
-          suggestedActionPoints: ["Prepare meals in advance", "", ""]
-        },
-        relationalLife: {
-          strengths: ["Very reliable colleague", "", ""],
-          needsImprovement: ["Team chat communication is slow", "", ""],
-          suggestedActionPoints: ["Check Slack twice daily", "", ""]
-        },
-        ministryEffectiveness: {
-          strengths: ["Event attendance grew by 20%", "", ""],
-          needsImprovement: ["Needs clearer reporting patterns", "", ""],
-          suggestedActionPoints: ["Submit reports on Friday", "", ""]
-        },
-        updatedAt: Date.now() - 3600 * 12 * 1000,
-        lastUpdatedBy: "John Staff"
-      },
       // Anna Coordinator - 1st Quarter - Submitted
       {
         id: "bypass_anna_coordinator_example_com_1st_2025-2026",
@@ -912,17 +889,51 @@ export default function App() {
         },
         updatedAt: Date.now() - 3600 * 24 * 8 * 1000,
         lastUpdatedBy: "Anna Coordinator"
+      },
+      // Peter Field Officer - 1st Quarter - Submitted
+      {
+        id: "bypass_peter_field_example_com_1st_2025-2026",
+        userId: "bypass_peter_field_example_com",
+        quarter: "1st",
+        year: "2025-2026",
+        status: "Submitted",
+        staffMemberName: "Peter Field Officer",
+        ministryAssignment: "Rural Evangelism & Field Operations",
+        supervisorName: "Sarah Leader",
+        monthsCovered: "July - October 2025",
+        heart: {
+          strengths: ["Deep passion for reaching unreached communities", "Consistent prayer life even in challenging field conditions", "Humble servant leadership among villagers"],
+          needsImprovement: ["Rarely shares personal spiritual struggles with team", "Occasionally skips devotional time during travel", "Struggles to find mentors in remote locations"],
+          suggestedActionPoints: ["Schedule monthly video calls with a spiritual mentor", "Carry a pocket devotional journal during field trips", "Share one vulnerability in each team meeting"]
+        },
+        personalLife: {
+          strengths: ["Adapts well to艰苦 field conditions", "Excellent at living simply and within means", "Strong physical stamina for demanding travel"],
+          needsImprovement: ["Neglects regular medical checkups due to schedule", "Inconsistent exercise routine when in remote areas", "Difficulty maintaining work-life boundaries during harvest seasons"],
+          suggestedActionPoints: ["Schedule quarterly health checkups regardless of schedule", "Pack resistance bands for hotel room workouts", "Set firm return dates from field assignments"]
+        },
+        relationalLife: {
+          strengths: ["Builds deep trust with local community leaders", "Excellent cross-cultural communication skills", "Patient mediator in team disagreements"],
+          needsImprovement: ["Tends to work in isolation rather than collaborating", "Slow to report field challenges to leadership", "Limited interaction with office-based colleagues"],
+          suggestedActionPoints: ["Send weekly field updates to the team", "Attend at least 2 virtual team meetings per month", "Invite a colleague on one field trip per quarter"]
+        },
+        ministryEffectiveness: {
+          strengths: ["Established 3 new village contact points this quarter", "Strong rapport with local church pastors", "Creative use of storytelling in evangelism"],
+          needsImprovement: ["Incomplete field activity documentation", "Needs better systems for tracking new believer follow-up", "Strategic planning for sustained village engagement"],
+          suggestedActionPoints: ["Complete field reports within 48 hours of each visit", "Implement a simple follow-up tracking spreadsheet", "Draft a 6-month village engagement plan with coach"]
+        },
+        updatedAt: Date.now() - 3600 * 24 * 10 * 1000,
+        lastUpdatedBy: "Peter Field Officer"
       }
     ];
     localStorage.setItem("staff_review_bypass_reviews", JSON.stringify(mockReviews));
 
     // 4. Summaries:
     const mockSummaries: QuarterlySummary[] = [
-      // John Staff - 1st Quarter - Submitted
+      // John Staff - 1st Quarter - CoachSubmitted (fully evaluated)
       {
         id: "bypass_john_staff_example_com_1st_2025-2026_summary",
         userId: "bypass_john_staff_example_com",
-        status: "Submitted",
+        status: "CoachSubmitted",
         coachUid: "bypass_leader_example_com",
         coachName: "Sarah Leader",
         quarter: "1st",
@@ -983,21 +994,23 @@ export default function App() {
           }
         ],
         evaluation: {
-          overallEffectiveness: "",
-          strengths: ["", "", ""],
-          weaknesses: ["", "", ""],
-          lackConfidence: "",
-          readyForGreaterResp: "",
-          greaterRespDetails: { position: "", when: "" },
-          recommendReassignment: "",
+          overallEffectiveness: "One of the best",
+          strengths: ["Exceptional spiritual leadership among students", "Highly organized event coordination", "Deep relational investment in volunteer development"],
+          weaknesses: ["Occasional delays in administrative reporting", "Reluctance to delegate low-visibility tasks", "Needs to develop more strategic long-term ministry goals"],
+          lackConfidence: "Financial budgeting and expense tracking",
+          readyForGreaterResp: "Yes",
+          greaterRespDetails: { position: "Campus Ministry Director", when: "Start of next fiscal year" },
+          recommendReassignment: "No",
           reassignmentDetails: { positionLocation: "", why: "" },
-          teamLeaderSignature: "",
-          teamLeaderSignatureDate: "",
-          formReviewedByNameSigDate: ""
+          teamLeaderSignature: "Sarah Leader",
+          teamLeaderSignatureDate: new Date(Date.now() - 3600 * 24 * 3 * 1000).toISOString().split("T")[0],
+          formReviewedByNameSigDate: "Lewis KB (Admin) - Approved",
+          formReviewedBy: "bypass_lewikb13_gmail_com",
+          formReviewedByDate: new Date(Date.now() - 3600 * 24 * 2 * 1000).toISOString().split("T")[0]
         },
-        updatedAt: Date.now() - 3600 * 24 * 3 * 1000
+        updatedAt: Date.now() - 3600 * 24 * 2 * 1000
       },
-      // Anna Coordinator - 1st Quarter - CoachSubmitted (fully evaluated and completed!)
+      // Anna Coordinator - 1st Quarter - CoachSubmitted (fully evaluated)
       {
         id: "bypass_anna_coordinator_example_com_1st_2025-2026_summary",
         userId: "bypass_anna_coordinator_example_com",
@@ -1072,10 +1085,7 @@ export default function App() {
             when: "Next fiscal year budget approval"
           },
           recommendReassignment: "No",
-          reassignmentDetails: {
-            positionLocation: "",
-            why: ""
-          },
+          reassignmentDetails: { positionLocation: "", why: "" },
           teamLeaderSignature: "Sarah Leader",
           teamLeaderSignatureDate: new Date(Date.now() - 3600 * 24 * 7 * 1000).toISOString().split("T")[0],
           formReviewedByNameSigDate: "Lewis KB (Admin) - Approved on " + new Date(Date.now() - 3600 * 24 * 6 * 1000).toLocaleDateString(),
@@ -1083,6 +1093,78 @@ export default function App() {
           formReviewedByDate: new Date(Date.now() - 3600 * 24 * 6 * 1000).toISOString().split("T")[0]
         },
         updatedAt: Date.now() - 3600 * 24 * 6 * 1000
+      },
+      // Peter Field Officer - 1st Quarter - Submitted (awaiting coach evaluation)
+      {
+        id: "bypass_peter_field_example_com_1st_2025-2026_summary",
+        userId: "bypass_peter_field_example_com",
+        status: "Submitted",
+        coachUid: "bypass_leader_example_com",
+        coachName: "Sarah Leader",
+        quarter: "1st",
+        year: "2025-2026",
+        date: new Date(Date.now() - 3600 * 24 * 2 * 1000).toISOString().split("T")[0],
+        staffName: "Peter Field Officer",
+        teamLeaderName: "Sarah Leader",
+        dateJoinedStaff: "2020-03-10",
+        reviewerNamePosition: "Sarah Leader (Regional Coordinator)",
+        supervisedBySince: "2023-06-01",
+        presentPositionSince: "2022-01-01",
+        position: "Field Representative",
+        suggestions: [
+          "We need better mobile connectivity in remote village assignment areas to enable real-time reporting.",
+          "A shared resource library for field evangelism materials would save significant preparation time."
+        ],
+        pdp: {
+          heart: {
+            goal: "Deepen consistency in personal devotional life during field travel",
+            desiredResult: "Daily devotional time maintained even during heavy travel days",
+            progressMade: "Improved to 5 days a week on average. Field travel still disrupts routine.",
+            changesNeeded: "Prepare audio devotionals for travel days when reading isn't practical."
+          },
+          personalLife: {
+            goal: "Establish regular health and fitness routine despite field conditions",
+            desiredResult: "Exercise at least 3 times per week regardless of location",
+            progressMade: "Managed consistent exercise when in urban areas. Rural assignments break the routine.",
+            changesNeeded: "Research bodyweight exercises that require no equipment for remote locations."
+          },
+          relationalLife: {
+            goal: "Improve regular communication with home office team",
+            desiredResult: "Weekly written updates sent every Friday without fail",
+            progressMade: "Sent updates 3 out of 4 weeks. Missed one during a particularly remote assignment.",
+            changesNeeded: "Set a recurring phone reminder for Friday 4 PM to send updates before connectivity drops."
+          }
+        },
+        cmo: [
+          {
+            objective: "Establish 5 new village evangelism contact points",
+            desiredResult: "Active relationships with 5 village leaders and regular gospel presentations scheduled",
+            progressMade: "Successfully established contact with 3 villages. 2 more are in early conversations.",
+            changesNeeded: "Partner with a local church pastor in each target village for ongoing follow-up.",
+            percentageAchieved: 60
+          }
+        ],
+        kda: [
+          {
+            assignment: "Develop Rural Field Operations Handbook",
+            progressMade: "Draft outline completed. Gathered input from 4 field workers.",
+            changesNeeded: "Schedule interviews with 3 more experienced field workers for case studies."
+          }
+        ],
+        evaluation: {
+          overallEffectiveness: "",
+          strengths: ["", "", ""],
+          weaknesses: ["", "", ""],
+          lackConfidence: "",
+          readyForGreaterResp: "",
+          greaterRespDetails: { position: "", when: "" },
+          recommendReassignment: "",
+          reassignmentDetails: { positionLocation: "", why: "" },
+          teamLeaderSignature: "",
+          teamLeaderSignatureDate: "",
+          formReviewedByNameSigDate: ""
+        },
+        updatedAt: Date.now() - 3600 * 24 * 2 * 1000
       }
     ];
     localStorage.setItem("staff_review_bypass_summaries", JSON.stringify(mockSummaries));
@@ -1164,47 +1246,23 @@ export default function App() {
         activityType: "review",
         quarter: "1st",
         year: "2025-2026",
-        action: "Draft Saved",
-        timestamp: Date.now() - 3600 * 24 * 6 * 1000
+        action: "Submitted Form",
+        timestamp: Date.now() - 3600 * 24 * 5 * 1000
       },
       {
         id: "log_2",
         userId: "bypass_john_staff_example_com",
         staffName: "John Staff",
-        editedBy: "John Staff",
-        editorUid: "bypass_john_staff_example_com",
-        activityType: "review",
+        editedBy: "Sarah Leader",
+        editorUid: "bypass_leader_example_com",
+        activityType: "summary",
         quarter: "1st",
         year: "2025-2026",
-        action: "Submitted Form",
-        timestamp: Date.now() - 3600 * 24 * 5 * 1000
+        action: "Evaluation Submitted to Admin",
+        timestamp: Date.now() - 3600 * 24 * 2 * 1000
       },
       {
         id: "log_3",
-        userId: "bypass_john_staff_example_com",
-        staffName: "John Staff",
-        editedBy: "John Staff",
-        editorUid: "bypass_john_staff_example_com",
-        activityType: "summary",
-        quarter: "1st",
-        year: "2025-2026",
-        action: "Draft Saved",
-        timestamp: Date.now() - 3600 * 24 * 4 * 1000
-      },
-      {
-        id: "log_4",
-        userId: "bypass_john_staff_example_com",
-        staffName: "John Staff",
-        editedBy: "John Staff",
-        editorUid: "bypass_john_staff_example_com",
-        activityType: "summary",
-        quarter: "1st",
-        year: "2025-2026",
-        action: "Submitted Form",
-        timestamp: Date.now() - 3600 * 24 * 3 * 1000
-      },
-      {
-        id: "log_5",
         userId: "bypass_anna_coordinator_example_com",
         staffName: "Anna Coordinator",
         editedBy: "Sarah Leader",
@@ -1213,7 +1271,43 @@ export default function App() {
         quarter: "1st",
         year: "2025-2026",
         action: "Compiled Summary (Evaluation Submitted)",
-        timestamp: Date.now() - 3600 * 24 * 1 * 1000
+        timestamp: Date.now() - 3600 * 24 * 6 * 1000
+      },
+      {
+        id: "log_4",
+        userId: "bypass_anna_coordinator_example_com",
+        staffName: "Anna Coordinator",
+        editedBy: "Lewis KB",
+        editorUid: "bypass_lewikb13_gmail_com",
+        activityType: "summary",
+        quarter: "1st",
+        year: "2025-2026",
+        action: "Admin Approved Evaluation",
+        timestamp: Date.now() - 3600 * 24 * 6 * 1000
+      },
+      {
+        id: "log_5",
+        userId: "bypass_peter_field_example_com",
+        staffName: "Peter Field Officer",
+        editedBy: "Peter Field Officer",
+        editorUid: "bypass_peter_field_example_com",
+        activityType: "review",
+        quarter: "1st",
+        year: "2025-2026",
+        action: "Submitted Form",
+        timestamp: Date.now() - 3600 * 24 * 10 * 1000
+      },
+      {
+        id: "log_6",
+        userId: "bypass_peter_field_example_com",
+        staffName: "Peter Field Officer",
+        editedBy: "Peter Field Officer",
+        editorUid: "bypass_peter_field_example_com",
+        activityType: "summary",
+        quarter: "1st",
+        year: "2025-2026",
+        action: "Submitted to Coach",
+        timestamp: Date.now() - 3600 * 24 * 2 * 1000
       }
     ];
     localStorage.setItem("staff_review_bypass_activity_logs", JSON.stringify(mockLogs));

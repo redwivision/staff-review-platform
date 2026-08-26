@@ -2772,36 +2772,117 @@ export default function App() {
               )}
             </div>
 
-            {/* TAB: MY REVIEWS */}
-            {currentTab === "my-reviews" && (
-              <div className="space-y-6 animate-fade-in">
-                {/* Welcome Guide — dismissible, shows once */}
-                {showWelcomeGuide && (
-                  <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl p-6 relative">
-                    <button
-                      onClick={() => { setShowWelcomeGuide(false); localStorage.setItem("asseso_welcome_seen", "true"); }}
-                      className="absolute top-3 right-3 text-indigo-400 hover:text-indigo-700 text-xs font-bold"
-                    >
-                      Dismiss
-                    </button>
-                    <h3 className="text-base font-bold text-indigo-900 mb-3">Welcome to Asseso</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-indigo-800">
-                      <div className="bg-white/70 rounded-xl p-4 border border-indigo-100">
-                        <p className="font-bold text-sm mb-1">My Reviews</p>
-                        <p>Open any quarter below to fill out your self-review. It has 4 sections: Walk with God, Personal Life, Relationships, and Ministry Impact. Fill each one, then submit to your coach.</p>
+            {/* WELCOME GUIDE — above tabs, role-specific, dismissible */}
+            {showWelcomeGuide && !activeReview && !activeSummary && (
+              <div className="bg-gradient-to-br from-indigo-50 via-white to-blue-50 border border-indigo-200 rounded-2xl p-6 relative shadow-sm">
+                <button
+                  onClick={() => { setShowWelcomeGuide(false); localStorage.setItem("asseso_welcome_seen", "true"); }}
+                  className="absolute top-4 right-4 text-indigo-400 hover:text-indigo-700 text-xs font-bold bg-white/80 px-2.5 py-1 rounded-full border border-indigo-200 transition-colors"
+                >
+                  Got it, thanks
+                </button>
+
+                {/* STAFF WELCOME */}
+                {!isLeaderOrCoach && !isAdmin && (
+                  <div>
+                    <h3 className="text-lg font-bold text-indigo-900 mb-1">Welcome to Asseso</h3>
+                    <p className="text-xs text-indigo-600 mb-4">Here's how the review process works:</p>
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">
+                        <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">1</div>
+                        <div>
+                          <p className="font-bold text-sm text-slate-800">Fill your self-review</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Open any quarter below. Go through 4 sections: Walk with God, Personal Life, Relationships, Ministry Impact.</p>
+                        </div>
                       </div>
-                      <div className="bg-white/70 rounded-xl p-4 border border-indigo-100">
-                        <p className="font-bold text-sm mb-1">Quarterly Summary</p>
-                        <p>After your monthly review, compile a summary with your growth plan, key goals, and main tasks. Your coach reviews it and submits it to Admin.</p>
+                      <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">
+                        <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">2</div>
+                        <div>
+                          <p className="font-bold text-sm text-slate-800">Submit to your coach</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Click Submit when done. Your coach reviews it and fills out the Coach's Review section.</p>
+                        </div>
                       </div>
-                      <div className="bg-white/70 rounded-xl p-4 border border-indigo-100">
-                        <p className="font-bold text-sm mb-1">Done!</p>
-                        <p>That's the whole process. Fill, submit, coach reviews, Admin approves. You can track your status on each quarter card below.</p>
+                      <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">
+                        <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">3</div>
+                        <div>
+                          <p className="font-bold text-sm text-slate-800">Coach submits to Admin</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Your coach signs off and sends it to Admin for final approval. You're done!</p>
+                        </div>
                       </div>
                     </div>
                   </div>
                 )}
 
+                {/* COACH WELCOME */}
+                {isLeaderOrCoach && !isAdmin && (
+                  <div>
+                    <h3 className="text-lg font-bold text-indigo-900 mb-1">Coach Dashboard</h3>
+                    <p className="text-xs text-indigo-600 mb-4">Here's your workflow:</p>
+                    <div className="flex flex-col md:flex-row gap-4">
+                      <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">
+                        <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">1</div>
+                        <div>
+                          <p className="font-bold text-sm text-slate-800">Review submitted summaries</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Go to <strong>Team Reviews</strong> tab. Staff who submitted their summaries will appear here.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">
+                        <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">2</div>
+                        <div>
+                          <p className="font-bold text-sm text-slate-800">Fill the Coach's Review</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Open their summary → go to <strong>Coach's Review</strong> tab → rate effectiveness, add strengths/weaknesses, sign.</p>
+                        </div>
+                      </div>
+                      <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">
+                        <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">3</div>
+                        <div>
+                          <p className="font-bold text-sm text-slate-800">Submit to Admin</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Click "Submit to Admin" when the evaluation is complete. Admin gives final sign-off.</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ADMIN WELCOME — full intro screen */}
+                {isAdmin && (
+                  <div>
+                    <div className="flex items-center gap-2 mb-1">
+                      <ShieldCheck className="w-5 h-5 text-amber-600" />
+                      <h3 className="text-lg font-bold text-slate-900">Admin Dashboard</h3>
+                    </div>
+                    <p className="text-xs text-slate-500 mb-4">You have full oversight. Here's what you can do:</p>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="bg-white/80 rounded-xl p-4 border border-slate-200 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-[10px]">1</div>
+                          <p className="font-bold text-sm text-slate-800">Track all staff</p>
+                        </div>
+                        <p className="text-xs text-slate-500">See who has submitted, who's in draft, who hasn't started. The <strong>Reports & Reviews</strong> tab shows every evaluation across the organization.</p>
+                      </div>
+                      <div className="bg-white/80 rounded-xl p-4 border border-slate-200 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-[10px]">2</div>
+                          <p className="font-bold text-sm text-slate-800">Approve or decline</p>
+                        </div>
+                        <p className="text-xs text-slate-500">When a coach submits an evaluation, you review it. Approve to finalize, or decline with a reason to send it back for corrections.</p>
+                      </div>
+                      <div className="bg-white/80 rounded-xl p-4 border border-slate-200 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-[10px]">3</div>
+                          <p className="font-bold text-sm text-slate-800">Export & reports</p>
+                        </div>
+                        <p className="text-xs text-slate-500">Export individual or bulk PDFs. Generate AI-synthesized staff reports. Manage follow-up tasks in the <strong>Settings</strong> tab.</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* TAB: MY REVIEWS */}
+            {currentTab === "my-reviews" && (
+              <div className="space-y-6 animate-fade-in">
                 {/* Active Review Period Banners */}
                 {Object.entries(reviewSchedules).map(([qKey, schedVal]) => {
                   const sched = schedVal as { startDate: string; dueDate: string; notifyAll: boolean; notificationMessage?: string };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { QuarterlySummary, PDPQuarterItem, CMOQuarterItem, KDAQuarterItem } from "../types";
 import { QUARTER_INFO, DEVELOPMENT_REVIEW_SECTIONS } from "../constants";
-import { ClipboardList, Star, RefreshCw, Layers, CheckSquare, Save, UserCheck, ShieldAlert, ArrowLeftRight, HelpCircle } from "lucide-react";
+import { ClipboardList, Star, RefreshCw, Layers, CheckSquare, Save, UserCheck, ShieldAlert, ArrowLeftRight, HelpCircle, User, Briefcase, MessageSquare } from "lucide-react";
 
 interface SummaryFormEditorProps {
   summary: QuarterlySummary;
@@ -210,7 +210,7 @@ export default function SummaryFormEditor({
                 id="submit-summary-to-coach-btn"
                 onClick={async () => {
                   if (!formData.presentPositionSince || !formData.teamLeaderName) {
-                    alert("Please fill out the general information (Team Leader Name, Present Position Since) in Section 1 before submitting.");
+                    alert("Please fill out the Team Leader Name and In Present Position Since fields in Section 1 (General Information) before submitting.");
                     return;
                   }
                   if (confirm("Are you sure you want to submit your summary to your coach? This will lock your sections for editing.")) {
@@ -451,145 +451,181 @@ export default function SummaryFormEditor({
         {activeTab === "header" && (
           <div className="space-y-6 max-w-4xl animate-fade-in">
             <h3 className="text-lg font-sans font-bold text-slate-800 border-b border-slate-100 pb-2">
-              Staff Member & Role Profile
+              Section 1 — General Information & Staff Suggestions
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Staff Name</label>
-                <input
-                  type="text"
-                  name="staffName"
-                  id="sum-staff-name"
-                  value={formData.staffName || ""}
-                  onChange={handleTextChange}
-                  disabled={!isLeaderView}
-                  className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-slate-50 disabled:text-slate-500"
-                />
+            {/* Card 1: Staff Identity */}
+            <div className="bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+                <User className="w-4 h-4 text-indigo-600" />
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Staff Identity</h4>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Team Leader Name</label>
-                <input
-                  type="text"
-                  name="teamLeaderName"
-                  id="sum-team-leader-name"
-                  value={formData.teamLeaderName || ""}
-                  onChange={handleTextChange}
-                  disabled={!isLeaderView}
-                  className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-slate-50 disabled:text-slate-500"
-                />
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Staff Member Name</label>
+                  <input
+                    type="text"
+                    name="staffName"
+                    id="sum-staff-name"
+                    value={formData.staffName || ""}
+                    onChange={handleTextChange}
+                    disabled={!isLeaderView}
+                    className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-white disabled:text-slate-500"
+                    placeholder="Full name of the staff member"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">The person being reviewed</p>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Date Completed</label>
-                <input
-                  type="date"
-                  name="date"
-                  id="sum-date"
-                  value={formData.date || ""}
-                  onChange={handleTextChange}
-                  disabled={!isLeaderView}
-                  className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-slate-50 disabled:text-slate-500"
-                />
-              </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Team Leader Name</label>
+                  <input
+                    type="text"
+                    name="teamLeaderName"
+                    id="sum-team-leader-name"
+                    value={formData.teamLeaderName || ""}
+                    onChange={handleTextChange}
+                    disabled={!isLeaderView}
+                    className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-white disabled:text-slate-500"
+                    placeholder="Name of the direct supervisor"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">Direct supervisor of this staff member</p>
+                </div>
 
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Date Joined Staff</label>
-                <input
-                  type="text"
-                  name="dateJoinedStaff"
-                  id="sum-date-joined"
-                  value={formData.dateJoinedStaff || ""}
-                  onChange={handleTextChange}
-                  disabled={!isLeaderView}
-                  className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-slate-50 disabled:text-slate-500"
-                  placeholder="e.g. 2011 G.C."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Reviewer Name & Position (if not TL)</label>
-                <input
-                  type="text"
-                  name="reviewerNamePosition"
-                  id="sum-reviewer"
-                  value={formData.reviewerNamePosition || ""}
-                  onChange={handleTextChange}
-                  disabled={!isLeaderView}
-                  className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-slate-50 disabled:text-slate-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Current Role Position</label>
-                <input
-                  type="text"
-                  name="position"
-                  id="sum-position"
-                  value={formData.position || ""}
-                  onChange={handleTextChange}
-                  disabled={!isLeaderView}
-                  className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-slate-50 disabled:text-slate-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Supervised By TL Since (Mo/Yr)</label>
-                <input
-                  type="text"
-                  name="supervisedBySince"
-                  id="sum-supervised-since"
-                  value={formData.supervisedBySince || ""}
-                  onChange={handleTextChange}
-                  disabled={!isLeaderView}
-                  className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-slate-50 disabled:text-slate-500"
-                  placeholder="e.g. 2022"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">In Present Position Since (Mo/Yr)</label>
-                <input
-                  type="text"
-                  name="presentPositionSince"
-                  id="sum-position-since"
-                  value={formData.presentPositionSince || ""}
-                  onChange={handleTextChange}
-                  disabled={!isLeaderView}
-                  className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-slate-50 disabled:text-slate-500"
-                  placeholder="e.g. 2022"
-                />
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Reviewer Name & Position</label>
+                  <input
+                    type="text"
+                    name="reviewerNamePosition"
+                    id="sum-reviewer"
+                    value={formData.reviewerNamePosition || ""}
+                    onChange={handleTextChange}
+                    disabled={!isLeaderView}
+                    className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-white disabled:text-slate-500"
+                    placeholder="e.g. John Doe (Regional Coordinator)"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">Only needed if reviewer is not the Team Leader</p>
+                </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-slate-100 space-y-4">
-              <h4 className="font-sans font-bold text-slate-800 text-sm uppercase tracking-wider">
-                What suggestions do you (staff member) have for the improvement of your team or department?
-              </h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Card 2: Role & Timeline */}
+            <div className="bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+                <Briefcase className="w-4 h-4 text-indigo-600" />
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Role & Timeline</h4>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Suggestion 1</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Current Position / Role</label>
+                  <input
+                    type="text"
+                    name="position"
+                    id="sum-position"
+                    value={formData.position || ""}
+                    onChange={handleTextChange}
+                    disabled={!isLeaderView}
+                    className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-white disabled:text-slate-500"
+                    placeholder="e.g. Youth Ministry Coordinator"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">Official job title or role</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Date Joined Staff</label>
+                  <input
+                    type="text"
+                    name="dateJoinedStaff"
+                    id="sum-date-joined"
+                    value={formData.dateJoinedStaff || ""}
+                    onChange={handleTextChange}
+                    disabled={!isLeaderView}
+                    className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-white disabled:text-slate-500"
+                    placeholder="e.g. September 2018"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">When the staff member first joined the organization</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">In Present Position Since</label>
+                  <input
+                    type="text"
+                    name="presentPositionSince"
+                    id="sum-position-since"
+                    value={formData.presentPositionSince || ""}
+                    onChange={handleTextChange}
+                    disabled={!isLeaderView}
+                    className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-white disabled:text-slate-500"
+                    placeholder="e.g. January 2023"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">Month/Year the staff member started this role</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Supervised By Current Team Leader Since</label>
+                  <input
+                    type="text"
+                    name="supervisedBySince"
+                    id="sum-supervised-since"
+                    value={formData.supervisedBySince || ""}
+                    onChange={handleTextChange}
+                    disabled={!isLeaderView}
+                    className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-white disabled:text-slate-500"
+                    placeholder="e.g. March 2024"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">Month/Year when the current Team Leader started supervising</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Date Completed</label>
+                  <input
+                    type="date"
+                    name="date"
+                    id="sum-date"
+                    value={formData.date || ""}
+                    onChange={handleTextChange}
+                    disabled={!isLeaderView}
+                    className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 disabled:bg-white disabled:text-slate-500"
+                  />
+                  <p className="text-[11px] text-slate-400 mt-1">Date this summary was filled out</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Card 3: Staff Suggestions */}
+            <div className="bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
+                <MessageSquare className="w-4 h-4 text-indigo-600" />
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
+                  Staff Suggestions for Improvement
+                </h4>
+              </div>
+              <p className="text-xs text-slate-500">What suggestions do you (staff member) have for the improvement of your team or department?</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Suggestion 1</label>
                   <textarea
                     id="sum-suggestion-0"
                     value={formData.suggestions[0] || ""}
                     onChange={(e) => handleSuggestionChange(0, e.target.value)}
                     disabled={!isLeaderView}
                     rows={3}
-                    className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 text-sm disabled:bg-slate-50 disabled:text-slate-500"
-                    placeholder="Provide first suggestion..."
+                    className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 text-sm disabled:bg-white disabled:text-slate-500"
+                    placeholder="First suggestion for team or department improvement..."
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-slate-500 mb-1">Suggestion 2</label>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Suggestion 2</label>
                   <textarea
                     id="sum-suggestion-1"
                     value={formData.suggestions[1] || ""}
                     onChange={(e) => handleSuggestionChange(1, e.target.value)}
                     disabled={!isLeaderView}
                     rows={3}
-                    className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 text-sm disabled:bg-slate-50 disabled:text-slate-500"
-                    placeholder="Provide second suggestion..."
+                    className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 text-sm disabled:bg-white disabled:text-slate-500"
+                    placeholder="Second suggestion for team or department improvement..."
                   />
                 </div>
               </div>

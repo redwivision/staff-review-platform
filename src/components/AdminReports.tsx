@@ -642,10 +642,11 @@ export default function AdminReports({
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-[11px]">
                   <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Staff Member Name:</span> <strong className="font-bold text-slate-800 dark:text-slate-200">{viewFullSummaryDetails.staffName}</strong></div>
                   <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Team Leader Name:</span> <strong>{viewFullSummaryDetails.teamLeaderName || "-"}</strong></div>
-                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Position / Role:</span> <strong>{viewFullSummaryDetails.position || "-"}</strong></div>
+                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Reviewer Name & Position:</span> <strong>{viewFullSummaryDetails.reviewerNamePosition || "-"}</strong></div>
+                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Current Position / Role:</span> <strong>{viewFullSummaryDetails.position || "-"}</strong></div>
                   <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Date Joined Staff:</span> <strong>{viewFullSummaryDetails.dateJoinedStaff || "-"}</strong></div>
                   <div><span className="font-mono text-[9px] uppercase text-slate-400 block">In Present Position Since:</span> <strong>{viewFullSummaryDetails.presentPositionSince || "-"}</strong></div>
-                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Supervised By Leader Since:</span> <strong>{viewFullSummaryDetails.supervisedBySince || "-"}</strong></div>
+                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Supervised By Current Team Leader Since:</span> <strong>{viewFullSummaryDetails.supervisedBySince || "-"}</strong></div>
                 </div>
               </div>
 
@@ -680,7 +681,7 @@ export default function AdminReports({
                         </div>
                         {item ? (
                           <div className="space-y-1.5 text-[11px]">
-                            <div><strong className="text-slate-500 font-mono text-[9px] block">Objective:</strong> {item.objective || <span className="italic text-slate-400">None</span>}</div>
+                            <div><strong className="text-slate-500 font-mono text-[9px] block">Goal:</strong> {item.goal || <span className="italic text-slate-400">None</span>}</div>
                             <div><strong className="text-slate-500 font-mono text-[9px] block">Target Outcome:</strong> {item.desiredResult || <span className="italic text-slate-400">None</span>}</div>
                             {reportQuarter === "2nd" && (
                               <>
@@ -733,12 +734,7 @@ export default function AdminReports({
                   {(viewFullSummaryDetails.kda || []).map((k, idx) => (
                     <div key={idx} className="bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 space-y-1.5 text-[11px]">
                       <span className="font-extrabold text-[11px] text-slate-800 dark:text-slate-200">Assignment #{idx + 1}</span>
-                      <div><strong className="text-slate-500 font-mono text-[9px] block">Deliverable:</strong> {k.keyDeliverable || "-"}</div>
-                      <div><strong className="text-slate-500 font-mono text-[9px] block">Remarks/Comments:</strong> {k.comments || "-"}</div>
-                      <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-1.5 rounded-lg border border-slate-100 dark:border-slate-800 mt-2 font-mono text-[10px]">
-                        <span className="text-slate-400">Progress:</span>
-                        <span className="font-bold text-indigo-600">{k.percentageProgress || 0}%</span>
-                      </div>
+                      <div><strong className="text-slate-500 font-mono text-[9px] block">Assignment:</strong> {k.assignment || "-"}</div>
                     </div>
                   ))}
                   {(!viewFullSummaryDetails.kda || viewFullSummaryDetails.kda.length === 0) && (
@@ -960,9 +956,9 @@ export default function AdminReports({
                         <div className="space-y-1.5">
                           <span className="font-mono text-[10px] text-slate-400 uppercase">Personal Development Goals:</span>
                           <div className="space-y-1 pl-2 border-l-2 border-slate-200">
-                            <div><strong className="font-semibold text-slate-700">Heart Walk:</strong> {activeReportMember.baseSummary.pdp?.heart?.objective || "None set"}</div>
-                            <div><strong className="font-semibold text-slate-700">Personal Life:</strong> {activeReportMember.baseSummary.pdp?.personalLife?.objective || "None set"}</div>
-                            <div><strong className="font-semibold text-slate-700">Relational Life:</strong> {activeReportMember.baseSummary.pdp?.relationalLife?.objective || "None set"}</div>
+                            <div><strong className="font-semibold text-slate-700">Heart Walk:</strong> {activeReportMember.baseSummary.pdp?.heart?.goal || "None set"}</div>
+                            <div><strong className="font-semibold text-slate-700">Personal Life:</strong> {activeReportMember.baseSummary.pdp?.personalLife?.goal || "None set"}</div>
+                            <div><strong className="font-semibold text-slate-700">Relational Life:</strong> {activeReportMember.baseSummary.pdp?.relationalLife?.goal || "None set"}</div>
                           </div>
                         </div>
 

@@ -350,7 +350,7 @@ export default function App() {
     // so they are forced to start at the login page.
     if (!sessionStorage.getItem("has_init_session")) {
       localStorage.removeItem("staff_review_bypass_user");
-      signOut(auth).catch(() => {});
+      if (auth) signOut(auth).catch(() => {});
       sessionStorage.setItem("has_init_session", "true");
     }
 
@@ -365,6 +365,12 @@ export default function App() {
       } catch (e) {
         localStorage.removeItem("staff_review_bypass_user");
       }
+    }
+
+    // If Firebase is not configured, skip auth and show login screen (bypass buttons available)
+    if (!auth || !db) {
+      setLoading(false);
+      return;
     }
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
@@ -664,6 +670,12 @@ export default function App() {
     e.preventDefault();
     setAuthError("");
     setLoading(true);
+
+    if (!auth || !db) {
+      setAuthError("Firebase is not configured. Please use the Bypass buttons below to log in for testing.");
+      setLoading(false);
+      return;
+    }
 
     try {
       if (isSignUp) {
@@ -1239,7 +1251,7 @@ export default function App() {
 
   const handleLogout = async () => {
     localStorage.removeItem("staff_review_bypass_user");
-    await signOut(auth).catch(() => {});
+    if (auth) await signOut(auth).catch(() => {});
     setUser(null);
     setCurrentTab("my-reviews");
   };
@@ -1515,7 +1527,7 @@ export default function App() {
     
     // Check if the current user is a coach for this member (and not the member themselves)
     const coaches = coachesMap.get(member.uid) || [];
-    const isCoachOfMember = coaches.some(c => c.coachId === user?.uid);
+    const isCoachOfMember = coaches.some(c => c.coachUid === user?.uid);
     const isCoach = user && user.uid !== member.uid && (isAdmin || isCoachOfMember);
     
     // Determine the document ID we want to open/save
@@ -1591,7 +1603,7 @@ export default function App() {
       
       if (baseDocSnap.exists()) {
         const baseSummary = baseDocSnap.data() as QuarterlySummary;
-        const newCoachSummary = {
+        const newCoachSummary: QuarterlySummary = {
           ...baseSummary,
           id: summaryId,
           coachUid: user.uid,

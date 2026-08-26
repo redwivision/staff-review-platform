@@ -166,7 +166,7 @@ export function exportEvaluationToPDF(
 
     // --- ROW 1 ---
     doc.text("STAFF MEMBER NAME", marginX + 5, y + 5);
-    doc.text("CURRENT ROLE POSITION", marginX + colW + 4, y + 5);
+    doc.text("CURRENT POSITION / ROLE", marginX + colW + 4, y + 5);
     doc.text("TEAM LEADER (TL) NAME", marginX + colW * 2 + 4, y + 5);
 
     doc.setFont("helvetica", "bold");
@@ -203,7 +203,7 @@ export function exportEvaluationToPDF(
     doc.setFontSize(7);
     doc.setTextColor(100, 116, 139); // slate-500
     doc.text("PRESENT POSITION SINCE", marginX + 5, y + 30);
-    doc.text("SUPERVISED BY LEADER SINCE", marginX + colW + 4, y + 30);
+    doc.text("SUPERVISED BY CURRENT TEAM LEADER SINCE", marginX + colW + 4, y + 30);
     doc.text("ASSIGNED COACH", marginX + colW * 2 + 4, y + 30);
 
     doc.setFont("helvetica", "normal");

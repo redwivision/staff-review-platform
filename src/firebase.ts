@@ -1,11 +1,12 @@
-import { initializeApp } from "firebase/app";
+import { initializeApp, type FirebaseApp } from "firebase/app";
 import { 
   initializeAuth, 
   browserLocalPersistence, 
   browserSessionPersistence, 
-  inMemoryPersistence 
+  inMemoryPersistence,
+  type Auth
 } from "firebase/auth";
-import { initializeFirestore, doc, getDocFromServer } from "firebase/firestore";
+import { initializeFirestore, doc, getDocFromServer, type Firestore } from "firebase/firestore";
 
 const metaEnv = (import.meta as any).env || {};
 
@@ -18,29 +19,34 @@ const firebaseConfig = {
   appId: metaEnv.VITE_FIREBASE_APP_ID || ""
 };
 
-// Initialize Firebase App
-const app = initializeApp(firebaseConfig);
+const hasFirebaseConfig = Boolean(firebaseConfig.apiKey && firebaseConfig.projectId);
 
-// Initialize Firebase Auth with fallback persistences (excluding indexedDB to prevent iframe backing store open issues)
-export const auth = initializeAuth(app, {
-  persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence]
-});
+let app: FirebaseApp | null = null;
+let auth: Auth | null = null;
+let db: Firestore | null = null;
 
-// Initialize Cloud Firestore with the custom database ID provided in the configuration or fallback
-const dbId = metaEnv.VITE_FIREBASE_DATABASE_ID || "";
+if (hasFirebaseConfig) {
+  app = initializeApp(firebaseConfig);
+  auth = initializeAuth(app, {
+    persistence: [browserLocalPersistence, browserSessionPersistence, inMemoryPersistence]
+  });
+  const dbId = metaEnv.VITE_FIREBASE_DATABASE_ID || "";
+  db = dbId 
+    ? initializeFirestore(app, { experimentalForceLongPolling: true }, dbId)
+    : initializeFirestore(app, { experimentalForceLongPolling: true });
 
-export const db = dbId 
-  ? initializeFirestore(app, { experimentalForceLongPolling: true }, dbId)
-  : initializeFirestore(app, { experimentalForceLongPolling: true });
-
-// Validate Connection to Firestore (Prerequisite check from Firebase skill)
-async function testConnection() {
-  try {
-    await getDocFromServer(doc(db, "test", "connection"));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes("the client is offline")) {
-      console.warn("Firestore client is offline or connection failed:", error.message);
+  async function testConnection() {
+    try {
+      await getDocFromServer(doc(db!, "test", "connection"));
+    } catch (error) {
+      if (error instanceof Error && error.message.includes("the client is offline")) {
+        console.warn("Firestore client is offline or connection failed:", error.message);
+      }
     }
   }
+  testConnection();
+} else {
+  console.warn("Firebase config not found. Running in offline/bypass mode only.");
 }
-testConnection();
+
+export { auth, db, app };

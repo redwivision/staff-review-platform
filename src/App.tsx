@@ -33,7 +33,6 @@ import CoachingNominations from "./components/CoachingNominations";
 import CoachingInvitations from "./components/CoachingInvitations";
 import AdminCoachingPanel from "./components/AdminCoachingPanel";
 import AdminReports from "./components/AdminReports";
-import OnboardingTour from "./components/OnboardingTour";
 import { 
   Heart, 
   User, 
@@ -264,6 +263,9 @@ export default function App() {
   const [pdfIncludeCMO, setPdfIncludeCMO] = useState(false);
   const [pdfIncludeKDA, setPdfIncludeKDA] = useState(false);
   const [pdfIncludeSuggestions, setPdfIncludeSuggestions] = useState(false);
+  const [showWelcomeGuide, setShowWelcomeGuide] = useState(() => {
+    return localStorage.getItem("asseso_welcome_seen") !== "true";
+  });
 
   const openPdfCustomizer = (
     member: UserProfile,
@@ -2575,8 +2577,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 dark:text-slate-100 flex flex-col font-sans text-slate-800 transition-colors duration-200">
-      {/* Onboarding Tour — shows on first login */}
-      <OnboardingTour isAdmin={!!isAdmin} isLeader={!!(user?.isLeader)} />
+      {/* Welcome Guide — shows on first login, dismissible */}
 
       {/* DEMO MODE BANNER */}
       <div className="w-full bg-amber-500 text-slate-950 font-bold text-center py-2 text-xs md:text-sm tracking-wide shadow-sm flex items-center justify-center gap-1.5 px-4 z-50">
@@ -2774,15 +2775,29 @@ export default function App() {
             {/* TAB: MY REVIEWS */}
             {currentTab === "my-reviews" && (
               <div className="space-y-6 animate-fade-in">
-                {/* First-time guidance banner */}
-                {myReviews.filter(r => r.status === "Submitted").length === 0 && myReviews.filter(r => r.status === "Draft").length === 0 && (
-                  <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 mt-0.5">
-                      <span className="text-indigo-700 font-bold text-sm">1</span>
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-indigo-900">Start by opening a quarter below</p>
-                      <p className="text-xs text-indigo-700 mt-1">Click <strong>Open Form</strong> on any quarter to fill out your self-review. You'll go through 4 sections: your walk with God, personal life, relationships, and ministry impact. When you're done, submit it to your coach.</p>
+                {/* Welcome Guide — dismissible, shows once */}
+                {showWelcomeGuide && (
+                  <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl p-6 relative">
+                    <button
+                      onClick={() => { setShowWelcomeGuide(false); localStorage.setItem("asseso_welcome_seen", "true"); }}
+                      className="absolute top-3 right-3 text-indigo-400 hover:text-indigo-700 text-xs font-bold"
+                    >
+                      Dismiss
+                    </button>
+                    <h3 className="text-base font-bold text-indigo-900 mb-3">Welcome to Asseso</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs text-indigo-800">
+                      <div className="bg-white/70 rounded-xl p-4 border border-indigo-100">
+                        <p className="font-bold text-sm mb-1">My Reviews</p>
+                        <p>Open any quarter below to fill out your self-review. It has 4 sections: Walk with God, Personal Life, Relationships, and Ministry Impact. Fill each one, then submit to your coach.</p>
+                      </div>
+                      <div className="bg-white/70 rounded-xl p-4 border border-indigo-100">
+                        <p className="font-bold text-sm mb-1">Quarterly Summary</p>
+                        <p>After your monthly review, compile a summary with your growth plan, key goals, and main tasks. Your coach reviews it and submits it to Admin.</p>
+                      </div>
+                      <div className="bg-white/70 rounded-xl p-4 border border-indigo-100">
+                        <p className="font-bold text-sm mb-1">Done!</p>
+                        <p>That's the whole process. Fill, submit, coach reviews, Admin approves. You can track your status on each quarter card below.</p>
+                      </div>
                     </div>
                   </div>
                 )}

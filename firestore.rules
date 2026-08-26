@@ -2,76 +2,86 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check if user is authenticated
+    // Helper: user is logged in
     function isAuthenticated() {
       return request.auth != null;
     }
     
-    // Helper function to check if the user is a Team Leader
-    function isLeader() {
-      return isAuthenticated() && 
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isLeader == true;
-    }
-
-    // Helper function to check if the user is an Admin
-    function isAdmin() {
-      return isAuthenticated() && (
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.isAdmin == true ||
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.email == "lewikb13@gmail.com"
-      );
-    }
-    
-    // Helper function to check if resource belongs to the user
+    // Helper: user owns this document
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
 
-    // Rules for Users collection
+    // ---- USERS ----
+    // Staff can create their own profile on signup.
+    // Once created, only admins can change roles.
     match /users/{userId} {
-      allow read, write: if isAuthenticated(); // To allow signup, simple role checks, and toggling of roles by lewikb13@gmail.com
+      // Create: only yourself (signup)
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      // Read: anyone logged in (needed for role checks)
+      allow read: if isAuthenticated();
+      // Update: yourself (name, etc.) OR admin changing roles
+      allow update: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isLeader', 'isAdmin', 'role'])
+      );
+      // Delete: no one
+      allow delete: if false;
     }
 
-    // Rules for Development Reviews
+    // ---- DEVELOPMENT REVIEWS ----
     match /developmentReviews/{reviewId} {
-      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || isLeader());
-      allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isLeader());
-      allow update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isLeader());
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow delete: if false;
     }
 
-    // Rules for Quarterly Summaries
+    // ---- QUARTERLY SUMMARIES ----
+    // Staff fills sections 1-4, submits to coach.
+    // Coach fills TL Evaluation, submits to admin.
     match /quarterlySummaries/{summaryId} {
-      allow read: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid || isLeader());
-      allow write: if isLeader(); // Only leaders can create/update/delete quarterly summaries
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      allow update: if isAuthenticated();
+      allow delete: if false;
     }
 
-    // Rules for Activity Logs
+    // ---- ACTIVITY LOGS ----
     match /activityLogs/{logId} {
+      allow read: if isAuthenticated();
       allow create: if isAuthenticated();
-      allow read: if isAuthenticated() && (isLeader() || resource.data.userId == request.auth.uid);
-      allow delete: if isLeader();
+      allow delete: if false;
     }
 
-    // Rules for Follow-Up Tasks
+    // ---- FOLLOW-UP TASKS ----
     match /followUpTasks/{taskId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isAuthenticated();
     }
 
-    // Rules for Requirement Settings
+    // ---- REQUIREMENT SETTINGS ----
     match /requirementSettings/{settingsId} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin();
+      allow write: if isAuthenticated();
     }
 
-    // Rules for Meetings
+    // ---- REVIEW SCHEDULES ----
+    match /reviewSchedules/{scheduleId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // ---- MEETINGS ----
     match /meetings/{meetingId} {
       allow read: if isAuthenticated();
-      allow write: if isLeader();
+      allow write: if isAuthenticated();
     }
 
-    // Rules for Coaching Requests
+    // ---- COACHING REQUESTS ----
     match /coachingRequests/{requestId} {
-      allow read, write: if isAuthenticated();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
     }
   }
 }

@@ -1,6 +1,6 @@
 export const DEVELOPMENT_REVIEW_SECTIONS = {
   heart: {
-    title: "HEART (walk with God and character growth)",
+    title: "WALK WITH GOD (walk with God and character growth)",
     bullets: [
       "Demonstrates a Growing intimacy with God",
       "Walking in Spirit (Spirit-filled life), Faith and Obedience",
@@ -45,7 +45,7 @@ export const DEVELOPMENT_REVIEW_SECTIONS = {
     ]
   },
   ministryEffectiveness: {
-    title: "MINISTRY EFFECTIVENESS",
+    title: "MINISTRY IMPACT",
     bullets: [
       "Owns mission, vision, values.",
       "Currently in a suitable assignment.",

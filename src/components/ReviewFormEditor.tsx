@@ -39,7 +39,7 @@ export default function ReviewFormEditor({
     const errors: string[] = [];
     
     if (settings.heartRequired && !isSectionComplete("heart")) {
-      errors.push("Heart Walk Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
+      errors.push("Walk with God Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
     }
     if (settings.personalLifeRequired && !isSectionComplete("personal")) {
       errors.push("Personal Life Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
@@ -48,7 +48,7 @@ export default function ReviewFormEditor({
       errors.push("Relational Life Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
     }
     if (settings.ministryEffectivenessRequired && !isSectionComplete("ministry")) {
-      errors.push("Ministry Effectiveness Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
+      errors.push("Ministry Impact Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
     }
 
     if (errors.length > 0) {
@@ -157,7 +157,7 @@ export default function ReviewFormEditor({
         const errors: string[] = [];
         
         if (settings.heartRequired && !isSectionComplete("heart")) {
-          errors.push("Heart Walk Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
+          errors.push("Walk with God Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
         }
         if (settings.personalLifeRequired && !isSectionComplete("personal")) {
           errors.push("Personal Life Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
@@ -166,7 +166,7 @@ export default function ReviewFormEditor({
           errors.push("Relational Life Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
         }
         if (settings.ministryEffectivenessRequired && !isSectionComplete("ministry")) {
-          errors.push("Ministry Effectiveness Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
+          errors.push("Ministry Impact Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
         }
 
         if (errors.length > 0) {
@@ -199,11 +199,11 @@ export default function ReviewFormEditor({
 
   // Sections definitions for mapping tabs
   const tabs = [
-    { id: "header" as const, label: "Form Info", icon: Clipboard },
-    { id: "heart" as const, label: "Heart Walk", icon: Heart },
+    { id: "header" as const, label: "Getting Started", icon: Clipboard },
+    { id: "heart" as const, label: "Walk with God", icon: Heart },
     { id: "personal" as const, label: "Personal Life", icon: User },
     { id: "relational" as const, label: "Relational Life", icon: Users },
-    { id: "ministry" as const, label: "Ministry Effectiveness", icon: Award }
+    { id: "ministry" as const, label: "Ministry Impact", icon: Award }
   ];
 
   const currentSectionKey = getSectionKey(activeTab);
@@ -418,7 +418,7 @@ export default function ReviewFormEditor({
                 onClick={() => setActiveTab("heart")}
                 className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                Continue to Heart Walk
+                Continue to Walk with God
               </button>
             </div>
           </div>
@@ -721,10 +721,10 @@ export default function ReviewFormEditor({
               </h4>
               <div className="grid grid-cols-1 gap-2.5">
                 {[
-                  { id: "heart", label: "1. Heart Walk", required: settings.heartRequired },
+                  { id: "heart", label: "1. Walk with God", required: settings.heartRequired },
                   { id: "personal", label: "2. Personal Life", required: settings.personalLifeRequired },
                   { id: "relational", label: "3. Relational Life", required: settings.relationalLifeRequired },
-                  { id: "ministry", label: "4. Ministry Effectiveness", required: settings.ministryEffectivenessRequired },
+                  { id: "ministry", label: "4. Ministry Impact", required: settings.ministryEffectivenessRequired },
                 ].map((sec) => {
                   const complete = isSectionComplete(sec.id);
                   return (

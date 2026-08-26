@@ -264,8 +264,8 @@ export function exportEvaluationToPDF(
     const pdpCategories = ["heart", "personalLife", "relationalLife"] as const;
     pdpCategories.forEach((cat) => {
       const item = summary?.pdp?.[cat];
-      const catLabel = cat === "heart" ? "Heart Walk (Discipleship)" :
-                        cat === "personalLife" ? "Personal Life (Wellbeing)" : "Relational Life (Community)";
+      const catLabel = cat === "heart" ? "Walk with God" :
+                        cat === "personalLife" ? "Personal Life" : "Relational Life";
 
       // Prepare text lines to count height
       const goalVal = item?.goal || (item as any)?.objective || "None";

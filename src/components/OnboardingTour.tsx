@@ -29,53 +29,51 @@ export default function OnboardingTour({ isAdmin, isLeader, onComplete }: Onboar
       overlayOpacity: 0.6,
       exitOnOverlayClick: false,
       keyboardNavigation: true,
+      disableInteraction: false,
     });
 
-    const steps: Array<{ title: string; intro: string; element?: string }> = [
-      {
-        title: "Welcome to Asseso",
-        intro: "This is your staff development portal. You can fill self-reviews, track progress, and get coaching feedback — all in one place. Let's take a quick tour!",
-      },
-      {
-        title: "Your Dashboard",
-        intro: "This is where you land after login. All your quarterly reviews and summaries appear here as cards.",
-        element: "#tab-btn-my-reviews",
-      },
-      {
-        title: "Quarterly Reviews",
-        intro: "Click any quarter to open your <strong>Development Review</strong> — a self-reflection on Heart, Personal Life, Relational Life, and Ministry. Fill it out and submit to your coach.",
-        element: "#tab-btn-my-reviews",
-      },
-    ];
+    const buildSteps = (): Array<{ title: string; intro: string; element?: string }> => {
+      const steps: Array<{ title: string; intro: string; element?: string }> = [
+        {
+          title: "Welcome to Asseso",
+          intro: "This is where you track your growth, fill out reviews, and get feedback from your coach. Everything is in one place.",
+        },
+        {
+          title: "Your Reviews",
+          intro: "This tab shows all your quarterly reviews. Click <strong>Open Form</strong> on any quarter to start or continue filling it out.",
+          element: "#tab-btn-my-reviews",
+        },
+        {
+          title: "How it Works",
+          intro: "<strong>Step 1:</strong> Fill out your self-review (4 sections).<br><strong>Step 2:</strong> Submit it to your coach.<br><strong>Step 3:</strong> Your coach reviews and submits it to Admin.<br>That's it!",
+        },
+      ];
 
-    if (isLeader || isAdmin) {
+      if (isLeader || isAdmin) {
+        steps.push({
+          title: "Your Team",
+          intro: "See all the staff you coach. Open their summaries, fill out the <strong>Coach's Review</strong> section, and submit to Admin.",
+          element: "#tab-btn-team-reviews",
+        });
+      }
+
+      if (isAdmin) {
+        steps.push({
+          title: "Admin Dashboard",
+          intro: "View all evaluations across the organization, export PDFs, and generate AI-synthesized staff reports.",
+          element: "#tab-btn-admin",
+        });
+      }
+
       steps.push({
-        title: "Team Evaluation Center",
-        intro: "As a coach or leader, click here to see your coached staff members, open their summaries, and fill out the <strong>TL Evaluation</strong> tab.",
-        element: "#tab-btn-team-reviews",
-      });
-    }
-
-    if (isAdmin) {
-      steps.push({
-        title: "Access Directory (Admin)",
-        intro: "The admin dashboard. Here you can manage users, view all evaluations, export PDFs, generate AI-synthesized reports, and schedule coaching sessions.",
-        element: "#tab-btn-admin",
+        title: "You're Ready!",
+        intro: "Start by opening a quarter and filling out your review. You can always replay this tour by clearing your browser data.",
       });
 
-      steps.push({
-        title: "Admin Sub-Tabs",
-        intro: "<strong>Tracking</strong> — follow-up tasks<br><strong>Control</strong> — all evaluations, PDF exports, AI reports<br><strong>Users</strong> — manage roles and permissions",
-        element: "#admin-subtab-tracking",
-      });
-    }
+      return steps;
+    };
 
-    steps.push({
-      title: "You're All Set!",
-      intro: "That's it! Start by opening a quarter and filling out your review. You can always come back to this tour by clearing your browser data. Good luck!",
-    });
-
-    tour.setSteps(steps as any);
+    tour.setSteps(buildSteps() as any);
 
     tour.oncomplete(() => {
       localStorage.setItem(TOUR_KEY, "true");
@@ -87,17 +85,24 @@ export default function OnboardingTour({ isAdmin, isLeader, onComplete }: Onboar
       onComplete?.();
     });
 
-    // Wait for target elements to exist before starting
+    // Poll for the target element to exist in the DOM before starting
+    let retryCount = 0;
+    const MAX_RETRIES = 20;
+    let retryTimer: ReturnType<typeof setTimeout>;
+
     const startTour = () => {
       const target = document.querySelector("#tab-btn-my-reviews");
       if (target) {
         tour.start();
         return;
       }
-      retryTimer = setTimeout(startTour, 300);
+      retryCount++;
+      if (retryCount < MAX_RETRIES) {
+        retryTimer = setTimeout(startTour, 500);
+      }
     };
 
-    let retryTimer = setTimeout(startTour, 1200);
+    retryTimer = setTimeout(startTour, 1000);
     return () => clearTimeout(retryTimer);
   }, [isAdmin, isLeader, onComplete]);
 

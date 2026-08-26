@@ -122,7 +122,7 @@ export const getPdfDefaultTasks = (): FollowUpTask[] => [
   },
   {
     id: "pdf_task_4",
-    focus: "4. Ministry Effectiveness",
+    focus: "4. Ministry Impact",
     coachLeader: "BT",
     coaches: ["BT", "Tef"],
     currentStage: "Pre event",
@@ -196,7 +196,7 @@ export const getAutomatedFollowUpTasks = (
       defaultCoaches: ["Bayush", "Tef", "BT"],
       filledCount: progress.heartFilled,
       sectionKey: "heart" as const,
-      sectionLabel: "Heart Walk"
+      sectionLabel: "Walk with God"
     },
     {
       focus: "2. Personal Life",
@@ -215,12 +215,12 @@ export const getAutomatedFollowUpTasks = (
       sectionLabel: "Relational Life"
     },
     {
-      focus: "4. Ministry Effectiveness",
+      focus: "4. Ministry Impact",
       defaultCoachLeader: "BT",
       defaultCoaches: ["BT", "Tef"],
       filledCount: progress.ministryFilled,
       sectionKey: "ministryEffectiveness" as const,
-      sectionLabel: "Ministry Effectiveness"
+      sectionLabel: "Ministry Impact"
     }
   ];
 

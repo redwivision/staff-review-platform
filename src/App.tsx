@@ -2719,7 +2719,7 @@ export default function App() {
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900"
                   }`}
                 >
-                  My Quarterly Reviews
+                  My Reviews
                 </button>
 
                 {isLeaderOrCoach && (
@@ -2732,7 +2732,7 @@ export default function App() {
                         : "text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
                     }`}
                   >
-                    Team Evaluation Center
+                    Team Reviews
                   </button>
                 )}
 
@@ -2746,7 +2746,7 @@ export default function App() {
                         : "text-slate-600 dark:text-slate-400 hover:bg-amber-50 dark:hover:bg-amber-950/20"
                     }`}
                   >
-                    Access Directory (Admin)
+                    Admin Dashboard
                   </button>
                 )}
               </div>
@@ -2774,6 +2774,19 @@ export default function App() {
             {/* TAB: MY REVIEWS */}
             {currentTab === "my-reviews" && (
               <div className="space-y-6 animate-fade-in">
+                {/* First-time guidance banner */}
+                {myReviews.filter(r => r.status === "Submitted").length === 0 && myReviews.filter(r => r.status === "Draft").length === 0 && (
+                  <div className="bg-indigo-50 border border-indigo-200 rounded-2xl p-5 flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-indigo-700 font-bold text-sm">1</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-indigo-900">Start by opening a quarter below</p>
+                      <p className="text-xs text-indigo-700 mt-1">Click <strong>Open Form</strong> on any quarter to fill out your self-review. You'll go through 4 sections: your walk with God, personal life, relationships, and ministry impact. When you're done, submit it to your coach.</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Active Review Period Banners */}
                 {Object.entries(reviewSchedules).map(([qKey, schedVal]) => {
                   const sched = schedVal as { startDate: string; dueDate: string; notifyAll: boolean; notificationMessage?: string };
@@ -3106,10 +3119,10 @@ export default function App() {
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {[
-                              { key: "heart", label: "❤️ Heart Walk" },
+                              { key: "heart", label: "❤️ Walk with God" },
                               { key: "personalLife", label: "🌱 Personal Life" },
                               { key: "relationalLife", label: "🤝 Relational Life" },
-                              { key: "ministryEffectiveness", label: "⚡ Ministry Effectiveness" }
+                              { key: "ministryEffectiveness", label: "⚡ Ministry Impact" }
                             ].map(sec => {
                               const comment = r.leaderSectionComments?.[sec.key];
                               if (!comment || comment.trim() === "") return null;
@@ -4274,7 +4287,7 @@ export default function App() {
                         : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                     }`}
                   >
-                    Oversight Compliance & Reports
+                    Reports & Reviews
                   </button>
                   <button
                     id="admin-subtab-control"
@@ -4285,7 +4298,7 @@ export default function App() {
                         : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                     }`}
                   >
-                    Deadlines & Requirements
+                    Settings
                   </button>
                   <button
                     id="admin-subtab-users"
@@ -4296,7 +4309,7 @@ export default function App() {
                         : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                     }`}
                   >
-                    User Management Directory
+                    Team Members
                   </button>
                 </div>
 
@@ -4363,7 +4376,7 @@ export default function App() {
                         })}
                         className="rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 w-4 h-4"
                       />
-                      <span className="text-xs font-semibold">Heart Walk (Required)</span>
+                      <span className="text-xs font-semibold">Walk with God (Required)</span>
                     </label>
 
                     <label className="flex items-center gap-2.5 cursor-pointer bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all shadow-sm text-slate-800 dark:text-slate-200">

@@ -1,158 +1,181 @@
-# Testing Guide — Before You Push
+# Testing Guide — How to Test Locally
 
-> Run through this BEFORE committing. Takes about 5 minutes.
+Follow these steps **in order**. Takes about 10 minutes.
 
 ---
 
-## Step 1: Install Dependencies (First Time Only)
+## Step 1: Clear Everything and Start Fresh
+
+This avoids old localStorage data causing issues.
+
+1. Open the app in an **incognito/private window** (Chrome: `Cmd+Shift+N`, Firefox: `Cmd+Shift+P`)
+2. Open browser console (`F12` → Console tab) and type:
+   ```js
+   localStorage.clear()
+   ```
+3. Press Enter
+4. Refresh the page
+
+---
+
+## Step 2: Start the Dev Server
 
 ```bash
 cd "/Users/Learning/Desktop/staff-review /staff-review-platform"
-npm install
-```
-
-If this fails, make sure you have Node.js installed: `node --version`
-
----
-
-## Step 2: Type Check (Catches Errors Without Running)
-
-```bash
-npm run lint
-```
-
-**What this does:** Runs TypeScript compiler to check for syntax/type errors.
-
-**What to look for:**
-- ✅ No output = clean, no errors
-- ❌ Any output starting with `src/` = there's an error in that file
-
-**Pre-existing errors you can IGNORE:**
-- Errors in `server.ts` about missing modules (express, path, etc.) — these are expected without full type setup
-- Errors about "Cannot find module 'react'" — these happen when `node_modules` isn't fully installed
-
-**Errors you MUST fix:**
-- Anything in `src/components/SummaryFormEditor.tsx`
-- Anything in `src/components/AdminReports.tsx`
-- Anything in `src/utils/pdfExport.ts`
-- Any "Duplicate identifier" or "Syntax error" messages
-
----
-
-## Step 3: Build for Production
-
-```bash
-npm run build
-```
-
-**What this does:** Creates the production-ready `dist/` folder that Vercel will deploy.
-
-**What to look for:**
-- ✅ Ends with something like `✓ built in X.XXs`
-- ❌ Any red error messages = build failed, don't push yet
-
-**Common build errors:**
-- `error TS...` → TypeScript error in your code, check the file/line number
-- `RollupError` → Usually a missing import or syntax error
-
----
-
-## Step 4: Run Locally (Visual Check)
-
-```bash
 npm run dev
 ```
 
-This starts the app at **http://localhost:3000**. Open it in your browser.
-
-### What to Test (5-minute checklist)
-
-#### A. Login Flow
-- [ ] Sign up with a test email (e.g. `test@example.com`)
-- [ ] Log in with those credentials
-- [ ] You see the dashboard
-
-#### B. Section 1 — The Changed Part ⭐
-- [ ] Click "New Summary" (or open an existing one)
-- [ ] Click the **"General & Suggestions"** tab (first tab)
-- [ ] You should see **3 cards** with headers:
-  - "Staff Identity" (with a person icon)
-  - "Role & Timeline" (with a briefcase icon)
-  - "Staff Suggestions" (with a message icon)
-- [ ] Each field has **hint text** below it in light gray
-- [ ] Labels are clear — no "TL" abbreviations
-- [ ] Fill in a few fields and click **Save Summary Draft**
-
-#### C. Check Dark Mode
-- [ ] Click the moon/sun icon in the header
-- [ ] The Section 1 cards should look good in dark mode too
-- [ ] Toggle back to light mode
-
-#### D. Check Admin Reports View
-- [ ] Go to "Access Directory (Admin)" → "control" sub-tab
-- [ ] Click on a staff member to see their report
-- [ ] The "General Information" section should show the updated labels:
-  - "Current Position / Role" (not "Position / Role")
-  - "Supervised By Current Team Leader Since" (not "Supervised By Leader Since")
-  - "Reviewer Name & Position" should be visible
-
-#### E. Check Responsive Layout
-- [ ] Make the browser window narrow (mobile width)
-- [ ] The cards should stack vertically (1 column)
-- [ ] Make it wider again — should go to 2 or 3 columns
+Open **http://localhost:3000** in your browser.
 
 ---
 
-## Step 5: Stop the Dev Server
+## Step 3: Test the Onboarding Tour (Staff View)
 
-Press `Ctrl + C` in the terminal where `npm run dev` is running.
+1. On the login screen, click **Lewis KB** (the admin bypass button)
+2. **The onboarding tour should appear automatically** — it walks you through:
+   - Welcome message
+   - "My Reviews" tab
+   - How the 3-step process works
+   - (If admin) "Admin Dashboard" tab
+3. Click **Got it!** to finish the tour
+4. **If the tour doesn't appear**: clear localStorage again (`localStorage.clear()` in console) and refresh
 
 ---
 
-## Step 6: Commit and Push
+## Step 4: Test the Dashboard (Staff View)
+
+You should see:
+- **Tab bar**: "My Reviews" | "Team Reviews" | "Admin Dashboard" (no jargon)
+- **A guidance banner** at the top saying "Start by opening a quarter below"
+- **3 quarter cards** (1st, 2nd, 3rd) with status badges
+
+What to check:
+- [ ] Tab names are plain language (no "CMO", "KDA", "PDP")
+- [ ] Guidance banner shows for first-time users
+- [ ] Quarter cards show "Not Started" or "In Draft" or "Submitted"
+
+---
+
+## Step 5: Test the Monthly Form (Walk with God tab)
+
+1. On the **1st Quarter** card, click **Open Form** next to "Monthly Form"
+2. You should see the tab bar: **Getting Started | Walk with God | Personal Life | Relational Life | Ministry Impact**
+3. Click **Walk with God** tab
+4. You should see:
+   - Section title: "WALK WITH GOD (walk with God and character growth)"
+   - 4 bullets describing what this section covers
+   - Self-reflection questions
+   - 3 fields: Strengths, Needs Improvement, Suggested Action Points
+5. Click **Ministry Impact** tab — same structure
+
+What to check:
+- [ ] No "Heart Walk" or "Ministry Effectiveness" text anywhere
+- [ ] Tab names are simple: "Walk with God", "Ministry Impact"
+- [ ] Form fields work (can type, can save draft)
+
+---
+
+## Step 6: Test the Quarterly Summary Form
+
+1. Go back to dashboard (click "My Reviews" tab)
+2. On the **1st Quarter** card, click **Open Form** next to "Quarterly Summary"
+3. You should see tab bar: **General & Suggestions | My Growth Plan | My Key Goals | My Main Tasks | Coach's Review**
+
+What to check:
+- [ ] Tab names use plain language (no "PDP", "CMO", "KDA", "TL Evaluation")
+- [ ] "My Growth Plan" shows 3 categories: Walk with God, Personal Life, Relational Life
+- [ ] "My Key Goals" shows the Ministry Impact bullets at the top (the context guide)
+- [ ] "My Main Tasks" shows assignment fields
+- [ ] "Coach's Review" shows the evaluation form (locked for staff)
+- [ ] Banner says: "You are drafting your Quarterly Review Summary..."
+
+---
+
+## Step 7: Test as a Coach (Sarah Leader)
+
+1. Go back to login page (click your name in top-right → Logout)
+2. Click **Sarah Leader** bypass button
+3. You should see the **"Team Reviews"** tab (not "Team Evaluation Center")
+4. Click **Team Reviews**
+5. You should see John Staff, Anna Coordinator, Peter Field Officer listed
+6. Click on **Peter Field Officer** — his summary should be in "Submitted" status
+7. Open his quarterly summary — you should be able to fill out the **"Coach's Review"** tab
+
+What to check:
+- [ ] Tab says "Team Reviews" (not "Team Evaluation Center")
+- [ ] Can open staff summaries
+- [ ] "Coach's Review" tab is editable for coach
+
+---
+
+## Step 8: Test as Admin (Lewis KB)
+
+1. Log out, log in as **Lewis KB**
+2. Click **"Admin Dashboard"** tab (not "Access Directory")
+3. You should see sub-tabs: **Reports & Reviews | Settings | Team Members**
+4. Click **Reports & Reviews**
+5. You should see all 3 staff members with their evaluation status
+
+What to check:
+- [ ] Tab says "Admin Dashboard" (not "Access Directory")
+- [ ] Sub-tabs say "Reports & Reviews", "Settings", "Team Members" (not "Oversight Compliance", "Deadlines", "User Management")
+- [ ] Staff evaluations are visible
+- [ ] "Coaches' Feedback" section (not "Team Evaluation Center")
+
+---
+
+## Step 9: Check the Labels Are Consistent
+
+Search the entire app for these old jargon words — they should NOT appear anywhere in the UI:
+
+| Old Word | Should Be |
+|---|---|
+| CMO | My Key Goals / Key Goals |
+| KDA | My Main Tasks / Main Tasks |
+| PDP | My Growth Plan / Growth Plan |
+| TL Evaluation | Coach's Review / Coach's Evaluation |
+| Heart Walk | Walk with God |
+| Ministry Effectiveness | Ministry Impact |
+| Staff Identity | Your Details |
+| Form Info | Getting Started |
+| Access Directory | Admin Dashboard |
+| Team Evaluation Center | Team Reviews |
+| Oversight Compliance | Reports & Reviews |
+| Deadlines & Requirements | Settings |
+| User Management Directory | Team Members |
+
+---
+
+## Step 10: Type Check and Build
 
 ```bash
-git status                              # See what changed
-git diff                                # Review the actual changes (optional)
-git add src/components/SummaryFormEditor.tsx src/components/AdminReports.tsx src/utils/pdfExport.ts PROJECT_GUIDE.md TESTING_GUIDE.md
-git commit -m "feat: redesign Section 1 with grouped cards, clear labels, and hint text"
-git push origin main
+npx tsc --noEmit
+npm run build
 ```
 
-**After pushing:**
-1. Go to your Vercel dashboard: https://vercel.com/redwivision/staff-review-platform/deployments
-2. Watch the build status — should say "Building" then "Ready" within 1-2 minutes
-3. Click "Visit" to see your changes live
-4. Repeat the visual checks from Step 4 on the live site
+Both should complete without errors.
 
 ---
 
-## What If Something Breaks?
+## If Something Breaks
 
-### Build fails on Vercel
-1. Go to Vercel → your project → "Deployments"
-2. Click the failed deployment
-3. Click "Build Logs" to see the error
-4. Fix the error locally, push again
-
-### Live site shows old version
-- Vercel caches aggressively. Try hard refresh: `Cmd + Shift + R` (Mac) or `Ctrl + Shift + R` (Windows)
-- Or wait 2-3 minutes and try again
-
-### Site shows blank screen
-- Open browser console (F12 → Console tab)
-- Look for red errors
-- Most likely cause: environment variables not set in Vercel
+| Problem | Fix |
+|---|---|
+| Tour doesn't appear | `localStorage.clear()` in console, refresh |
+| Blank screen | Check console for red errors (F12 → Console) |
+| Old labels still showing | You're viewing a cached version — hard refresh (`Cmd+Shift+R`) |
+| Build fails | Read the error message — usually a missing import or typo |
+| Form doesn't save | Make sure you're in bypass mode (no Firebase needed) |
 
 ---
 
 ## Quick Pre-Push Checklist
 
-Before you push, confirm ALL of these:
-
-- [ ] `npm run lint` — no errors in the files we changed
+- [ ] `npx tsc --noEmit` — no errors
 - [ ] `npm run build` — builds successfully
-- [ ] `npm run dev` — Section 1 shows 3 grouped cards with hint text
-- [ ] Dark mode works on Section 1
-- [ ] Admin report shows updated labels
-- [ ] You read PROJECT_GUIDE.md so you can explain your own app
+- [ ] Onboarding tour appears on first login
+- [ ] Dashboard tabs use plain language
+- [ ] Monthly form tabs: Walk with God, Personal Life, Relational Life, Ministry Impact
+- [ ] Quarterly form tabs: My Growth Plan, My Key Goals, My Main Tasks, Coach's Review
+- [ ] Admin tabs: Reports & Reviews, Settings, Team Members
+- [ ] No jargon (CMO, KDA, PDP, TL, Heart Walk, Ministry Effectiveness) visible in UI

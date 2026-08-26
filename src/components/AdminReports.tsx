@@ -374,7 +374,7 @@ export default function AdminReports({
                                 : "bg-slate-50 dark:bg-slate-950 text-slate-400 border-slate-200 dark:border-slate-850"
                             }`}>
                               {item.status === "Approved" ? "Approved / Signed Off" :
-                               item.status === "CoachSubmitted" ? "Compiled by Coach" :
+                               item.status === "CoachSubmitted" ? "Reviewed by Coach" :
                                item.status === "Submitted" ? "Submitted to Coach" :
                                item.status === "Draft" ? "In Draft" : "Not Started"}
                             </span>
@@ -468,7 +468,7 @@ export default function AdminReports({
                                       </div>
                                       <div>
                                         <h5 className="font-extrabold text-[12px] uppercase text-slate-700 dark:text-slate-300">
-                                          🎓 Team Evaluation Center (Coaches' Feedback)
+                                          🎓 Coaches' Feedback
                                         </h5>
                                         <p className="text-[10px] text-slate-500 font-medium">
                                           Access all Coach/TL evaluations completed for {item.name} in {reportQuarter} Quarter.
@@ -617,7 +617,7 @@ export default function AdminReports({
             <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-150 dark:border-slate-800 flex items-center justify-between">
               <div>
                 <h4 className="font-extrabold text-sm text-slate-950 dark:text-slate-100 uppercase tracking-wide">
-                  📋 Detailed Evaluation Form
+                   📋 Evaluation Form
                 </h4>
                 <p className="text-[10px] text-slate-500 font-medium">
                   {viewFullSummaryDetails.coachUid 
@@ -658,8 +658,8 @@ export default function AdminReports({
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {(["heart", "personalLife", "relationalLife"] as const).map((cat) => {
                     const item = viewFullSummaryDetails.pdp?.[cat];
-                    const label = cat === "heart" ? "Heart Walk (Discipleship)" :
-                                  cat === "personalLife" ? "Personal Life (Wellbeing)" : "Relational Life (Community)";
+                    const label = cat === "heart" ? "Walk with God" :
+                                  cat === "personalLife" ? "Personal Life" : "Relational Life";
                     return (
                       <div key={cat} className="bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 space-y-2.5">
                         <div className="flex flex-col gap-1.5">
@@ -705,7 +705,7 @@ export default function AdminReports({
               {/* CMO Review */}
               <div className="space-y-3">
                 <h5 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800 pb-1.5 flex items-center gap-1">
-                  <TrendingUp className="w-3.5 h-3.5 text-indigo-600" /> 3. Critical Mission Objectives (CMO)
+                  <TrendingUp className="w-3.5 h-3.5 text-indigo-600" /> 3. Key Goals
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {(viewFullSummaryDetails.cmo || []).map((c, idx) => (
@@ -728,7 +728,7 @@ export default function AdminReports({
               {/* KDA Review */}
               <div className="space-y-3">
                 <h5 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800 pb-1.5 flex items-center gap-1">
-                  <BookOpen className="w-3.5 h-3.5 text-indigo-600" /> 4. Key Development Assignments (KDA)
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-600" /> 4. Main Tasks
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {(viewFullSummaryDetails.kda || []).map((k, idx) => (
@@ -746,7 +746,7 @@ export default function AdminReports({
               {/* Suggestions / Feedback */}
               <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-150 dark:border-slate-800 space-y-2">
                 <h5 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800 pb-1.5">
-                  5. Improvement Suggestions for Team or Department
+                   5. Suggestions for Improvement
                 </h5>
                 <ul className="list-decimal list-inside pl-1 text-[11px] text-slate-600 dark:text-slate-400 space-y-1.5">
                   {(viewFullSummaryDetails.suggestions || []).map((s, idx) => (
@@ -760,7 +760,7 @@ export default function AdminReports({
               {/* Section 6: Coach/Leader Evaluation */}
               <div className="bg-indigo-50/40 dark:bg-slate-950 p-4 rounded-xl border border-indigo-100 dark:border-slate-800 space-y-4">
                 <h5 className="font-bold text-indigo-900 dark:text-indigo-400 uppercase tracking-wider text-[10px] border-b border-indigo-200 dark:border-slate-800 pb-1.5 flex items-center gap-1">
-                  <Star className="w-3.5 h-3.5" /> 6. Team Leader Evaluation (Restricted)
+                   <Star className="w-3.5 h-3.5" /> 6. Coach's Evaluation
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px]">
                   <div>
@@ -956,7 +956,7 @@ export default function AdminReports({
                         <div className="space-y-1.5">
                           <span className="font-mono text-[10px] text-slate-400 uppercase">Personal Development Goals:</span>
                           <div className="space-y-1 pl-2 border-l-2 border-slate-200">
-                            <div><strong className="font-semibold text-slate-700">Heart Walk:</strong> {activeReportMember.baseSummary.pdp?.heart?.goal || "None set"}</div>
+                            <div><strong className="font-semibold text-slate-700">Walk with God:</strong> {activeReportMember.baseSummary.pdp?.heart?.goal || "None set"}</div>
                             <div><strong className="font-semibold text-slate-700">Personal Life:</strong> {activeReportMember.baseSummary.pdp?.personalLife?.goal || "None set"}</div>
                             <div><strong className="font-semibold text-slate-700">Relational Life:</strong> {activeReportMember.baseSummary.pdp?.relationalLife?.goal || "None set"}</div>
                           </div>
@@ -1001,7 +1001,7 @@ export default function AdminReports({
                   <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-4">
                     <h5 className="font-sans font-extrabold text-[11px] uppercase tracking-wider text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-1.5">
                       <Star className="w-3.5 h-3.5 text-indigo-500" />
-                      Coach & Supervisor Evaluations
+                       Evaluations
                     </h5>
 
                     {activeReportMember.coachSummaries.length === 0 ? (

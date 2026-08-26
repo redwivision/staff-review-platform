@@ -245,11 +245,11 @@ export default function SummaryFormEditor({
                 id="submit-eval-to-admin-btn"
                 onClick={async () => {
                   if (!formData.evaluation.overallEffectiveness) {
-                    alert("Please select an Overall Effectiveness Rating under the TL Evaluation tab before submitting.");
+                    alert("Please select an Overall Effectiveness Rating under the Coach's Review tab before submitting.");
                     return;
                   }
                   if (!formData.evaluation.teamLeaderSignature) {
-                    alert("Please sign the evaluation (Team Leader Signature) under the TL Evaluation tab before submitting.");
+                    alert("Please sign the evaluation (Team Leader Signature) under the Coach's Review tab before submitting.");
                     return;
                   }
                   if (confirm("Are you sure you want to submit this evaluation to the Admin? This will lock the evaluation.")) {
@@ -318,7 +318,7 @@ export default function SummaryFormEditor({
           }`}
         >
           <Star className="w-4 h-4" />
-          Personal Dev Plan (PDP)
+          My Growth Plan
         </button>
 
         <button
@@ -329,7 +329,7 @@ export default function SummaryFormEditor({
           }`}
         >
           <RefreshCw className="w-4 h-4" />
-          Critical Objectives (CMO)
+          My Key Goals
         </button>
 
         <button
@@ -340,7 +340,7 @@ export default function SummaryFormEditor({
           }`}
         >
           <Layers className="w-4 h-4" />
-          Key Assignments (KDA)
+          My Main Tasks
         </button>
 
         <button
@@ -351,7 +351,7 @@ export default function SummaryFormEditor({
           }`}
         >
           <UserCheck className="w-4 h-4" />
-          TL Evaluation
+          Coach's Review
         </button>
         
         {quarter === "3rd" && (
@@ -406,8 +406,8 @@ export default function SummaryFormEditor({
               <ClipboardList className="w-5 h-5 shrink-0 text-amber-600" />
               <span>
                 {isOwner 
-                  ? "✓ Summary Form Submitted to Coach! Awaiting Coach's TL Evaluation." 
-                  : "✓ Staff Member Summary Submitted. You can now fill out the TL Evaluation and Submit to Admin."}
+                  ? "✓ Summary submitted to your coach! Waiting for coach's review." 
+                   : "✓ Staff summary received. You can now fill out the Coach's Review and submit to Admin."}
               </span>
             </div>
             {!isOwner && (isCoachOrAdmin || isAdmin) && (
@@ -420,13 +420,13 @@ export default function SummaryFormEditor({
         {formData.status === "CoachSubmitted" && (
           <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl text-sm font-medium flex items-center gap-2">
             <CheckSquare className="w-5 h-5 shrink-0 text-emerald-600" />
-            <span>✓ Coach TL Evaluation Submitted to Admin. This form is now locked (Read-Only).</span>
+            <span>✓ Coach's Evaluation Submitted to Admin. This form is now locked (read-only).</span>
           </div>
         )}
         {isOwner && (!formData.status || formData.status === "Draft") && (
           <div className="mb-6 bg-indigo-50 border border-indigo-200 text-indigo-800 p-4 rounded-xl text-sm font-medium flex items-center gap-2">
             <ClipboardList className="w-5 h-5 shrink-0 text-indigo-600" />
-            <span>You are drafting your Quarterly Review Summary. Please complete sections 1-4 (PDP, CMO, KDA, Suggestions). The <strong>TL Evaluation</strong> tab is restricted and will be filled out by your Coach.</span>
+            <span>You are drafting your Quarterly Review Summary. Please complete sections 1–4 (Growth Plan, Key Goals, Main Tasks, Suggestions). The <strong>Coach's Review</strong> tab is restricted and will be filled out by your Coach.</span>
           </div>
         )}
         {isCoachOrAdmin && !isOwner && (!formData.status || formData.status === "Draft") && (
@@ -438,7 +438,7 @@ export default function SummaryFormEditor({
         {isCoachOrAdmin && !isOwner && formData.status === "Submitted" && (
           <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl text-sm font-medium flex items-center gap-2">
             <UserCheck className="w-5 h-5 shrink-0 text-emerald-600" />
-            <span>You are reviewing this summary as the approved Coach. Sections 1-4 are read-only. Please complete your evaluation in the <strong>TL Evaluation</strong> tab.</span>
+            <span>You are reviewing this summary as the approved Coach. Sections 1–4 are read-only. Please complete your evaluation in the <strong>Coach's Review</strong> tab.</span>
           </div>
         )}
         {!isOwner && !isCoachOrAdmin && (
@@ -458,7 +458,7 @@ export default function SummaryFormEditor({
             <div className="bg-slate-50 dark:bg-slate-950 rounded-xl border border-slate-200 dark:border-slate-800 p-5 space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
                 <User className="w-4 h-4 text-indigo-600" />
-                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Staff Identity</h4>
+                <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">Your Details</h4>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -598,7 +598,7 @@ export default function SummaryFormEditor({
               <div className="flex items-center gap-2 pb-2 border-b border-slate-200 dark:border-slate-800">
                 <MessageSquare className="w-4 h-4 text-indigo-600" />
                 <h4 className="text-sm font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider">
-                  Staff Suggestions for Improvement
+                  Suggestions for Improvement
                 </h4>
               </div>
               <p className="text-xs text-slate-500">What suggestions do you (staff member) have for the improvement of your team or department?</p>
@@ -639,7 +639,7 @@ export default function SummaryFormEditor({
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-lg font-sans font-bold text-slate-800">
-                  Personal Development Plan Priorities
+                  Growth Plan
                 </h3>
                 <p className="text-xs text-slate-500">
                   {quarter === "1st" && "Define priorities and desired SMART goals."}
@@ -651,7 +651,7 @@ export default function SummaryFormEditor({
 
             <div className="space-y-8">
               {(["heart", "personalLife", "relationalLife"] as const).map(category => {
-                const categoryLabel = category === "heart" ? "Heart Walk" : category === "personalLife" ? "Personal Life" : "Relational Life";
+                const categoryLabel = category === "heart" ? "Walk with God" : category === "personalLife" ? "Personal Life" : "Relational Life";
                 const catData = formData.pdp[category];
 
                 return (
@@ -750,7 +750,7 @@ export default function SummaryFormEditor({
                       {quarter === "3rd" && (
                         <>
                           <div className="flex flex-col md:flex-row md:items-center gap-6 py-2 bg-indigo-50/40 border border-indigo-100/50 rounded-lg px-4 md:col-span-2">
-                            <span className="text-xs font-bold uppercase text-indigo-800 tracking-wider">Evaluation Assessment:</span>
+                            <span className="text-xs font-bold uppercase text-indigo-800 tracking-wider">Evaluation:</span>
                             <div className="flex items-center gap-4">
                               <label className="flex items-center gap-2 text-sm text-slate-700 font-medium">
                                 <input
@@ -834,10 +834,10 @@ export default function SummaryFormEditor({
           <div className="space-y-6 max-w-5xl animate-fade-in">
             <div>
               <h3 className="text-lg font-sans font-bold text-slate-800">
-                Critical Mission Objectives (Your Role Priorities This Year)
+                My Key Goals
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                List your top 3 role priorities for this period and report on the results, progress, or evaluation of each.
+                List your top 3 goals for this period and report on the results, progress, or evaluation of each.
               </p>
             </div>
 
@@ -936,7 +936,7 @@ export default function SummaryFormEditor({
                       {quarter === "3rd" && (
                         <>
                           <div className="flex flex-col md:flex-row md:items-center gap-6 py-2 bg-indigo-50/40 border border-indigo-100/50 rounded-lg px-4 md:col-span-2">
-                            <span className="text-xs font-bold uppercase text-indigo-800 tracking-wider">Evaluation Assessment:</span>
+                            <span className="text-xs font-bold uppercase text-indigo-800 tracking-wider">Evaluation:</span>
                             <div className="flex items-center gap-4">
                               <label className="flex items-center gap-2 text-sm text-slate-700 font-medium">
                                 <input
@@ -1020,10 +1020,10 @@ export default function SummaryFormEditor({
           <div className="space-y-6 max-w-5xl animate-fade-in">
             <div>
               <h3 className="text-lg font-sans font-bold text-slate-800">
-                Key Development Assignments (assigned by Director/Supervisor)
+                Main Tasks
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                For increased leadership capacity. Provide up to 2 key assignments.
+                Up to 2 key tasks assigned to you for leadership development.
               </p>
             </div>
 
@@ -1105,10 +1105,10 @@ export default function SummaryFormEditor({
           <div className="space-y-8 max-w-4xl animate-fade-in">
             <div>
               <h3 className="text-lg font-sans font-bold text-slate-800">
-                Evaluation Assessment (Team Leader Only)
+                Coach's Evaluation
               </h3>
               <p className="text-xs text-slate-500 mt-0.5">
-                Evaluation metrics and performance review checklist.
+                Your coach fills this section after reviewing your summary.
               </p>
             </div>
 

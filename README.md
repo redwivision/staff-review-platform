@@ -4,14 +4,16 @@ A comprehensive platform for managing staff reviews, coaching, and performance t
 
 ## Key Components
 - **Backend**: Built with TypeScript and Express.js (`server.ts`)
-- **Frontend**: React-based UI in `src/` directory
+- **Frontend**: React-based UI in `src/` directory using Vite and Tailwind CSS
 - **Firebase**: Authentication and database configuration (`firebase.json`, `firebase-applet-config.json`)
-- **Testing**: Load testing with K6 (`k6-test.js`), UI tests in `tests/ui/`
+- **Testing**: Load testing with K6 (`load-test.js`), UI tests with Playwright (`playwright.config.ts` and `tests/ui/`)
 
 ## Setup Instructions
 1. Install dependencies: `npm install`
 2. Start development server: `npm run dev`
-3. Run tests: `npm test`
+3. Build for production: `npm run build`
+4. Start production server: `npm run start`
+5. Run linting: `npm run lint`
 
 ## Features
 - Staff performance reviews
@@ -20,11 +22,12 @@ A comprehensive platform for managing staff reviews, coaching, and performance t
 - PDF export functionality
 
 ## Technologies
-- TypeScript
-- React
-- Firebase
-- Express.js
-- K6 for load testing
+- **Frontend**: React, Vite, Tailwind CSS, Motion
+- **Backend**: Node.js, Express.js, TypeScript
+- **Database & Auth**: Firebase
+- **AI**: Google GenAI
+- **Testing**: Playwright (UI), K6 (Load Testing)
+- **Utilities**: jsPDF
 
 ## Contributing
 - Fork the repository

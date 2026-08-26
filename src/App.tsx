@@ -33,6 +33,7 @@ import CoachingNominations from "./components/CoachingNominations";
 import CoachingInvitations from "./components/CoachingInvitations";
 import AdminCoachingPanel from "./components/AdminCoachingPanel";
 import AdminReports from "./components/AdminReports";
+import OnboardingTour from "./components/OnboardingTour";
 import { 
   Heart, 
   User, 
@@ -2480,6 +2481,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 dark:text-slate-100 flex flex-col font-sans text-slate-800 transition-colors duration-200">
+      {/* Onboarding Tour — shows on first login */}
+      <OnboardingTour isAdmin={!!isAdmin} isLeader={!!(user?.isLeader)} />
+
       {/* DEMO MODE BANNER */}
       <div className="w-full bg-amber-500 text-slate-950 font-bold text-center py-2 text-xs md:text-sm tracking-wide shadow-sm flex items-center justify-center gap-1.5 px-4 z-50">
         <span>⚠️ DEMO MODE: This is a demo and is meant to show the idea not the functionalities</span>

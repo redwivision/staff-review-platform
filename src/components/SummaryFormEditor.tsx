@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { QuarterlySummary, PDPQuarterItem, CMOQuarterItem, KDAQuarterItem } from "../types";
 import { QUARTER_INFO, DEVELOPMENT_REVIEW_SECTIONS } from "../constants";
-import { ClipboardList, Star, RefreshCw, Layers, CheckSquare, Save, UserCheck, ShieldAlert, ArrowLeftRight, HelpCircle, User, Briefcase, MessageSquare } from "lucide-react";
+import { ClipboardList, Star, RefreshCw, Layers, CheckSquare, Save, UserCheck, ShieldAlert, ArrowLeftRight, HelpCircle, User, Briefcase, MessageSquare, ListChecks } from "lucide-react";
+import GuidedSummaryForm from "./GuidedSummaryForm";
 
 interface SummaryFormEditorProps {
   summary: QuarterlySummary;
@@ -28,6 +29,9 @@ export default function SummaryFormEditor({
   const [activeTab, setActiveTab] = useState<"header" | "pdp" | "cmo" | "kda" | "evaluation" | "comments">("header");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [viewMode, setViewMode] = useState<"standard" | "guided">(
+    isLeaderViewProp ? "standard" : "guided"
+  );
 
   const isSubmittedByOwner = formData.status === "Submitted" || formData.status === "CoachSubmitted" || formData.status === "Declined";
   const isSubmittedByCoach = formData.status === "CoachSubmitted";
@@ -168,6 +172,20 @@ export default function SummaryFormEditor({
   const canSave = isAdmin || (isOwner && !isSubmittedByOwner) || (isCoachOrAdmin && !isSubmittedByCoach);
 
   return (
+    <>
+    {viewMode === "guided" ? (
+      <GuidedSummaryForm
+        summary={formData}
+        onSave={onSave}
+        onClose={onClose}
+        isLeaderView={isLeaderViewProp}
+        staffName={staffName}
+        isOwner={isOwner}
+        isCoachOrAdmin={isCoachOrAdmin}
+        isAdmin={isAdmin}
+        onSwitchStandard={() => setViewMode("standard")}
+      />
+    ) : (
     <div id="summary-editor-container" className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden">
       {/* Top Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-6">
@@ -189,6 +207,14 @@ export default function SummaryFormEditor({
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <button
+              id="toggle-guided-mode-btn"
+              onClick={() => setViewMode("guided")}
+              className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-colors border border-white/20 flex items-center gap-1.5 cursor-pointer"
+            >
+              <ListChecks className="w-4 h-4" />
+              Easy mode
+            </button>
             {canSave && (
               <button
                 id="save-summary-btn"
@@ -1376,5 +1402,7 @@ export default function SummaryFormEditor({
         )}
       </div>
     </div>
+    )}
+    </>
   );
 }

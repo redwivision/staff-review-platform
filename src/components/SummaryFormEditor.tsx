@@ -245,11 +245,11 @@ export default function SummaryFormEditor({
                 id="submit-eval-to-admin-btn"
                 onClick={async () => {
                   if (!formData.evaluation.overallEffectiveness) {
-                    alert("Please select an Overall Effectiveness Rating under the Coach's Review tab before submitting.");
+                    alert("Please select an Overall Effectiveness Rating under the TL Evaluation tab before submitting.");
                     return;
                   }
                   if (!formData.evaluation.teamLeaderSignature) {
-                    alert("Please sign the evaluation (Team Leader Signature) under the Coach's Review tab before submitting.");
+                    alert("Please sign the evaluation (Team Leader Signature) under the TL Evaluation tab before submitting.");
                     return;
                   }
                   if (confirm("Are you sure you want to submit this evaluation to the Admin? This will lock the evaluation.")) {
@@ -309,7 +309,6 @@ export default function SummaryFormEditor({
           <ClipboardList className="w-4 h-4" />
           General & Suggestions
         </button>
-
         <button
           id="sum-tab-pdp"
           onClick={() => setActiveTab("pdp")}
@@ -318,7 +317,8 @@ export default function SummaryFormEditor({
           }`}
         >
           <Star className="w-4 h-4" />
-          My Growth Plan
+          Personal Development Plan (PDP)
+          <span className="block text-[10px] font-normal text-slate-400">Your growth plan</span>
         </button>
 
         <button
@@ -329,7 +329,8 @@ export default function SummaryFormEditor({
           }`}
         >
           <RefreshCw className="w-4 h-4" />
-          My Key Goals
+          Critical Mission Objectives (CMO)
+          <span className="block text-[10px] font-normal text-slate-400">Your key goals</span>
         </button>
 
         <button
@@ -340,7 +341,8 @@ export default function SummaryFormEditor({
           }`}
         >
           <Layers className="w-4 h-4" />
-          My Main Tasks
+          Key Deliverable Assignments (KDA)
+          <span className="block text-[10px] font-normal text-slate-400">Your main tasks</span>
         </button>
 
         <button
@@ -351,7 +353,8 @@ export default function SummaryFormEditor({
           }`}
         >
           <UserCheck className="w-4 h-4" />
-          Coach's Review
+          Team Leader (TL) Evaluation
+          <span className="block text-[10px] font-normal text-slate-400">Coach's review</span>
         </button>
         
         {quarter === "3rd" && (
@@ -407,7 +410,7 @@ export default function SummaryFormEditor({
               <span>
                 {isOwner 
                   ? "✓ Summary submitted to your coach! Waiting for coach's review." 
-                   : "✓ Staff summary received. You can now fill out the Coach's Review and submit to Admin."}
+                   : "✓ Staff summary received. You can now fill out the TL Evaluation and submit to Admin."}
               </span>
             </div>
             {!isOwner && (isCoachOrAdmin || isAdmin) && (
@@ -426,7 +429,7 @@ export default function SummaryFormEditor({
         {isOwner && (!formData.status || formData.status === "Draft") && (
           <div className="mb-6 bg-indigo-50 border border-indigo-200 text-indigo-800 p-4 rounded-xl text-sm font-medium flex items-center gap-2">
             <ClipboardList className="w-5 h-5 shrink-0 text-indigo-600" />
-            <span>You are drafting your Quarterly Review Summary. Please complete sections 1–4 (Growth Plan, Key Goals, Main Tasks, Suggestions). The <strong>Coach's Review</strong> tab is restricted and will be filled out by your Coach.</span>
+            <span>You are drafting your Quarterly Review Summary. Please complete sections 1–4 (PDP, CMO, KDA, Suggestions). The <strong>TL Evaluation</strong> tab is restricted and will be filled out by your Coach.</span>
           </div>
         )}
         {isCoachOrAdmin && !isOwner && (!formData.status || formData.status === "Draft") && (
@@ -438,7 +441,7 @@ export default function SummaryFormEditor({
         {isCoachOrAdmin && !isOwner && formData.status === "Submitted" && (
           <div className="mb-6 bg-emerald-50 border border-emerald-200 text-emerald-800 p-4 rounded-xl text-sm font-medium flex items-center gap-2">
             <UserCheck className="w-5 h-5 shrink-0 text-emerald-600" />
-            <span>You are reviewing this summary as the approved Coach. Sections 1–4 are read-only. Please complete your evaluation in the <strong>Coach's Review</strong> tab.</span>
+            <span>You are reviewing this summary as the approved Coach. Sections 1–4 are read-only. Please complete your evaluation in the <strong>TL Evaluation</strong> tab.</span>
           </div>
         )}
         {!isOwner && !isCoachOrAdmin && (
@@ -639,9 +642,10 @@ export default function SummaryFormEditor({
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-lg font-sans font-bold text-slate-800">
-                  Growth Plan
+                  Personal Development Plan (PDP)
                 </h3>
                 <p className="text-xs text-slate-500">
+                  <span className="text-slate-400">Your growth plan — </span>
                   {quarter === "1st" && "Define priorities and desired SMART goals."}
                   {quarter === "2nd" && "Measure progress made and changes needed."}
                   {quarter === "3rd" && "Assign S/O/NI ratings and record the next steps."}
@@ -834,10 +838,10 @@ export default function SummaryFormEditor({
           <div className="space-y-6 max-w-5xl animate-fade-in">
             <div>
               <h3 className="text-lg font-sans font-bold text-slate-800">
-                My Key Goals
+                Critical Mission Objectives (CMO)
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                List your top 3 goals for this period and report on the results, progress, or evaluation of each.
+                <span className="text-slate-400">Your key goals — </span>List your top 3 goals for this period and report on the results, progress, or evaluation of each.
               </p>
             </div>
 
@@ -1020,10 +1024,10 @@ export default function SummaryFormEditor({
           <div className="space-y-6 max-w-5xl animate-fade-in">
             <div>
               <h3 className="text-lg font-sans font-bold text-slate-800">
-                Main Tasks
+                Key Deliverable Assignments (KDA)
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                Up to 2 key tasks assigned to you for leadership development.
+                <span className="text-slate-400">Your main tasks — </span>Up to 2 key tasks assigned to you for leadership development.
               </p>
             </div>
 

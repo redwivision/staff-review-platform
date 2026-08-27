@@ -705,7 +705,7 @@ export default function AdminReports({
               {/* CMO Review */}
               <div className="space-y-3">
                 <h5 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800 pb-1.5 flex items-center gap-1">
-                  <TrendingUp className="w-3.5 h-3.5 text-indigo-600" /> 3. Key Goals
+                  <TrendingUp className="w-3.5 h-3.5 text-indigo-600" /> 3. Critical Mission Objectives (CMO)
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {(viewFullSummaryDetails.cmo || []).map((c, idx) => (
@@ -728,7 +728,7 @@ export default function AdminReports({
               {/* KDA Review */}
               <div className="space-y-3">
                 <h5 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800 pb-1.5 flex items-center gap-1">
-                  <BookOpen className="w-3.5 h-3.5 text-indigo-600" /> 4. Main Tasks
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-600" /> 4. Key Development Assignments (KDA)
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {(viewFullSummaryDetails.kda || []).map((k, idx) => (

@@ -2699,7 +2699,7 @@ export default function App() {
                         <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">3</div>
                         <div>
                           <p className="font-bold text-sm text-slate-800">Submit to your coach</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Click Submit when done. Your coach reviews it and fills out the Coach's Review.</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Click Submit when done. Your coach reviews it and fills out the TL Evaluation.</p>
                         </div>
                       </div>
                     </div>
@@ -2722,8 +2722,8 @@ export default function App() {
                       <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">
                         <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">2</div>
                         <div>
-                          <p className="font-bold text-sm text-slate-800">Fill the Coach's Review</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Open their summary → <strong>Coach's Review</strong> tab → rate effectiveness, add strengths/weaknesses, sign.</p>
+                          <p className="font-bold text-sm text-slate-800">Fill the TL Evaluation</p>
+                          <p className="text-xs text-slate-500 mt-0.5">Open their summary → <strong>TL Evaluation</strong> tab → rate effectiveness, add strengths/weaknesses, sign.</p>
                         </div>
                       </div>
                       <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">

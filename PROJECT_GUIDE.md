@@ -9,7 +9,7 @@
 2. [How It Works (Simple Version)](#2-how-it-works-simple-version)
 3. [Tech Stack Explained Like You're 10](#3-tech-stack-explained)
 4. [System Architecture](#4-system-architecture)
-5. [Database Design (Firestore)](#5-database-design)
+5. [Database Design](#5-database-design)
 6. [Frontend Design](#6-frontend-design)
 7. [User Roles & Permissions](#7-user-roles--permissions)
 8. [The Complete User Journey](#8-the-complete-user-journey)
@@ -45,14 +45,14 @@ Think of it as a digital HR performance review system, purpose-built for a minis
        │                    │                       │
        ▼                    ▼                       ▼
   ┌─────────────────────────────────────────────────────┐
-  │              FIREBASE FIRESTORE (Database)           │
-  │  • users/         — who's who                       │
-  │  • developmentReviews/ — self-review forms          │
-  │  • quarterlySummaries/ — TL evaluation forms        │
-  │  • activityLogs/ — edit audit trail                 │
-  │  • followUpTasks/ — coaching follow-ups             │
-  │  • coachingRequests/ — coach nomination workflow    │
-  │  • meetings/ — scheduled meetings                   │
+  │   SUPABASE (PostgreSQL Database)  │
+  │  • users              — who's who                       │
+  │  • development_reviews — self-review forms             │
+  │  • quarterly_summaries — TL evaluation forms           │
+  │  • activity_logs      — edit audit trail               │
+  │  • follow_up_tasks    — coaching follow-ups            │
+  │  • coaching_requests  — coach nomination workflow      │
+  │  • meetings           — scheduled meetings             │
   └─────────────────────────────────────────────────────┘
 ```
 
@@ -73,8 +73,8 @@ Think of it as a digital HR performance review system, purpose-built for a minis
 | **TypeScript** | JavaScript with type safety — catches errors before they happen | Prevents bugs like "undefined is not a function" |
 | **Vite** | Dev server + build tool — makes development fast | When you run `npm run dev`, Vite is what starts |
 | **Tailwind CSS 4** | Utility-first CSS framework — styles everything | All the colors, spacing, layouts come from here |
-| **Firebase Auth** | Handles login/signup | Users sign in with email + password |
-| **Firebase Firestore** | Cloud database (NoSQL) | All data lives here — reviews, users, logs |
+| **Supabase Auth** | Handles login/signup | Users sign in with email + password |
+| **Supabase (PostgreSQL)** | Cloud database (SQL) | All data lives here — reviews, users, logs |
 | **Express.js** | Backend API server | Only used for one thing: the AI synthesis endpoint |
 | **Google Gemini AI** | Generates AI-powered review synthesis | Admin can generate a 1-page AI summary of evaluations |
 | **jsPDF** | Generates PDF files in the browser | "Export to PDF" button |
@@ -85,7 +85,7 @@ Think of it as a digital HR performance review system, purpose-built for a minis
 ```
 User's Browser
     │
-    ├── React + Vite (UI) ──────── reads/writes ────▶ Firebase Firestore (data)
+    ├── React + Vite (UI) ──────── reads/writes ────▶ Supabase (PostgreSQL) (data)
     │                                                     │
     │                                                     ├── /users
     │                                                     ├── /developmentReviews
@@ -115,16 +115,16 @@ currentTab state:
 ```
 
 ### Real-Time Updates
-The app uses Firestore's `onSnapshot()` — this means when data changes in the database, every connected user's screen updates AUTOMATICALLY. No need to refresh.
+The app polls Supabase on a 30-second interval (plus an initial fetch on load) — when data changes in the database, every connected user's screen refreshes automatically. No manual refresh needed.
 
 ### Mock Data Mode
-There's a toggle for offline/mock data mode (stored in `localStorage`). This is useful when Firebase isn't configured. All data lives in the browser's localStorage instead.
+There's a toggle for offline/mock data mode (stored in `localStorage`). This is useful when Supabase isn't configured. All data lives in the browser's localStorage instead.
 
 ---
 
 ## 5. Database Design
 
-### Firestore Collections
+### Supabase Tables
 
 #### `users/{uid}`
 ```json
@@ -138,7 +138,7 @@ There's a toggle for offline/mock data mode (stored in `localStorage`). This is 
   "createdAt": 1700000000000
 }
 ```
-- **Document ID** = Firebase Auth UID
+- **Primary key / row ID** = also stored in `uid` (matches the Supabase auth user ID)
 - `isLeader` = true means this person can evaluate others
 - `isAdmin` = true means full access to everything
 
@@ -326,7 +326,7 @@ App.tsx (monolithic — 5,485 lines)
 ### How Roles Work
 - `isLeader` flag on user profile → unlocks coach/leader features
 - `isAdmin` flag OR email = `lewikb13@gmail.com` → unlocks admin features
-- Firestore security rules enforce these permissions at the database level
+- Supabase Row-Level Security policies enforce these permissions at the database level
 
 ### Coaching Workflow
 1. Staff member goes to "My Coaches" and nominates someone by name
@@ -365,9 +365,11 @@ App.tsx (monolithic — 5,485 lines)
 ```
 staff-review-platform/
 ├── src/
-│   ├── App.tsx                    ← THE main file (5,485 lines, monolithic SPA)
+│   ├── App.tsx                    ← THE main file (~5,600 lines, monolithic SPA)
 │   ├── main.tsx                   ← React entry point (renders App)
-│   ├── firebase.ts                ← Firebase initialization + config
+│   ├── supabase.ts                ← Supabase client initialization + config
+│   ├── supabaseDb.ts              ← Data access layer (CRUD + polling subscriptions)
+│   ├── dataLayer.ts               ← Unified write layer for forms and actions
 │   ├── types.ts                   ← TypeScript interfaces (all data shapes)
 │   ├── constants.ts               ← Review sections, quarter info
 │   ├── utils.ts                   ← Helper functions (create reviews, calculate progress)
@@ -388,9 +390,7 @@ staff-review-platform/
 ├── package.json                   ← Dependencies + scripts
 ├── vite.config.ts                 ← Vite build config
 ├── tsconfig.json                  ← TypeScript config
-├── firebase.json                  ← Firebase project config
-├── firestore.rules                ← Database security rules
-├── firebase-blueprint.json        ← Data schema documentation
+├── supabase-schema.sql            ← Database schema + security policies
 ├── .env.example                   ← Environment variable template
 └── .gitignore                     ← Files excluded from git
 ```
@@ -403,8 +403,8 @@ staff-review-platform/
 - **GitHub repo:** `https://github.com/redwivision/staff-review-platform`
 - **Branch:** `main`
 - **Hosting:** Vercel (connected to GitHub — auto-deploys on push to `main`)
-- **Database:** Firebase Firestore (separate from hosting)
-- **Auth:** Firebase Authentication (separate from hosting)
+- **Database:** Supabase (PostgreSQL, separate from hosting)
+- **Auth:** Supabase Auth (separate from hosting)
 
 ### How Vercel Deployment Works
 1. You push code to `main` branch on GitHub
@@ -422,7 +422,7 @@ npm run build
 ```
 
 ### Important Note About the Server
-The Express server (`server.ts`) is **only used for the Gemini AI endpoint**. The main app is purely client-side (React + Firebase). On Vercel, the server isn't actually used — the AI synthesis might work differently in production (or may not be deployed at all if Vercel is set up for static hosting only).
+The Express server (`server.ts`) is **only used for the Gemini AI endpoint**. The main app is purely client-side (React + Supabase). On Vercel, the server isn't actually used — the AI synthesis might work differently in production (or may not be deployed at all if Vercel is set up for static hosting only).
 
 ---
 
@@ -462,13 +462,8 @@ These are secrets that the app needs but shouldn't be in the code:
 
 | Variable | Purpose | Where to Set |
 |----------|---------|-------------|
-| `VITE_FIREBASE_API_KEY` | Firebase auth | Vercel dashboard → Settings → Environment Variables |
-| `VITE_FIREBASE_AUTH_DOMAIN` | Firebase auth | Vercel dashboard |
-| `VITE_FIREBASE_PROJECT_ID` | Firebase auth | Vercel dashboard |
-| `VITE_FIREBASE_STORAGE_BUCKET` | Firebase auth | Vercel dashboard |
-| `VITE_FIREBASE_MESSAGING_SENDER_ID` | Firebase auth | Vercel dashboard |
-| `VITE_FIREBASE_APP_ID` | Firebase auth | Vercel dashboard |
-| `VITE_FIREBASE_DATABASE_ID` | Firestore database ID | Vercel dashboard |
+| `VITE_SUPABASE_URL` | Supabase project URL (e.g. `https://xxx.supabase.co`) | Vercel dashboard → Settings → Environment Variables |
+| `VITE_SUPABASE_ANON_KEY` | Supabase anon/public key (starts with `eyJ...`) | Vercel dashboard |
 | `GEMINI_API_KEY` | AI synthesis | Vercel dashboard (server-side only) |
 
 **IMPORTANT:** Variables prefixed with `VITE_` are exposed to the browser. All others are server-side only.
@@ -480,11 +475,11 @@ These are secrets that the app needs but shouldn't be in the code:
 | Problem | Cause | Fix |
 |---------|-------|-----|
 | App shows blank white screen | Missing env vars or build error | Check Vercel build logs, ensure env vars are set |
-| Login doesn't work | Firebase config wrong | Verify env vars match Firebase project settings |
+| Login doesn't work | Supabase config wrong | Verify `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` match your Supabase project |
 | Changes not showing on live site | Build might have failed | Check Vercel dashboard → Deployments → see build log |
 | `npm run dev` fails | Missing `node_modules` | Run `npm install` first |
 | TypeScript errors | Code changes broke types | Run `npm run lint` to check |
-| Firestore permission denied | Security rules blocking | Check `firestore.rules` — user might not have the right role |
+| Database permission denied | RLS policy blocking | Review `supabase-schema.sql` RLS policies — user might not have the right role |
 
 ---
 
@@ -551,11 +546,11 @@ These are known gaps with planned improvements for the next iteration:
 
 ### Notifications
 - No email or push notifications for submissions, evaluations, or deadline reminders
-- **Planned:** Firebase Cloud Functions + SendGrid for email triggers
+- **Planned:** Supabase Edge Functions + SendGrid for email triggers
 
 ### File Attachments
 - Reviews and summaries are text-only — no ability to upload documents, images, or evidence
-- **Planned:** Firebase Storage integration for file uploads
+- **Planned:** Supabase Storage integration for file uploads
 
 ### Role Flexibility
 - A user has a single role (Staff, Coach, or Admin) — no hybrid roles (e.g., staff who is also a coach)
@@ -567,7 +562,7 @@ These are known gaps with planned improvements for the next iteration:
 
 ### Offline Mode
 - The bypass/offline mode (localStorage) is for development and testing only — not a real offline feature
-- **Planned:** Service worker + Firebase offline persistence for genuine offline capability
+- **Planned:** Service worker + offline persistence for genuine offline capability
 
 ### AI Synthesis
 - The Gemini AI review synthesis generates a first draft that requires human review and editing before sharing

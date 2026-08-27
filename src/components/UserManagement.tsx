@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { collection, getDocs, doc, updateDoc } from "firebase/firestore";
-import { db } from "../firebase";
+import { getAllStaff } from "../supabaseDb";
+import { dataUpdateUserProfile } from "../dataLayer";
 import { UserProfile } from "../types";
 import { Users, UserX, Shield, ShieldCheck, Mail, Briefcase, RefreshCw, Star } from "lucide-react";
 
@@ -41,11 +41,8 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
         return;
       }
 
-      const querySnapshot = await getDocs(collection(db, "users"));
-      const userList: UserProfile[] = [];
-      querySnapshot.forEach(doc => {
-        userList.push(doc.data() as UserProfile);
-      });
+      // Cloud mode: use Supabase
+      const userList = await getAllStaff();
       // Sort: Admin first, then leader status, then name
       userList.sort((a, b) => {
         if (a.email === "lewikb13@gmail.com") return -1;
@@ -106,13 +103,8 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
         return;
       }
 
-      const userRef = doc(db, "users", targetUser.uid);
       const newRole = newIsAdmin ? "Admin" : (newIsLeader ? "Coach" : "Staff");
-      await updateDoc(userRef, { 
-        isLeader: newIsLeader,
-        isAdmin: newIsAdmin,
-        role: newRole
-      });
+      await dataUpdateUserProfile(targetUser.uid, { isLeader: newIsLeader, isAdmin: newIsAdmin, role: newRole });
       
       // Update local state
       setUsers(prev =>
@@ -120,7 +112,7 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
       );
     } catch (err) {
       console.error("Failed to update user role:", err);
-      alert("Error updating user permission in Firestore. Please verify security permissions.");
+      alert("Error updating user permission. Please verify database access.");
     } finally {
       setUpdatingId(null);
     }

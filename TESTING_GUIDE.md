@@ -165,7 +165,7 @@ Both should complete without errors.
 | Blank screen | Check console for red errors (F12 → Console) |
 | Old labels still showing | You're viewing a cached version — hard refresh (`Cmd+Shift+R`) |
 | Build fails | Read the error message — usually a missing import or typo |
-| Form doesn't save | Make sure you're in bypass mode (no Firebase needed) |
+| Form doesn't save | Make sure you're in bypass mode or have a valid Supabase session |
 
 ---
 

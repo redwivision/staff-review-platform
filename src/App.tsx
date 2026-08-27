@@ -1,30 +1,33 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  signOut, 
-  onAuthStateChanged 
-} from "firebase/auth";
-import { 
-  doc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
-  collection, 
-  query, 
-  where, 
-  onSnapshot,
-  deleteDoc,
-  updateDoc,
-  limit,
-  orderBy
-} from "firebase/firestore";
-import { auth, db } from "./firebase";
+import { supabase, hasSupabaseConfig } from "./supabase";
+import {
+  supabaseSignUp,
+  supabaseSignIn,
+  supabaseSignOut,
+  supabaseGetUser,
+  supabaseUpsertUser,
+  subscribeReviews,
+  subscribeSummaries,
+  subscribeStaff,
+  subscribeCoachingRequests,
+  subscribeActivityLogs,
+  subscribeMeetings,
+  subscribeFollowUpTasks,
+  subscribeRequirementSettings,
+  subscribeReviewSchedules,
+} from "./supabaseDb";
 import { UserProfile, DevelopmentReview, QuarterlySummary, FollowUpTask, ReviewRequirementSettings, ActivityLog, CoachingRequest } from "./types";
 import { createNewReview, createNewSummary, getPdfDefaultTasks, calculateReviewProgress } from "./utils";
 import { exportEvaluationToPDF } from "./utils/pdfExport";
 import { QUARTER_INFO } from "./constants";
+import {
+  dataSaveReview, dataGetReviewById, dataSaveSummary, dataGetSummaryById,
+  dataSaveCoachingRequest, dataUpdateCoachingRequest, dataDeleteCoachingRequest,
+  dataSaveActivityLog, dataDeleteAllActivityLogs, dataSaveFollowUpTask,
+  dataSaveRequirementSettings, dataSaveReviewSchedule, dataSaveMeeting,
+  dataUpdateUserProfile,
+} from "./dataLayer";
 import ReviewFormEditor from "./components/ReviewFormEditor";
 import SummaryFormEditor from "./components/SummaryFormEditor";
 import UserManagement from "./components/UserManagement";
@@ -347,11 +350,10 @@ export default function App() {
 
   // Listen to Auth State
   useEffect(() => {
-    // If it's a completely fresh tab/session, clear the bypass user and sign out of Firebase auth
-    // so they are forced to start at the login page.
+    // If it's a completely fresh tab/session, clear the bypass user and sign out
     if (!sessionStorage.getItem("has_init_session")) {
       localStorage.removeItem("staff_review_bypass_user");
-      if (auth) signOut(auth).catch(() => {});
+      supabaseSignOut();
       sessionStorage.setItem("has_init_session", "true");
     }
 
@@ -368,52 +370,77 @@ export default function App() {
       }
     }
 
-    // If Firebase is not configured, skip auth and show login screen (bypass buttons available)
-    if (!auth || !db) {
+    // If Supabase is not configured, skip auth (bypass mode only)
+    if (!hasSupabaseConfig || !supabase) {
       setLoading(false);
       return;
     }
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        setAuthEmail(firebaseUser.email || "");
-        // Fetch user metadata from firestore
-        const docRef = doc(db, "users", firebaseUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const profile = docSnap.data() as UserProfile;
-          setUser(profile);
-          // If the email is lewikb13@gmail.com, verify isLeader and isAdmin are true, else update it
-          if (profile.email === "lewikb13@gmail.com" && (!profile.isLeader || !profile.isAdmin)) {
-            await setDoc(docRef, { ...profile, isLeader: true, isAdmin: true, role: "Admin" }, { merge: true });
-            profile.isLeader = true;
-            profile.isAdmin = true;
-            profile.role = "Admin";
+    // Supabase auth listener
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user) {
+        try {
+          const profile = await supabaseGetUser(session.user.id);
+          if (profile) {
+            if (profile.email === "lewikb13@gmail.com" && (!profile.isLeader || !profile.isAdmin)) {
+              profile.isLeader = true;
+              profile.isAdmin = true;
+              profile.role = "Admin";
+              await supabaseUpsertUser(profile);
+            }
             setUser(profile);
+          } else {
+            const fallbackProfile: UserProfile = {
+              uid: session.user.id,
+              name: session.user.user_metadata?.name || "Staff Member",
+              role: session.user.email === "lewikb13@gmail.com" ? "Admin" : "Assigned Staff",
+              email: session.user.email || "",
+              isLeader: session.user.email === "lewikb13@gmail.com",
+              isAdmin: session.user.email === "lewikb13@gmail.com",
+              createdAt: Date.now()
+            };
+            await supabaseUpsertUser(fallbackProfile);
+            setUser(fallbackProfile);
           }
-        } else {
-          // Fallback if metadata snap fails or is slower
+        } catch (e) {
+          console.error("Error loading user profile:", e);
+          // Still create a basic profile from auth metadata so the app works
           const fallbackProfile: UserProfile = {
-            uid: firebaseUser.uid,
-            name: firebaseUser.displayName || "Staff Member",
-            role: firebaseUser.email === "lewikb13@gmail.com" ? "Admin" : "Assigned Staff",
-            email: firebaseUser.email || "",
-            isLeader: firebaseUser.email === "lewikb13@gmail.com",
-            isAdmin: firebaseUser.email === "lewikb13@gmail.com",
+            uid: session.user.id,
+            name: session.user.user_metadata?.name || "Staff Member",
+            role: session.user.email === "lewikb13@gmail.com" ? "Admin" : "Assigned Staff",
+            email: session.user.email || "",
+            isLeader: session.user.email === "lewikb13@gmail.com",
+            isAdmin: session.user.email === "lewikb13@gmail.com",
             createdAt: Date.now()
           };
-          await setDoc(docRef, fallbackProfile);
           setUser(fallbackProfile);
         }
       } else {
-        if (!localStorage.getItem("staff_review_bypass_user")) {
-          setUser(null);
-        }
+        if (!localStorage.getItem("staff_review_bypass_user")) setUser(null);
       }
       setLoading(false);
+    }).catch((err) => {
+      console.error("getSession failed:", err);
+      setLoading(false);
     });
-    return () => unsubscribe();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      try {
+        if (session?.user) {
+          const profile = await supabaseGetUser(session.user.id);
+          if (profile) setUser(profile);
+        } else {
+          if (!localStorage.getItem("staff_review_bypass_user")) setUser(null);
+        }
+      } catch (e) {
+        console.error("onAuthStateChange error:", e);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
 
   // Listen to Dynamic Database updates when Logged In
   useEffect(() => {
@@ -517,152 +544,42 @@ export default function App() {
       return;
     }
 
-    // Fetch My Reviews & Summaries from Cloud Firestore
-    const qMyReviews = query(collection(db, "developmentReviews"), where("userId", "==", user.uid));
-    const unsubMyReviews = onSnapshot(qMyReviews, (snapshot) => {
-      const list: DevelopmentReview[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as DevelopmentReview));
-      setMyReviews(list);
+    // ─── SUPABASE REALTIME SUBSCRIPTIONS ────────────────────────────────────
+    const isLeaderOrCoachNow = user.isLeader || isAdmin;
+    const unsubMyReviews = subscribeReviews((reviews) => setMyReviews(reviews.filter(r => r.userId === user.uid)), user.uid);
+    const unsubAllReviews = subscribeReviews((reviews) => setAllReviews(reviews));
+    const unsubMySummaries = subscribeSummaries((summaries) => setMySummaries(summaries.filter(s => s.userId === user.uid)), user.uid);
+    const unsubAllSummaries = subscribeSummaries((summaries) => setAllSummaries(summaries));
+    const unsubStaff = subscribeStaff((profiles) => setStaffProfiles(profiles));
+    const unsubCoaching = subscribeCoachingRequests((reqs) => setCoachingRequests(reqs));
+    const unsubMeetings = subscribeMeetings((meetings) => setMeetings(meetings));
+    const unsubFollowUp = subscribeFollowUpTasks((tasks) => setFollowUpTasks(tasks));
+    const unsubSettings = subscribeRequirementSettings((s) => setRequirementSettings(s || {
+      heartRequired: true, personalLifeRequired: true, relationalLifeRequired: true, ministryEffectivenessRequired: true
+    }));
+    const unsubSchedules = subscribeReviewSchedules((schedules) => {
+      const defaultSchedules: any = {
+        "1st": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined },
+        "2nd": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined },
+        "3rd": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined }
+      };
+      Object.keys(schedules).forEach(k => { defaultSchedules[k] = { ...defaultSchedules[k], ...schedules[k] }; });
+      setReviewSchedules(defaultSchedules);
     });
-
-    const qMySummaries = query(collection(db, "quarterlySummaries"), where("userId", "==", user.uid));
-    const unsubMySummaries = onSnapshot(qMySummaries, (snapshot) => {
-      const list: QuarterlySummary[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as QuarterlySummary));
-      setMySummaries(list);
-    });
-
-    // Fetch scheduled meetings for me
-    const qMeetings = query(collection(db, "meetings"));
-    const unsubMeetings = onSnapshot(qMeetings, (snapshot) => {
-      const list: any[] = [];
-      snapshot.forEach(doc => list.push(doc.data()));
-      setMeetings(list);
-    });
-
-    // Fetch Follow-Up Tasks from Cloud Firestore
-    const qFollowUp = collection(db, "followUpTasks");
-    const unsubFollowUp = onSnapshot(qFollowUp, (snapshot) => {
-      const list: FollowUpTask[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as FollowUpTask));
-      setFollowUpTasks(list);
-    });
-
-    // Fetch Global Requirement Settings from Cloud Firestore
-    const docReqRef = doc(db, "requirementSettings", "global");
-    const unsubReqSettings = onSnapshot(docReqRef, (snapshot) => {
-      if (snapshot.exists()) {
-        setRequirementSettings(snapshot.data() as ReviewRequirementSettings);
-      } else {
-        setRequirementSettings({
-          heartRequired: true,
-          personalLifeRequired: true,
-          relationalLifeRequired: true,
-          ministryEffectivenessRequired: true
-        });
-      }
-    });
-
-    // Fetch review schedules from Cloud Firestore or LocalStorage for bypass
-    let unsubSchedules = () => {};
-    if (user?.uid.startsWith("bypass_")) {
-      const localSchedulesStr = localStorage.getItem("staff_review_bypass_schedules");
-      if (localSchedulesStr) {
-        try {
-          setReviewSchedules(JSON.parse(localSchedulesStr));
-        } catch (e) {
-          console.error("Failed to parse local schedules", e);
-        }
-      }
-    } else {
-      const schedulesRef = collection(db, "reviewSchedules");
-      unsubSchedules = onSnapshot(schedulesRef, (snapshot) => {
-        const schedulesMap: any = {
-          "1st": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined },
-          "2nd": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined },
-          "3rd": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined }
-        };
-        snapshot.forEach(doc => {
-          schedulesMap[doc.id] = {
-            ...schedulesMap[doc.id],
-            ...doc.data()
-          };
-        });
-        setReviewSchedules(schedulesMap);
-      });
-    }
-
-    // Real-time Activity Logs subscription (Optimized with limits for high-scale 500+ users)
-    let unsubActivityLogs = () => {};
-    if (isLeaderOrCoach) {
-      const qActivityLogs = query(
-        collection(db, "activityLogs"), 
-        orderBy("timestamp", "desc"), 
-        limit(100)
-      );
-      unsubActivityLogs = onSnapshot(qActivityLogs, (snapshot) => {
-        const list: ActivityLog[] = [];
-        snapshot.forEach(doc => list.push(doc.data() as ActivityLog));
-        setActivityLogs(list);
-      });
-    } else {
-      const qActivityLogs = query(
-        collection(db, "activityLogs"), 
-        where("userId", "==", user.uid),
-        limit(100)
-      );
-      unsubActivityLogs = onSnapshot(qActivityLogs, (snapshot) => {
-        const list: ActivityLog[] = [];
-        snapshot.forEach(doc => list.push(doc.data() as ActivityLog));
-        setActivityLogs(list);
-      });
-    }
-
-    // Subscribe to all coaching requests (visible for notifications/checking repeats)
-    const qCoaching = collection(db, "coachingRequests");
-    const unsubCoaching = onSnapshot(qCoaching, (snapshot) => {
-      const list: CoachingRequest[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as CoachingRequest));
-      setCoachingRequests(list);
-    });
-
-    // All Users subscription (needed to see user profiles for coaching)
-    const qStaff = collection(db, "users");
-    const unsubStaff = onSnapshot(qStaff, (snapshot) => {
-      const list: UserProfile[] = [];
-      snapshot.forEach(doc => {
-        list.push(doc.data() as UserProfile);
-      });
-      setStaffProfiles(list);
-    });
-
-    // Subscribe to all reviews and summaries for coaching/evaluation dashboards
-    const qAllReviews = collection(db, "developmentReviews");
-    const unsubAllReviews = onSnapshot(qAllReviews, (snapshot) => {
-      const list: DevelopmentReview[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as DevelopmentReview));
-      setAllReviews(list);
-    });
-
-    const qAllSummaries = collection(db, "quarterlySummaries");
-    const unsubAllSummaries = onSnapshot(qAllSummaries, (snapshot) => {
-      const list: QuarterlySummary[] = [];
-      snapshot.forEach(doc => list.push(doc.data() as QuarterlySummary));
-      setAllSummaries(list);
-    });
+    const unsubLogs = subscribeActivityLogs((logs) => setActivityLogs(logs), isLeaderOrCoachNow ? undefined : user.uid);
 
     return () => {
       unsubMyReviews();
-      unsubMySummaries();
-      unsubMeetings();
-      unsubFollowUp();
-      unsubReqSettings();
-      unsubSchedules();
       unsubAllReviews();
+      unsubMySummaries();
       unsubAllSummaries();
       unsubStaff();
-      unsubActivityLogs();
       unsubCoaching();
+      unsubMeetings();
+      unsubFollowUp();
+      unsubSettings();
+      unsubSchedules();
+      unsubLogs();
     };
   }, [user]);
 
@@ -672,35 +589,42 @@ export default function App() {
     setAuthError("");
     setLoading(true);
 
-    if (!auth || !db) {
-      setAuthError("Firebase is not configured. Please use the Bypass buttons below to log in for testing.");
-      setLoading(false);
-      return;
-    }
-
     try {
-      if (isSignUp) {
-        if (!authName.trim()) throw new Error("Please fill in your full name.");
-        if (!authRole.trim()) throw new Error("Please fill in your specific organizational role.");
-        
-        const credentials = await createUserWithEmailAndPassword(auth, authEmail, authPassword);
-        const newProfile: UserProfile = {
-          uid: credentials.user.uid,
-          name: authName.trim(),
-          role: authEmail.trim() === "lewikb13@gmail.com" ? "Admin" : authRole.trim(),
-          email: authEmail.trim(),
-          isLeader: authEmail.trim() === "lewikb13@gmail.com",
-          isAdmin: authEmail.trim() === "lewikb13@gmail.com",
-          createdAt: Date.now()
-        };
-        // Store user metadata
-        await setDoc(doc(db, "users", credentials.user.uid), newProfile);
-        setUser(newProfile);
+      if (hasSupabaseConfig) {
+        // Supabase auth
+        if (isSignUp) {
+          if (!authName.trim()) throw new Error("Please fill in your full name.");
+          if (!authRole.trim()) throw new Error("Please fill in your specific organizational role.");
+          const { profile } = await supabaseSignUp(authEmail, authPassword, authName, authRole);
+          setUser(profile);
+        } else {
+          await supabaseSignIn(authEmail, authPassword);
+          // Explicitly load and set the user profile after login
+          const { data: sessionData } = await supabase!.auth.getSession();
+          if (sessionData.session?.user) {
+            const profile = await supabaseGetUser(sessionData.session.user.id);
+            if (profile) {
+              setUser(profile);
+            } else {
+              const fallbackProfile: UserProfile = {
+                uid: sessionData.session.user.id,
+                name: sessionData.session.user.user_metadata?.name || "Staff Member",
+                role: sessionData.session.user.email === "lewikb13@gmail.com" ? "Admin" : "Assigned Staff",
+                email: sessionData.session.user.email || "",
+                isLeader: sessionData.session.user.email === "lewikb13@gmail.com",
+                isAdmin: sessionData.session.user.email === "lewikb13@gmail.com",
+                createdAt: Date.now()
+              };
+              try { await supabaseUpsertUser(fallbackProfile); } catch {}
+              setUser(fallbackProfile);
+            }
+          }
+        }
       } else {
-        await signInWithEmailAndPassword(auth, authEmail, authPassword);
+        setAuthError("No authentication provider configured. Please use the Bypass buttons below.");
       }
     } catch (err: any) {
-      setAuthError(err.message || "Failed to authenticate. If Email/Password auth is not enabled on your Firebase Console, you can also log in instantly using the bypass options below.");
+      setAuthError(err.message || "Failed to authenticate.");
     } finally {
       setLoading(false);
     }
@@ -1346,7 +1270,7 @@ export default function App() {
 
   const handleLogout = async () => {
     localStorage.removeItem("staff_review_bypass_user");
-    if (auth) await signOut(auth).catch(() => {});
+    await supabaseSignOut();
     setUser(null);
     setCurrentTab("my-reviews");
   };
@@ -1381,7 +1305,7 @@ export default function App() {
       return;
     }
 
-    await setDoc(doc(db, "coachingRequests", requestId), newReq);
+    await dataSaveCoachingRequest(newReq);
   };
 
   const handleNominateInModal = async (coachName: string) => {
@@ -1425,7 +1349,7 @@ export default function App() {
       return;
     }
 
-    await deleteDoc(doc(db, "coachingRequests", requestId));
+    await dataDeleteCoachingRequest(requestId);
   };
 
   const handleApproveCoachingRequest = async (requestId: string) => {
@@ -1444,10 +1368,7 @@ export default function App() {
       return;
     }
 
-    await updateDoc(doc(db, "coachingRequests", requestId), {
-      status: "approved",
-      updatedAt: Date.now()
-    });
+    await dataUpdateCoachingRequest(requestId, { status: "approved" });
   };
 
   const handleRejectCoachingRequest = async (requestId: string, reason: string) => {
@@ -1466,11 +1387,7 @@ export default function App() {
       return;
     }
 
-    await updateDoc(doc(db, "coachingRequests", requestId), {
-      status: "rejected",
-      adminNotes: reason,
-      updatedAt: Date.now()
-    });
+    await dataUpdateCoachingRequest(requestId, { status: "rejected", adminNotes: reason });
   };
 
   const handleAcceptCoachingInvitation = async (requestId: string) => {
@@ -1506,15 +1423,9 @@ export default function App() {
       return;
     }
 
-    await updateDoc(doc(db, "coachingRequests", requestId), {
-      acceptedByCoach: "accepted",
-      coachUid: user.uid,
-      updatedAt: Date.now()
-    });
+    await dataUpdateCoachingRequest(requestId, { acceptedByCoach: "accepted", coachUid: user.uid });
 
-    await updateDoc(doc(db, "users", user.uid), {
-      isLeader: true
-    });
+    await dataUpdateUserProfile(user.uid, { isLeader: true });
     setUser(prev => prev ? { ...prev, isLeader: true } : null);
   };
 
@@ -1534,12 +1445,7 @@ export default function App() {
       return;
     }
 
-    await updateDoc(doc(db, "coachingRequests", requestId), {
-      acceptedByCoach: "rejected",
-      coachRejectReason: reason,
-      coachUid: user.uid,
-      updatedAt: Date.now()
-    });
+    await dataUpdateCoachingRequest(requestId, { acceptedByCoach: "rejected", coachRejectReason: reason, coachUid: user.uid });
   };
 
   // Create or retrieve existing Development Review form
@@ -1567,15 +1473,14 @@ export default function App() {
       return;
     }
 
-    const docRef = doc(db, "developmentReviews", reviewId);
-    const docSnap = await getDoc(docRef);
+    const existingReview = await dataGetReviewById(reviewId);
 
-    if (docSnap.exists()) {
-      setActiveReview(docSnap.data() as DevelopmentReview);
+    if (existingReview) {
+      setActiveReview(existingReview);
     } else {
       // Setup a brand new structured form matching PDF specifications exactly
       const newReview = createNewReview(user.uid, quarter, year, user.name, user.role);
-      await setDoc(docRef, newReview);
+      await dataSaveReview(newReview);
       setActiveReview(newReview);
     }
   };
@@ -1604,14 +1509,13 @@ export default function App() {
       return;
     }
 
-    const docRef = doc(db, "developmentReviews", reviewId);
-    const docSnap = await getDoc(docRef);
+    const existingReview = await dataGetReviewById(reviewId);
 
-    if (docSnap.exists()) {
-      setActiveReview(docSnap.data() as DevelopmentReview);
+    if (existingReview) {
+      setActiveReview(existingReview);
     } else {
       const newReview = createNewReview(member.uid, quarter, year, member.name, member.role);
-      await setDoc(docRef, newReview);
+      await dataSaveReview(newReview);
       setActiveReview(newReview);
     }
   };
@@ -1684,20 +1588,17 @@ export default function App() {
       return;
     }
 
-    const docRef = doc(db, "quarterlySummaries", summaryId);
-    const docSnap = await getDoc(docRef);
+    const existingSummary = await dataGetSummaryById(summaryId);
 
-    if (docSnap.exists()) {
-      setActiveSummary(docSnap.data() as QuarterlySummary);
+    if (existingSummary) {
+      setActiveSummary(existingSummary);
       setActiveSummaryStaffName(member.name);
     } else if (isCoach) {
       // Coach doesn't have an evaluation doc yet. Let's fetch the member's base summary first
       const baseSummaryId = `${member.uid}_${quarter}_${year.replace("/", "-")}_summary`;
-      const baseDocRef = doc(db, "quarterlySummaries", baseSummaryId);
-      const baseDocSnap = await getDoc(baseDocRef);
+      const baseSummary = await dataGetSummaryById(baseSummaryId);
       
-      if (baseDocSnap.exists()) {
-        const baseSummary = baseDocSnap.data() as QuarterlySummary;
+      if (baseSummary) {
         const newCoachSummary: QuarterlySummary = {
           ...baseSummary,
           id: summaryId,
@@ -1710,7 +1611,7 @@ export default function App() {
             teamLeaderSignatureDate: new Date().toISOString().split("T")[0]
           }
         };
-        await setDoc(docRef, newCoachSummary);
+        await dataSaveSummary(newCoachSummary);
         setActiveSummary(newCoachSummary);
         setActiveSummaryStaffName(member.name);
       } else {
@@ -1722,13 +1623,13 @@ export default function App() {
         newSummary.status = "Draft";
         newSummary.evaluation.teamLeaderSignature = user.name;
         newSummary.evaluation.teamLeaderSignatureDate = new Date().toISOString().split("T")[0];
-        await setDoc(docRef, newSummary);
+        await dataSaveSummary(newSummary);
         setActiveSummary(newSummary);
         setActiveSummaryStaffName(member.name);
       }
     } else {
       const newSummary = createNewSummary(member.uid, quarter, year, member.name, member.role);
-      await setDoc(docRef, newSummary);
+      await dataSaveSummary(newSummary);
       setActiveSummary(newSummary);
       setActiveSummaryStaffName(member.name);
     }
@@ -1768,7 +1669,7 @@ export default function App() {
     }
 
     try {
-      await setDoc(doc(db, "activityLogs", logId), newLog);
+      await dataSaveActivityLog(newLog);
     } catch (e) {
       console.error("Failed to log activity:", e);
     }
@@ -1783,10 +1684,7 @@ export default function App() {
     }
 
     try {
-      const q = query(collection(db, "activityLogs"));
-      const snapshot = await getDocs(q);
-      const batchPromises = snapshot.docs.map(doc => deleteDoc(doc.ref));
-      await Promise.all(batchPromises);
+      await dataDeleteAllActivityLogs();
     } catch (e) {
       console.error("Failed to clear logs:", e);
     }
@@ -1820,7 +1718,7 @@ export default function App() {
       return;
     }
 
-    await setDoc(doc(db, "developmentReviews", updated.id), updated);
+    await dataSaveReview(updated);
     setActiveReview(updated);
     await logActivity(updated.userId, updated.staffMemberName, "review", updated.quarter, updated.year, action);
 
@@ -1853,7 +1751,7 @@ export default function App() {
       return;
     }
 
-    await setDoc(doc(db, "quarterlySummaries", updated.id), updated);
+    await dataSaveSummary(updated);
     setActiveSummary(updated);
     await logActivity(updated.userId, updated.staffName, "summary", updated.quarter, updated.year, action);
   };
@@ -1899,13 +1797,13 @@ export default function App() {
     }
 
     try {
-      await setDoc(doc(db, "quarterlySummaries", updatedSummary.id), updatedSummary);
+      await dataSaveSummary(updatedSummary);
       setAllSummaries(prev => prev.map(s => s.id === updatedSummary.id ? updatedSummary : s));
       await logActivity(updatedSummary.userId, updatedSummary.staffName, "summary", updatedSummary.quarter, updatedSummary.year, action);
       alert(`Success: Signed off on ${memberName}'s ${updatedSummary.quarter} Quarter evaluation!`);
     } catch (e) {
       console.error("Error signing off:", e);
-      alert("Failed to save sign-off to Firestore.");
+      alert("Failed to save sign-off.");
     }
   };
 
@@ -1979,7 +1877,7 @@ export default function App() {
           evaluation: updatedEvaluation,
           updatedAt: Date.now()
         };
-        await setDoc(doc(db, "quarterlySummaries", updatedSummary.id), updatedSummary);
+        await dataSaveSummary(updatedSummary);
         await logActivity(updatedSummary.userId, updatedSummary.staffName, "summary", updatedSummary.quarter, updatedSummary.year, action);
         updatedSummaries.push(updatedSummary);
       }
@@ -1992,7 +1890,7 @@ export default function App() {
       alert(`Success: Bulk signed off and approved ${pending.length} evaluation reports!`);
     } catch (e: any) {
       console.error("Error bulk signing off:", e);
-      alert(`Failed to save bulk sign-offs to Firestore: ${e.message}`);
+      alert(`Failed to save bulk sign-offs: ${e.message}`);
     }
   };
 
@@ -2054,7 +1952,7 @@ export default function App() {
           }
           await logActivity(updatedSummary.userId, updatedSummary.staffName, "summary", updatedSummary.quarter, updatedSummary.year, action);
         } else {
-          await setDoc(doc(db, "quarterlySummaries", updatedSummary.id), updatedSummary);
+          await dataSaveSummary(updatedSummary);
           const index = updatedSummariesList.findIndex(s => s.id === updatedSummary.id);
           if (index > -1) {
             updatedSummariesList[index] = updatedSummary;
@@ -2181,13 +2079,13 @@ export default function App() {
     }
 
     try {
-      await setDoc(doc(db, "quarterlySummaries", updatedSummary.id), updatedSummary);
+      await dataSaveSummary(updatedSummary);
       setAllSummaries(prev => prev.map(s => s.id === updatedSummary.id ? updatedSummary : s));
       await logActivity(updatedSummary.userId, updatedSummary.staffName, "summary", updatedSummary.quarter, updatedSummary.year, action);
       alert(`Success: Declined ${memberName}'s ${updatedSummary.quarter} Quarter evaluation and requested coach revision.`);
     } catch (e) {
       console.error("Error declining evaluation:", e);
-      alert("Failed to save rejection to Firestore.");
+      alert("Failed to save rejection.");
     }
   };
 
@@ -2207,8 +2105,7 @@ export default function App() {
       return;
     }
 
-    const docRef = doc(db, "followUpTasks", task.id);
-    await setDoc(docRef, task);
+    await dataSaveFollowUpTask(task);
   };
 
   // Reset Follow Up Defaults to match PDF precisely
@@ -2221,7 +2118,7 @@ export default function App() {
     }
 
     for (const t of defaults) {
-      await setDoc(doc(db, "followUpTasks", t.id), t);
+      await dataSaveFollowUpTask(t);
     }
   };
 
@@ -2233,8 +2130,7 @@ export default function App() {
       return;
     }
 
-    const docRef = doc(db, "requirementSettings", "global");
-    await setDoc(docRef, settings);
+    await dataSaveRequirementSettings(settings);
   };
 
   // Save Review Period schedule/deadlines
@@ -2271,8 +2167,7 @@ export default function App() {
     }
 
     try {
-      const docRef = doc(db, "reviewSchedules", quarter);
-      await setDoc(docRef, scheduleData);
+      await dataSaveReviewSchedule(quarter, scheduleData);
       showToast(`${quarter} Quarter Review schedule saved successfully!`, "success");
     } catch (e) {
       console.error("Failed to save schedule", e);
@@ -2322,7 +2217,7 @@ export default function App() {
       return;
     }
 
-    await setDoc(doc(db, "meetings", meetingId), meetingData);
+    await dataSaveMeeting(meetingData);
     setShowScheduler(false);
     setScheduleDate("");
     setScheduleTime("");
@@ -2523,7 +2418,7 @@ export default function App() {
                 Development Bypass
               </span>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                No Firebase Configuration required! Click below to immediately log in and test each workspace role:
+                No sign-in required! Click below to immediately log in and test each workspace role:
               </p>
             </div>
             

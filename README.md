@@ -18,10 +18,9 @@ Asseso provides a structured framework for staff self-reflection, coach-led eval
 - **Quarterly Summary Form** — staff compile progress on PDP goals, Critical Mission Objectives, and Key Deliverable Assignments
 - **Coach Evaluation** — team leaders review and score submitted summaries; evaluations are routed to the admin for approval
 - **Admin Dashboard** — view all evaluations, generate AI-synthesized staff reports, export individual or bulk PDFs, and manage follow-up tasks
-- **Coaching Requests** — staff can nominate a coach; coaches accept or decline
-- **Onboarding Tour** — guided walkthrough on first login
-- **Role-based access** — four roles: Staff, Team Leader, Admin, and Super Admin
-- **Demo / Bypass Mode** — full offline functionality with seeded mock data, no Firebase required
+- **Coaching Requests** — any member can nominate a coach; coaches accept or decline, and become leaders on acceptance
+- **Role-based access** — roles: Staff, Coach/Leader, and Admin
+- **Bypass / Demo Mode** — full offline functionality with seeded mock data, no backend required
 
 ---
 
@@ -30,12 +29,11 @@ Asseso provides a structured framework for staff self-reflection, coach-led eval
 | Layer | Technology |
 |---|---|
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS |
-| Backend / Auth | Firebase Authentication |
-| Database | Cloud Firestore |
+| Backend / Auth | Supabase (PostgreSQL + Auth) |
+| Database | Supabase PostgreSQL |
 | AI Integration | Google GenAI (Gemini) |
 | PDF Export | jsPDF, html2canvas |
 | Animations | Framer Motion |
-| Onboarding | intro.js |
 | Testing | Playwright (E2E), K6 (load) |
 | Hosting | Vercel |
 
@@ -51,17 +49,17 @@ staff-review-platform/
 │   │   ├── SummaryFormEditor.tsx     # Quarterly Summary form (PDP, CMO, KDA, Evaluation)
 │   │   ├── AdminReports.tsx          # Admin dashboard with controls and PDF export
 │   │   ├── CoachingRequests.tsx      # Coach nomination and approval workflow
-│   │   ├── OnboardingTour.tsx        # First-login guided tour
 │   │   └── ...
 │   ├── utils/
 │   │   ├── pdfExport.ts              # PDF generation logic
 │   │   └── ...
-│   ├── App.tsx                       # Root component, routing, auth state
-│   ├── firebase.ts                   # Firebase initialization
+│   ├── supabase.ts                   # Supabase client initialization
+│   ├── supabaseDb.ts                 # Data access layer (CRUD + polling subscriptions)
+│   ├── dataLayer.ts                  # Unified write layer for forms and actions
+│   ├── App.tsx                      # Root component, routing, auth state
 │   ├── types.ts                      # TypeScript interfaces
 │   └── constants.ts                  # Section definitions, quarter info
-├── firestore.rules                   # Firestore security rules
-├── firebase.json                     # Firebase project configuration
+├── supabase-schema.sql               # Database schema + RLS policies
 └── vite.config.ts                    # Vite build configuration
 ```
 
@@ -73,6 +71,7 @@ staff-review-platform/
 
 - Node.js 18+
 - npm
+- A Supabase project (create one free at [supabase.com](https://supabase.com))
 
 ### Installation
 
@@ -82,21 +81,26 @@ cd staff-review-platform
 npm install
 ```
 
+### Database Setup
+
+Run once on your Supabase project:
+
+1. Open **Supabase Dashboard → SQL Editor**
+2. Paste the entire contents of `supabase-schema.sql`
+3. Click **Run**
+
+This creates all 9 tables (users, development reviews, summaries, follow-up tasks, settings, schedules, activity logs, coaching requests, meetings), indexes, and Row-Level Security policies.
+
 ### Environment Variables
 
 Create a `.env` file in the project root:
 
 ```env
-VITE_FIREBASE_API_KEY=your_api_key
-VITE_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
-VITE_FIREBASE_PROJECT_ID=your_project_id
-VITE_FIREBASE_STORAGE_BUCKET=your_project.appspot.com
-VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
-VITE_FIREBASE_APP_ID=your_app_id
-VITE_FIREBASE_DATABASE_ID=your_firestore_database_id
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your_anon_public_key
 ```
 
-> In **Bypass / Demo Mode** (no `.env` file), the app runs fully offline with seeded mock data. Firebase is optional.
+Get these from **Supabase Dashboard → Settings → API**. If the `.env` file is missing, the app runs in Bypass / Demo Mode with seeded mock data in localStorage.
 
 ### Development
 
@@ -118,9 +122,10 @@ npm run preview
 | Role | Access |
 |---|---|
 | **Staff** | Fill and submit own Development Reviews and Quarterly Summaries |
-| **Team Leader** | View coached staff, fill TL Evaluation tab, approve summaries |
-| **Admin** | View all evaluations, export PDFs, generate AI reports, manage tasks |
-| **Super Admin** | All admin capabilities plus user role management |
+| **Coach / Leader** | View coached staff, fill evaluation tab, approve summaries |
+| **Admin** | View all evaluations, export PDFs, generate AI reports, manage tasks and user roles |
+
+The email `lewikb13@gmail.com` is auto-promoted to Admin on signup. Any member who accepts a coaching invitation is automatically promoted to Coach/Leader. Admins can promote/demote roles from the **Team Members** tab.
 
 ---
 
@@ -143,11 +148,14 @@ k6 run load-test.js
 
 The application is deployed via Vercel on every push to `main`.
 
-Firestore security rules must be deployed separately from the Firebase Console:
+Set the following environment variables in **Vercel → Settings → Environment Variables**:
 
-1. Go to Firebase Console → Firestore → Rules
-2. Paste the contents of `firestore.rules`
-3. Click **Publish**
+| Variable | Value |
+|---|---|
+| `VITE_SUPABASE_URL` | Your Supabase project URL |
+| `VITE_SUPABASE_ANON_KEY` | Your Supabase anon/public key |
+
+No server-side database setup is required on Vercel — Supabase is fully cloud-hosted.
 
 ---
 

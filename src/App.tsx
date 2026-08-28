@@ -71,7 +71,10 @@ import {
   Download,
   BellRing,
   Database,
-  HeartHandshake
+  HeartHandshake,
+  ClipboardList,
+  ArrowRight,
+  Mail
 } from "lucide-react";
 
 export default function App() {
@@ -345,6 +348,41 @@ export default function App() {
     : false;
 
   const pendingInvitationsCount = pendingInvitations.length;
+
+  // Derive a single, role-aware "Next Step" to guide the user each login.
+  const myNextStep = (() => {
+    if (!user) return null;
+    const quarters: ("1st" | "2nd" | "3rd")[] = ["1st", "2nd", "3rd"];
+
+    if (isAdmin) {
+      return { type: "admin" as const, quarter: null, label: "Review everyone's progress", description: "Open the Admin Dashboard to see who has submitted and what still needs review." };
+    }
+    if (isLeaderOrCoach) {
+      if (hasPendingInvitation) {
+        return { type: "invitation" as const, quarter: null, label: "Respond to your coaching request", description: "A staff member wants you as their coach. Accept or decline to keep things moving." };
+      }
+      return { type: "leader" as const, quarter: null, label: "Review your team's work", description: "Open Team Reviews to see submitted forms and fill out the Team Leader evaluations." };
+    }
+
+    // Staff member: find the next unfinished review to work on.
+    const nominations = coachingRequests.filter(req => req.memberId === user.uid);
+    const draft = myReviews.find(r => r.status === "Draft");
+    const nextQuarter = quarters.find(q => {
+      const r = myReviews.find(rr => rr.quarter === q);
+      return !r || r.status !== "Submitted";
+    });
+
+    if (draft) {
+      return { type: "resume-review" as const, quarter: nextQuarter || "1st", label: "Continue your review", description: "You have a review in progress. Keep going so it's ready to submit." };
+    }
+    if (nextQuarter) {
+      return { type: "start-review" as const, quarter: nextQuarter, label: "Start your monthly review", description: `Begin the ${QUARTER_INFO[nextQuarter].name} review. It only takes a few minutes.` };
+    }
+    if (nominations.length === 0) {
+      return { type: "nominate" as const, quarter: null, label: "Pick your coach", description: "Choose the Team Leader you want to guide your reviews this year." };
+    }
+    return { type: "done" as const, quarter: null, label: "You're all set", description: "Your reviews are submitted and your coach is chosen. Great job!" };
+  })();
 
   // Reset overview tab page number on filter changes
   useEffect(() => {
@@ -2305,67 +2343,84 @@ export default function App() {
             </div>
           )}
 
-          <form onSubmit={handleAuthSubmit} className="space-y-4">
+          <form onSubmit={handleAuthSubmit} className="space-y-5">
             {isSignUp && (
               <>
-                <div className="space-y-1">
+                <div className="space-y-1.5">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Full Name</label>
-                  <input
-                    type="text"
-                    id="auth-name"
-                    value={authName}
-                    onChange={(e) => setAuthName(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-slate-800/20"
-                    placeholder="Enter full name"
-                  />
+                  <div className="relative">
+                    <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+                    <input
+                      type="text"
+                      id="auth-name"
+                      value={authName}
+                      onChange={(e) => setAuthName(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-base bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-slate-800/20 transition-shadow"
+                      placeholder="John Smith"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400">Your name as you're known at work.</p>
                 </div>
 
-                <div className="space-y-1">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Position / Role</label>
-                  <input
-                    type="text"
-                    id="auth-role"
-                    value={authRole}
-                    onChange={(e) => setAuthRole(e.target.value)}
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-slate-800/20"
-                    placeholder="e.g. Staff Care Coordinator"
-                  />
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Your Job Title</label>
+                  <div className="relative">
+                    <BookOpen className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+                    <input
+                      type="text"
+                      id="auth-role"
+                      value={authRole}
+                      onChange={(e) => setAuthRole(e.target.value)}
+                      className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-base bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-slate-800/20 transition-shadow"
+                      placeholder="e.g. Staff Care Coordinator"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400">For example: Teacher, Nurse, Coordinator.</p>
                 </div>
               </>
             )}
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Email Address</label>
-              <input
-                type="email"
-                id="auth-email"
-                value={authEmail}
-                onChange={(e) => setAuthEmail(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-slate-800/20"
-                placeholder="email@example.com"
-                required
-              />
+              <div className="relative">
+                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+                <input
+                  type="email"
+                  id="auth-email"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-base bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-slate-800/20 transition-shadow"
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
+              <p className="text-[11px] text-slate-400">We use this to log you in next time.</p>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <label className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Password</label>
-              <input
-                type="password"
-                id="auth-password"
-                value={authPassword}
-                onChange={(e) => setAuthPassword(e.target.value)}
-                className="w-full border border-slate-200 rounded-xl px-4 py-2.5 text-sm bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-slate-800/20"
-                placeholder="••••••••"
-                required
-              />
+              <div className="relative">
+                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
+                <input
+                  type="password"
+                  id="auth-password"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-base bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-slate-800/20 transition-shadow"
+                  placeholder={isSignUp ? "Create a password" : "Your password"}
+                  required
+                />
+              </div>
+              <p className="text-[11px] text-slate-400">{isSignUp ? "Choose a password at least 6 characters long." : "This is the password you chose when you registered."}</p>
             </div>
 
             <button
               type="submit"
               id="auth-submit-btn"
-              className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-sm font-semibold transition-all shadow-md shadow-slate-900/10"
+              className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-base font-semibold transition-all shadow-md shadow-slate-900/10 flex items-center justify-center gap-2"
             >
-              {isSignUp ? "Register Account" : "Access Workspace"}
+              {isSignUp ? "Create my account" : "Access Workspace"}
+              <ArrowRight className="w-4.5 h-4.5" />
             </button>
           </form>
 
@@ -2378,7 +2433,7 @@ export default function App() {
               }}
               className="text-xs font-semibold text-slate-500 hover:text-slate-800"
             >
-              {isSignUp ? "Already registered? Sign In" : "Need an account? Sign Up"}
+              {isSignUp ? "Already have an account? Sign In" : "New here? Create an account"}
             </button>
           </div>
 
@@ -2780,6 +2835,65 @@ export default function App() {
             {/* TAB: MY REVIEWS */}
             {currentTab === "my-reviews" && (
               <div className="space-y-6 animate-fade-in">
+                {/* Persistent "Next Step" guidance panel */}
+                {myNextStep && (
+                  <div className="bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-500 text-white rounded-2xl p-6 shadow-sm relative overflow-hidden">
+                    <div className="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full" />
+                    <div className="absolute -right-2 -top-2 w-20 h-20 bg-white/10 rounded-full" />
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 relative">
+                      <div className="bg-white/20 rounded-2xl p-3.5 shrink-0">
+                        {myNextStep.type === "done" ? (
+                          <CheckCircle2 className="w-7 h-7" />
+                        ) : myNextStep.type === "admin" || myNextStep.type === "leader" ? (
+                          <ShieldCheck className="w-7 h-7" />
+                        ) : myNextStep.type === "invitation" || myNextStep.type === "nominate" ? (
+                          <HeartHandshake className="w-7 h-7" />
+                        ) : (
+                          <ClipboardList className="w-7 h-7" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[10px] font-bold uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full">Your next step</span>
+                        <h4 className="text-lg font-sans font-extrabold mt-1.5">{myNextStep.label}</h4>
+                        <p className="text-xs text-indigo-100 mt-0.5">{myNextStep.description}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          if (myNextStep.type === "start-review" && myNextStep.quarter) {
+                            handleSelectMyReview(myNextStep.quarter);
+                          } else if (myNextStep.type === "resume-review" && myNextStep.quarter) {
+                            handleSelectMyReview(myNextStep.quarter);
+                          } else if (myNextStep.type === "nominate") {
+                            document.getElementById("coaching-nominations-card")?.scrollIntoView({ behavior: "smooth" });
+                          } else if (myNextStep.type === "invitation") {
+                            setCurrentTab("team-reviews");
+                          } else if (myNextStep.type === "leader") {
+                            setCurrentTab("team-reviews");
+                          } else if (myNextStep.type === "admin") {
+                            setCurrentTab("admin");
+                          }
+                        }}
+                        className="shrink-0 inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-indigo-700 text-sm font-bold rounded-xl shadow transition-transform hover:scale-[1.02]"
+                      >
+                        {myNextStep.type === "done"
+                          ? "OK"
+                          : myNextStep.type === "start-review"
+                            ? "Start"
+                            : myNextStep.type === "resume-review"
+                              ? "Continue"
+                              : myNextStep.type === "leader"
+                                ? "Open Team Reviews"
+                                : myNextStep.type === "admin"
+                                  ? "Open Admin"
+                                  : myNextStep.type === "invitation"
+                                    ? "Respond"
+                                    : "Pick Coach"}
+                        <ArrowRight className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                )}
+
                 {/* Pending Coaching Invitation Banner (nominated coach, awaiting their response) */}
                 {hasPendingInvitation && !isAdmin && (
                   <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border-2 border-emerald-200 dark:border-emerald-800 rounded-2xl p-5 shadow-sm animate-scale-up flex flex-col sm:flex-row sm:items-center gap-4">
@@ -4747,46 +4861,75 @@ export default function App() {
                 Review Submitted Successfully!
               </h3>
               <p className="text-xs text-indigo-100 mt-1.5 leading-relaxed">
-                Thank you for completing and submitting your quarterly development review. 
-                <strong className="block mt-1 font-semibold">Next Step: You are required to nominate your preferred coach or TL to guide your reflection session.</strong>
+                Thank you! Your review is in. Here's what happens next.
               </p>
             </div>
 
-            <div className="p-6 overflow-y-auto space-y-6 flex-1">
-              {/* Requirements Progress Callout */}
+            <div className="p-6 overflow-y-auto space-y-5 flex-1">
+              {/* Next-steps checklist */}
               {(() => {
                 const userNominations = coachingRequests.filter(req => req.memberId === user.uid);
                 const count = userNominations.length;
-                const isCompliant = count === 1;
+                const approved = userNominations.some(r => r.status === "approved");
+                const allSet = count === 1 && approved;
+                const steps = [
+                  { label: "Review submitted", done: true, current: false },
+                  { label: count === 1 ? "Coach picked" : "Pick your coach", done: count === 1, current: !allSet && count !== 1 },
+                  { label: "Coach accepts your request", done: allSet, current: !allSet && count === 1 },
+                ];
                 return (
-                  <div className={`p-4 rounded-xl border flex items-start gap-3 transition-colors ${
-                    isCompliant 
-                      ? "bg-emerald-50/50 dark:bg-emerald-950/10 border-emerald-100 dark:border-emerald-900/50 text-emerald-900 dark:text-emerald-200"
-                      : "bg-amber-50/50 dark:bg-amber-950/10 border-amber-100 dark:border-amber-900/50 text-amber-900 dark:text-amber-200"
-                  }`}>
-                    {isCompliant ? (
-                      <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                  <div className={`p-5 rounded-2xl border ${allSet ? "bg-emerald-50/60 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-900/40" : "bg-slate-50 dark:bg-slate-950 border-slate-150 dark:border-slate-800"}`}>
+                    {allSet ? (
+                      <div className="flex items-start gap-3">
+                        <div className="bg-emerald-500 text-white rounded-full p-2.5 shrink-0">
+                          <CheckCircle2 className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h4 className="font-sans font-extrabold text-emerald-900 dark:text-emerald-200 text-sm">You're all set! 🎉</h4>
+                          <p className="text-xs text-emerald-800 dark:text-emerald-300 mt-1 leading-relaxed">
+                            Your review is submitted and your coach is confirmed. They'll get in touch for your reflection session.
+                          </p>
+                        </div>
+                      </div>
                     ) : (
-                      <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                    )}
-                    <div>
-                      <h4 className="font-bold text-xs font-mono uppercase tracking-wider">
-                        Coaching Nomination Requirement
-                      </h4>
-                      <p className="text-xs mt-1 leading-relaxed">
-                        Each staff member must nominate <strong>exactly 1 coach or TL</strong>. Currently, you have nominated <span className="font-bold font-mono text-sm underline">{count}</span> {count === 1 ? "coach" : "coaches"}.
-                        {!isCompliant && (
-                          <span className="block mt-1 font-semibold text-amber-700 dark:text-amber-400">
-                            ⚠️ Please nominate exactly 1 coach to complete this step.
-                          </span>
+                      <>
+                        <h4 className="font-sans font-extrabold text-slate-900 dark:text-slate-100 text-xs mb-3">Your next steps</h4>
+                        <ul className="space-y-2.5">
+                          {steps.map((step, i) => (
+                            <li key={i} className="flex items-center gap-2.5">
+                              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                                step.done
+                                  ? "bg-emerald-500 text-white"
+                                  : step.current
+                                    ? "bg-indigo-600 text-white animate-pulse"
+                                    : "bg-slate-200 dark:bg-slate-800 text-slate-400"
+                              }`}>
+                                {step.done ? <CheckCircle2 className="w-3.5 h-3.5" /> : i + 1}
+                              </span>
+                              <span className={`text-xs ${step.done ? "text-slate-500 line-through" : step.current ? "font-bold text-slate-800 dark:text-slate-100" : "text-slate-400"}`}>
+                                {step.label}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                        {!allSet && count !== 1 && (
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-3 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-xl px-3 py-2">
+                            👉 <strong>Now:</strong> Pick one coach below. This is required to finish.
+                          </p>
                         )}
-                      </p>
-                    </div>
+                      </>
+                    )}
                   </div>
                 );
               })()}
 
               {/* Coach Nomination Form inside Modal */}
+              {(() => {
+                const userNominations = coachingRequests.filter(req => req.memberId === user.uid);
+                const count = userNominations.length;
+                const approved = userNominations.some(r => r.status === "approved");
+                const allSet = count === 1 && approved;
+                return allSet ? null : (
               <div className="space-y-4">
                 <div className="space-y-2 relative">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 font-mono uppercase">
@@ -4901,6 +5044,8 @@ export default function App() {
                   )}
                 </div>
               </div>
+                );
+              })()}
             </div>
 
             {/* Footer */}

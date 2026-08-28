@@ -12,6 +12,7 @@ interface ReviewFormEditorProps {
   staffName?: string;
   requiredSettings?: ReviewRequirementSettings;
   isAdmin?: boolean;
+  isOwner?: boolean;
 }
 
 export default function ReviewFormEditor({
@@ -21,10 +22,12 @@ export default function ReviewFormEditor({
   isLeaderView,
   staffName,
   requiredSettings,
-  isAdmin = false
+  isAdmin = false,
+  isOwner = false
 }: ReviewFormEditorProps) {
   const [formData, setFormData] = useState<DevelopmentReview>({ ...review });
-  const isReadOnly = !isLeaderView && !isAdmin && review.status === "Submitted";
+  const canEdit = isOwner || isLeaderView || isAdmin;
+  const isReadOnly = !canEdit;
   const [activeTab, setActiveTab] = useState<"header" | "heart" | "personal" | "relational" | "ministry">("header");
   const [saving, setSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -39,6 +42,7 @@ export default function ReviewFormEditor({
   }, [review]);
 
   const handleSubmitClick = () => {
+    if (!canEdit) return;
     setValidationErrors([]);
     const errors: string[] = [];
     
@@ -152,6 +156,7 @@ export default function ReviewFormEditor({
   };
 
   const handleSave = async (statusOverride?: "Draft" | "Submitted") => {
+    if (!canEdit) return;
     setSaving(true);
     setSaveSuccess(false);
     setValidationErrors([]);
@@ -226,6 +231,7 @@ export default function ReviewFormEditor({
         staffName={staffName}
         requiredSettings={requiredSettings}
         isAdmin={isAdmin}
+        isOwner={isOwner}
         onSwitchStandard={() => setViewMode("standard")}
       />
     ) : (
@@ -254,7 +260,7 @@ export default function ReviewFormEditor({
               <ListChecks className="w-4 h-4" />
               Easy mode
             </button>
-            {isLeaderView ? (
+            {canEdit && isLeaderView ? (
               <button
                 id="leader-save-actions-btn"
                 onClick={() => handleSave()}
@@ -265,6 +271,7 @@ export default function ReviewFormEditor({
                 {saving ? "Saving Changes..." : "Save Feedback & Actions"}
               </button>
             ) : (
+              canEdit && (
               <>
                 <button
                   id="save-draft-btn"
@@ -285,6 +292,7 @@ export default function ReviewFormEditor({
                   {saving ? "Submitting..." : "Submit to Leader"}
                 </button>
               </>
+              )
             )}
             <button
               id="close-editor-btn"
@@ -345,6 +353,12 @@ export default function ReviewFormEditor({
 
       {/* Editor Content Area */}
       <div className="p-6 md:p-8">
+        {!canEdit && (
+          <div className="mb-6 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl p-4 text-sm flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
+            <span>You are viewing this review in read-only mode. Only the staff member, their Team Leader, or an Admin can make changes.</span>
+          </div>
+        )}
         {/* Dynamic Validation Errors Banner */}
         {validationErrors.length > 0 && (
           <div id="validation-errors-banner" className="mb-6 bg-rose-50 border-2 border-rose-200 rounded-xl p-5 text-rose-900 animate-scale-up">

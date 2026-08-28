@@ -2583,6 +2583,7 @@ export default function App() {
               isLeaderView={user ? (isAdmin || myActiveCoachedUids.includes(activeReview.userId)) : false}
               staffName={user && (isAdmin || myActiveCoachedUids.includes(activeReview.userId)) && activeReview.userId !== user.uid ? activeReview.staffMemberName : undefined}
               requiredSettings={requirementSettings}
+              isOwner={activeReview.userId === user?.uid}
             />
           </div>
         )}

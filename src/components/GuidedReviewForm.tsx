@@ -13,6 +13,7 @@ interface GuidedReviewFormProps {
   staffName?: string;
   requiredSettings?: ReviewRequirementSettings;
   isAdmin?: boolean;
+  isOwner?: boolean;
   onSwitchStandard?: () => void;
 }
 
@@ -60,6 +61,7 @@ export default function GuidedReviewForm({
   staffName,
   requiredSettings,
   isAdmin = false,
+  isOwner = false,
   onSwitchStandard
 }: GuidedReviewFormProps) {
   const [formData, setFormData] = useState<DevelopmentReview>(() => ({
@@ -76,10 +78,8 @@ export default function GuidedReviewForm({
 
   const quarter = formData.quarter;
 
-  const isReadOnly = !isLeaderView && !isAdmin && formData.status === "Submitted";
-  const locked = isReadOnly;
-
-  const canEdit = !locked;
+  const canEdit = isOwner || isLeaderView || isAdmin;
+  const locked = !canEdit;
 
   const steps = useMemo<Step[]>(() => {
     const list: Step[] = [

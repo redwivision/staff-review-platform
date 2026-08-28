@@ -70,7 +70,8 @@ import {
   TrendingDown,
   Download,
   BellRing,
-  Database
+  Database,
+  HeartHandshake
 } from "lucide-react";
 
 export default function App() {
@@ -329,10 +330,6 @@ export default function App() {
         : allSummaries.filter(s => myActiveCoachedUids.includes(s.userId) || s.userId === user.uid))
     : [];
 
-  const isLeaderOrCoach = user
-    ? (user.isLeader || myActiveCoachedUids.length > 0 || isAdmin)
-    : false;
-
   const pendingInvitations = user
     ? coachingRequests.filter(req => {
         const isNameMatch = req.coachName.toLowerCase() === user.name.toLowerCase();
@@ -340,6 +337,12 @@ export default function App() {
         return (isNameMatch || isUidMatch) && req.status === "approved" && req.acceptedByCoach === "pending";
       })
     : [];
+
+  const hasPendingInvitation = pendingInvitations.length > 0;
+
+  const isLeaderOrCoach = user
+    ? (user.isLeader || myActiveCoachedUids.length > 0 || hasPendingInvitation || isAdmin)
+    : false;
 
   const pendingInvitationsCount = pendingInvitations.length;
 
@@ -2776,6 +2779,34 @@ export default function App() {
             {/* TAB: MY REVIEWS */}
             {currentTab === "my-reviews" && (
               <div className="space-y-6 animate-fade-in">
+                {/* Pending Coaching Invitation Banner (nominated coach, awaiting their response) */}
+                {hasPendingInvitation && !isAdmin && (
+                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border-2 border-emerald-200 dark:border-emerald-800 rounded-2xl p-5 shadow-sm animate-scale-up flex flex-col sm:flex-row sm:items-center gap-4">
+                    <div className="bg-emerald-600 text-white rounded-full p-2.5 shadow-sm shrink-0">
+                      <HeartHandshake className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[10px] font-bold uppercase tracking-widest bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 px-2.5 py-0.5 rounded-full">
+                        Coaching request for you
+                      </span>
+                      <h4 className="font-sans font-extrabold text-sm text-emerald-950 dark:text-emerald-100 mt-1.5">
+                        {pendingInvitations.length === 1
+                          ? `${pendingInvitations[0].memberName} nominated you as their Team Leader and coach.`
+                          : `${pendingInvitations.length} staff members nominated you as their Team Leader and coach.`}
+                      </h4>
+                      <p className="text-xs text-emerald-800 dark:text-emerald-200/80 mt-1">
+                        Accept, or decline with a reason (sent to the Admin and the person who nominated you). Your coach tab opens once you accept.
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setCurrentTab("team-reviews")}
+                      className="shrink-0 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-colors shadow"
+                    >
+                      Review Invitation
+                    </button>
+                  </div>
+                )}
+
                 {/* Active Review Period Banners */}
                 {Object.entries(reviewSchedules).map(([qKey, schedVal]) => {
                   const sched = schedVal as { startDate: string; dueDate: string; notifyAll: boolean; notificationMessage?: string };

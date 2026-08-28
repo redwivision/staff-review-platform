@@ -357,27 +357,38 @@ export default function App() {
 
     // MY REVIEWS — staff member's quarterly self-review journey
     if (currentTab === "my-reviews") {
-      // Step 2: fill & submit the quarterly form (only when that quarter is unlocked)
+      // A coach only counts as "set" once they're verified: admin-approved AND they accepted.
+      const hasVerifiedCoach = memberNominations.some(r => r.status === "approved" && r.acceptedByCoach === "accepted");
+
+      // Step for the quarterly form (only when that quarter is unlocked)
       const draftOrDeclined = mySummaries.find(s =>
         (s.status === "Draft" || s.status === "Declined") &&
         isQuarterlyUnlockedForUser(s.quarter)
       );
       const unlockedQ = quarters.find(q => !mySummaries.some(ss => ss.quarter === q) && isQuarterlyUnlockedForUser(q));
 
-      // If a form is ready, and a coach is already chosen, guide them to the form.
-      if (memberNominations.length > 0 && (draftOrDeclined || unlockedQ)) {
+      // Already submitted to their coach → keep it with the coach.
+      if (mySummaries.some(s => s.status === "Submitted" || s.status === "CoachSubmitted")) {
+        return { type: "wait" as const, quarter: null, label: "Great job — it's with your coach", description: "Your quarterly form is submitted to your coach. They'll add their evaluation and send it to Admin.", btn: "View Coach" };
+      }
+
+      // Form is ready AND the coach is verified → move to Step 2.
+      if ((draftOrDeclined || unlockedQ) && hasVerifiedCoach) {
         if (draftOrDeclined) {
           return { type: "fill-summary" as const, quarter: draftOrDeclined.quarter, label: "Step 2 · Continue your quarterly form", description: `Finish the ${QUARTER_INFO[draftOrDeclined.quarter].name} Quarterly Summary, then press "Submit to Coach".`, btn: "Continue Form" };
         }
         return { type: "fill-summary" as const, quarter: unlockedQ, label: "Step 2 · Start your quarterly form", description: `Open the ${QUARTER_INFO[unlockedQ].name} Quarterly Summary, fill it in, then press "Submit to Coach".`, btn: "Start Form" };
       }
 
-      // Otherwise, always surface the coach step — never show a "locked" state.
-      // If they've already submitted to their coach, keep it with the coach.
-      if (mySummaries.some(s => s.status === "Submitted" || s.status === "CoachSubmitted")) {
-        return { type: "wait" as const, quarter: null, label: "Great job — it's with your coach", description: "Your quarterly form is submitted to your coach. They'll add their evaluation and send it to Admin.", btn: "View Coach" };
+      // Otherwise surface the coach step — never show a "locked" state, and
+      // never jump to the form until the coach is verified.
+      if (memberNominations.length === 0) {
+        return { type: "nominate" as const, quarter: null, label: "Step 1 · Pick your coach", description: "Choose the Team Leader who will guide your review. Your form will open once your coach is confirmed.", btn: "View Coach" };
       }
-      return { type: "nominate" as const, quarter: null, label: memberNominations.length > 0 ? "Your coach is ready" : "Step 1 · Pick your coach", description: memberNominations.length > 0 ? "Your coach is chosen and your form will open once it's ready. You can review your coach below." : "Choose the Team Leader who will guide your review. You can pick them now even before the form opens.", btn: "View Coach" };
+      if (!hasVerifiedCoach) {
+        return { type: "nominate" as const, quarter: null, label: "Waiting for your coach to accept", description: "Admin has your request and your coach needs to accept. You can start your form as soon as they're confirmed.", btn: "View Coach" };
+      }
+      return { type: "nominate" as const, quarter: null, label: "Your coach is ready", description: "Your coach is confirmed. Your form will open here once it's ready.", btn: "View Coach" };
     }
 
     // TEAM REVIEWS — coach/leader evaluates their staff's summaries

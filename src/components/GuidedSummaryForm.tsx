@@ -1,10 +1,10 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { QuarterlySummary, PDPQuarterItem, CMOQuarterItem, KDAQuarterItem } from "../types";
 import {
   QUARTER_INFO, DEVELOPMENT_REVIEW_SECTIONS
 } from "../constants";
 import {
-  Save, Check, ChevronLeft, ChevronRight, ClipboardCheck
+  Save, Check, ChevronLeft, ChevronRight, ClipboardCheck, AlertCircle, Send
 } from "lucide-react";
 
 interface GuidedSummaryFormProps {
@@ -88,6 +88,7 @@ export default function GuidedSummaryForm({
   const [stepIndex, setStepIndex] = useState(0);
   const [saving, setSaving] = useState(false);
   const [justSaved, setJustSaved] = useState(false);
+  const [submitError, setSubmitError] = useState("");
 
   const quarter = formData.quarter;
 
@@ -137,6 +138,7 @@ export default function GuidedSummaryForm({
 
   const autosave = useCallback(async () => {
     if (!canEdit) return;
+    if (submittingRef.current) return;
     try {
       await onSave({ ...formData, updatedAt: Date.now() });
       setJustSaved(true);
@@ -146,9 +148,24 @@ export default function GuidedSummaryForm({
     }
   }, [formData, onSave, canEdit]);
 
+  const submittingRef = useRef(false);
+
   const patch = useCallback((next: QuarterlySummary) => {
     setFormData(next);
   }, []);
+
+  const firstRender = useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    if (!canEdit) return;
+    const t = setTimeout(() => {
+      autosave();
+    }, 900);
+    return () => clearTimeout(t);
+  }, [formData, canEdit, autosave]);
 
   const updateHeader = (field: keyof QuarterlySummary, value: string) => {
     patch({ ...formData, [field]: value });
@@ -214,6 +231,28 @@ export default function GuidedSummaryForm({
       try { await onSave({ ...formData, updatedAt: Date.now() }); } catch (e) { console.error("Final save failed:", e); }
     }
     onClose();
+  };
+
+  const canSubmitToCoach = isOwner && canEdit && (!formData.status || formData.status === "Draft");
+
+  const handleSubmitToCoach = async () => {
+    if (!canSubmitToCoach) return;
+    if (!formData.presentPositionSince || !formData.teamLeaderName) {
+      setSubmitError("Please fill in your Team Leader's name and the 'In present position since' date before submitting. You can go back and add these in the 'About you' steps.");
+      return;
+    }
+    submittingRef.current = true;
+    setSaving(true);
+    setSubmitError("");
+    try {
+      await onSave({ ...formData, status: "Submitted", updatedAt: Date.now() });
+      onClose();
+    } catch (e: any) {
+      setSubmitError(e?.message || "Failed to submit. Please try again.");
+      submittingRef.current = false;
+    } finally {
+      setSaving(false);
+    }
   };
 
   // Progress: section grouping for the top bar
@@ -398,6 +437,12 @@ export default function GuidedSummaryForm({
             This summary is read-only. You can view each question but not change the answers.
           </div>
         )}
+        {submitError && (
+          <div className="mb-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-xl px-4 py-3 text-sm flex items-start gap-2 animate-fade-in">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{submitError}</span>
+          </div>
+        )}
         <div key={current.id} className="animate-fade-in">
           <h3 className="text-xl font-sans font-bold text-slate-900 mb-1">{current.heading}</h3>
           {current.helper && <p className="text-sm text-slate-500 mb-5">{current.helper}</p>}
@@ -422,13 +467,25 @@ export default function GuidedSummaryForm({
               </span>
             )}
             {isLast ? (
-              <button
-                type="button"
-                onClick={handleClose}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors"
-              >
-                <Check className="w-4 h-4" strokeWidth={3} /> Finish
-              </button>
+              <div className="flex items-center gap-2">
+                {canSubmitToCoach && (
+                  <button
+                    type="button"
+                    onClick={handleSubmitToCoach}
+                    disabled={saving}
+                    className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors"
+                  >
+                    <Send className="w-4 h-4" strokeWidth={3} /> {saving ? "Submitting..." : "Submit to Coach"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors"
+                >
+                  <Check className="w-4 h-4" strokeWidth={3} /> Finish
+                </button>
+              </div>
             ) : (
               <button
                 type="button"

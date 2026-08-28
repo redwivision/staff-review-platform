@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { DevelopmentReview, ReviewSectionData, ReviewRequirementSettings } from "../types";
 import { DEVELOPMENT_REVIEW_SECTIONS, QUARTER_INFO } from "../constants";
-import { Heart, User, Clipboard, Users, ShieldAlert, Award, AlertCircle, Save, CheckCircle2, Check, MessageSquare } from "lucide-react";
+import { Heart, User, Clipboard, Users, ShieldAlert, Award, AlertCircle, Save, CheckCircle2, Check, MessageSquare, ListChecks } from "lucide-react";
+import GuidedReviewForm from "./GuidedReviewForm";
 
 interface ReviewFormEditorProps {
   review: DevelopmentReview;
@@ -29,6 +30,9 @@ export default function ReviewFormEditor({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
+  const [viewMode, setViewMode] = useState<"standard" | "guided">(
+    isLeaderView || isAdmin ? "standard" : "guided"
+  );
 
   useEffect(() => {
     setFormData({ ...review });
@@ -212,6 +216,19 @@ export default function ReviewFormEditor({
     : null;
 
   return (
+    <>
+    {viewMode === "guided" ? (
+      <GuidedReviewForm
+        review={formData}
+        onSave={onSave}
+        onClose={onClose}
+        isLeaderView={isLeaderView}
+        staffName={staffName}
+        requiredSettings={requiredSettings}
+        isAdmin={isAdmin}
+        onSwitchStandard={() => setViewMode("standard")}
+      />
+    ) : (
     <div id="review-editor-container" className="bg-white rounded-xl shadow-lg border border-slate-100 overflow-hidden">
       {/* Header */}
       <div className="bg-gradient-to-r from-slate-800 to-slate-900 text-white p-6">
@@ -229,6 +246,14 @@ export default function ReviewFormEditor({
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              id="toggle-guided-mode-btn"
+              onClick={() => setViewMode("guided")}
+              className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-colors border border-white/20 flex items-center gap-1.5 cursor-pointer"
+            >
+              <ListChecks className="w-4 h-4" />
+              Easy mode
+            </button>
             {isLeaderView ? (
               <button
                 id="leader-save-actions-btn"
@@ -794,5 +819,7 @@ export default function ReviewFormEditor({
         </div>
       )}
     </div>
+    )}
+    </>
   );
 }

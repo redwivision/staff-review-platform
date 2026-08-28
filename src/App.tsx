@@ -362,8 +362,11 @@ export default function App() {
         return { type: "nominate" as const, quarter: null, label: "Step 1 · Pick your coach", description: "Choose the Team Leader who will guide your review. They need to be chosen before you can submit to them.", btn: "Pick Coach" };
       }
 
-      // Step 2: fill & submit the quarterly form
-      const draftOrDeclined = mySummaries.find(s => s.status === "Draft" || s.status === "Declined");
+      // Step 2: fill & submit the quarterly form (only when that quarter is unlocked)
+      const draftOrDeclined = mySummaries.find(s =>
+        (s.status === "Draft" || s.status === "Declined") &&
+        isQuarterlyUnlockedForUser(s.quarter)
+      );
       const unlockedQ = quarters.find(q => !mySummaries.some(ss => ss.quarter === q) && isQuarterlyUnlockedForUser(q));
 
       if (draftOrDeclined) {
@@ -373,11 +376,11 @@ export default function App() {
         return { type: "fill-summary" as const, quarter: unlockedQ, label: "Step 2 · Start your quarterly form", description: `Open the ${QUARTER_INFO[unlockedQ].name} Quarterly Summary, fill it in, then press "Submit to Coach".`, btn: "Start Form" };
       }
 
-      // Step 3: submitted to coach / all done
+      // Step 3: submitted to coach / all done / waiting-to-open
       if (mySummaries.some(s => s.status === "Submitted" || s.status === "CoachSubmitted")) {
         return { type: "wait" as const, quarter: null, label: "Great job — it's with your coach", description: "Your quarterly form is submitted to your coach. They'll add their evaluation and send it to Admin.", btn: "OK" };
       }
-      return { type: "done" as const, quarter: null, label: "You're all set", description: "Your quarterly form is done and your coach is chosen. Great job!", btn: "OK" };
+      return { type: "locked" as const, quarter: null, label: "Your quarterly form opens soon", description: "This quarter is locked by Admin for now. You'll be able to fill it the moment it opens.", btn: "OK" };
     }
 
     // TEAM REVIEWS — coach/leader evaluates their staff's summaries
@@ -2748,8 +2751,10 @@ export default function App() {
                 <div className="absolute -right-2 -top-2 w-20 h-20 bg-white/10 rounded-full" />
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 relative">
                   <div className="bg-white/20 rounded-2xl p-3.5 shrink-0">
-                    {myNextStep.type === "done" || myNextStep.type === "wait" ? (
+                    {myNextStep.type === "wait" ? (
                       <CheckCircle2 className="w-7 h-7" />
+                    ) : myNextStep.type === "locked" ? (
+                      <Lock className="w-7 h-7" />
                     ) : myNextStep.type === "admin" || myNextStep.type === "leader" ? (
                       <ShieldCheck className="w-7 h-7" />
                     ) : myNextStep.type === "invitation" || myNextStep.type === "nominate" ? (
@@ -3069,8 +3074,6 @@ export default function App() {
                                   <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-bold flex items-center gap-1">
                                     🔒 Locked by Admin
                                   </span>
-                                ) : !isSubmitted ? (
-                                  <span className="text-[11px] text-slate-400 font-mono italic">Complete Monthly Form First</span>
                                 ) : !summary ? (
                                   <button
                                     id={`start-my-summary-${qKey}`}

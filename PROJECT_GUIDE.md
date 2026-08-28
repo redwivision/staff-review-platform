@@ -546,7 +546,8 @@ These are known gaps with planned improvements for the next iteration:
 
 ### Monthly Development Review Form Is De-prioritized
 - The current UI and the "Next Step" guidance panel focus **only on the Quarterly Summary form** (fill → submit to coach → TL evaluation → admin).
-- The monthly **Development Review** form still exists and is accessible via the quarter cards, but it is **not** part of the active guided workflow and is not surfaced by the Next Step panel.
+- The monthly **Development Review** form still exists and is accessible via the quarter cards, but it is **not** part of the active guided workflow and is **no longer required before the quarterly form** — a staff member can fill and submit their Quarterly Summary as soon as the quarter is unlocked.
+- The quarterly form is gated **only** by the admin's "unlock" schedule (instant unlock, or a scheduled date/time).
 - **Planned:** Bring the monthly form back into the guided/onboarding flow once the quarterly journey is fully polished.
 
 ### Notifications

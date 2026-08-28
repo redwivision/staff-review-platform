@@ -270,7 +270,6 @@ export default function App() {
   const [pdfIncludeCMO, setPdfIncludeCMO] = useState(false);
   const [pdfIncludeKDA, setPdfIncludeKDA] = useState(false);
   const [pdfIncludeSuggestions, setPdfIncludeSuggestions] = useState(false);
-  const [showWelcomeGuide, setShowWelcomeGuide] = useState(true);
 
   const openPdfCustomizer = (
     member: UserProfile,
@@ -349,39 +348,57 @@ export default function App() {
 
   const pendingInvitationsCount = pendingInvitations.length;
 
-  // Derive a single, role-aware "Next Step" to guide the user each login.
+  // Tab-aware "Next Step" panel — walks the user through what to do on the
+  // current tab, focused ONLY on the Quarterly Summary workflow.
   const myNextStep = (() => {
     if (!user) return null;
     const quarters: ("1st" | "2nd" | "3rd")[] = ["1st", "2nd", "3rd"];
+    const memberNominations = coachingRequests.filter(req => req.memberId === user.uid);
 
-    if (isAdmin) {
-      return { type: "admin" as const, quarter: null, label: "Review everyone's progress", description: "Open the Admin Dashboard to see who has submitted and what still needs review." };
-    }
-    if (isLeaderOrCoach) {
-      if (hasPendingInvitation) {
-        return { type: "invitation" as const, quarter: null, label: "Respond to your coaching request", description: "A staff member wants you as their coach. Accept or decline to keep things moving." };
+    // MY REVIEWS — staff member's quarterly self-review journey
+    if (currentTab === "my-reviews") {
+      // Step 1: nominate a coach so they can receive and evaluate the form
+      if (memberNominations.length === 0) {
+        return { type: "nominate" as const, quarter: null, label: "Step 1 · Pick your coach", description: "Choose the Team Leader who will guide your review. They need to be chosen before you can submit to them.", btn: "Pick Coach" };
       }
-      return { type: "leader" as const, quarter: null, label: "Review your team's work", description: "Open Team Reviews to see submitted forms and fill out the Team Leader evaluations." };
+
+      // Step 2: fill & submit the quarterly form
+      const draftOrDeclined = mySummaries.find(s => s.status === "Draft" || s.status === "Declined");
+      const unlockedQ = quarters.find(q => !mySummaries.some(ss => ss.quarter === q) && isQuarterlyUnlockedForUser(q));
+
+      if (draftOrDeclined) {
+        return { type: "fill-summary" as const, quarter: draftOrDeclined.quarter, label: "Step 2 · Continue your quarterly form", description: `Finish the ${QUARTER_INFO[draftOrDeclined.quarter].name} Quarterly Summary, then press "Submit to Coach".`, btn: "Continue Form" };
+      }
+      if (unlockedQ) {
+        return { type: "fill-summary" as const, quarter: unlockedQ, label: "Step 2 · Start your quarterly form", description: `Open the ${QUARTER_INFO[unlockedQ].name} Quarterly Summary, fill it in, then press "Submit to Coach".`, btn: "Start Form" };
+      }
+
+      // Step 3: submitted to coach / all done
+      if (mySummaries.some(s => s.status === "Submitted" || s.status === "CoachSubmitted")) {
+        return { type: "wait" as const, quarter: null, label: "Great job — it's with your coach", description: "Your quarterly form is submitted to your coach. They'll add their evaluation and send it to Admin.", btn: "OK" };
+      }
+      return { type: "done" as const, quarter: null, label: "You're all set", description: "Your quarterly form is done and your coach is chosen. Great job!", btn: "OK" };
     }
 
-    // Staff member: find the next unfinished review to work on.
-    const nominations = coachingRequests.filter(req => req.memberId === user.uid);
-    const draft = myReviews.find(r => r.status === "Draft");
-    const nextQuarter = quarters.find(q => {
-      const r = myReviews.find(rr => rr.quarter === q);
-      return !r || r.status !== "Submitted";
-    });
+    // TEAM REVIEWS — coach/leader evaluates their staff's summaries
+    if (currentTab === "team-reviews") {
+      if (hasPendingInvitation) {
+        return { type: "invitation" as const, quarter: null, label: "Respond to your coaching request", description: "A staff member wants you as their Team Leader and coach. Accept or decline to keep things moving.", btn: "Respond" };
+      }
+      return { type: "leader" as const, quarter: null, label: "Evaluate your team's summaries", description: "Open a staff member's submitted Quarterly Summary, fill the TL Evaluation, then press \"Submit to Admin\".", btn: "Open Summaries" };
+    }
 
-    if (draft) {
-      return { type: "resume-review" as const, quarter: nextQuarter || "1st", label: "Continue your review", description: "You have a review in progress. Keep going so it's ready to submit." };
+    // ADMIN — approve/decline & export
+    if (currentTab === "admin") {
+      return { type: "admin" as const, quarter: null, label: "Approve & manage evaluations", description: "Review the summaries coaches have submitted, approve or decline them, and export reports or PDFs.", btn: "Go to Reports" };
     }
-    if (nextQuarter) {
-      return { type: "start-review" as const, quarter: nextQuarter, label: "Start your monthly review", description: `Begin the ${QUARTER_INFO[nextQuarter].name} review. It only takes a few minutes.` };
+
+    // MEETINGS
+    if (currentTab === "meetings") {
+      return { type: "meeting" as const, quarter: null, label: "Schedule a review meeting", description: "Book a meeting to go over a staff member's quarterly review together.", btn: "Schedule" };
     }
-    if (nominations.length === 0) {
-      return { type: "nominate" as const, quarter: null, label: "Pick your coach", description: "Choose the Team Leader you want to guide your reviews this year." };
-    }
-    return { type: "done" as const, quarter: null, label: "You're all set", description: "Your reviews are submitted and your coach is chosen. Great job!" };
+
+    return null;
   })();
 
   // Reset overview tab page number on filter changes
@@ -2724,176 +2741,59 @@ export default function App() {
               )}
             </div>
 
-            {/* WELCOME GUIDE — above tabs, changes per tab, dismissible */}
-            {showWelcomeGuide && !activeReview && !activeSummary && (
-              <div className="bg-gradient-to-br from-indigo-50 via-white to-blue-50 border border-indigo-200 rounded-2xl p-6 relative shadow-sm">
-                <button
-                  onClick={() => setShowWelcomeGuide(false)}
-                  className="absolute top-4 right-4 text-indigo-400 hover:text-indigo-700 text-xs font-bold bg-white/80 px-2.5 py-1 rounded-full border border-indigo-200 transition-colors"
-                >
-                  Got it, thanks
-                </button>
-
-                {/* MY REVIEWS TAB */}
-                {currentTab === "my-reviews" && (
-                  <div>
-                    <h3 className="text-lg font-bold text-indigo-900 mb-1">My Reviews</h3>
-                    <p className="text-xs text-indigo-600 mb-4">This is where you fill and submit your quarterly self-reviews.</p>
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">
-                        <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">1</div>
-                        <div>
-                          <p className="font-bold text-sm text-slate-800">Open a quarter</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Click <strong>Open Form</strong> on any quarter card below.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">
-                        <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">2</div>
-                        <div>
-                          <p className="font-bold text-sm text-slate-800">Fill 4 sections</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Walk with God, Personal Life, Relationships, Ministry Impact. Fill strengths, improvements, and action points.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">
-                        <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">3</div>
-                        <div>
-                          <p className="font-bold text-sm text-slate-800">Submit to your coach</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Click Submit when done. Your coach reviews it and fills out the TL Evaluation.</p>
-                        </div>
-                      </div>
-                    </div>
+            {/* Persistent tab-aware "Next Step" guidance panel */}
+            {myNextStep && (
+              <div className="bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-500 text-white rounded-2xl p-6 shadow-sm relative overflow-hidden">
+                <div className="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full" />
+                <div className="absolute -right-2 -top-2 w-20 h-20 bg-white/10 rounded-full" />
+                <div className="flex flex-col sm:flex-row sm:items-center gap-4 relative">
+                  <div className="bg-white/20 rounded-2xl p-3.5 shrink-0">
+                    {myNextStep.type === "done" || myNextStep.type === "wait" ? (
+                      <CheckCircle2 className="w-7 h-7" />
+                    ) : myNextStep.type === "admin" || myNextStep.type === "leader" ? (
+                      <ShieldCheck className="w-7 h-7" />
+                    ) : myNextStep.type === "invitation" || myNextStep.type === "nominate" ? (
+                      <HeartHandshake className="w-7 h-7" />
+                    ) : myNextStep.type === "meeting" ? (
+                      <Calendar className="w-7 h-7" />
+                    ) : (
+                      <ClipboardList className="w-7 h-7" />
+                    )}
                   </div>
-                )}
-
-                {/* TEAM REVIEWS TAB */}
-                {currentTab === "team-reviews" && (
-                  <div>
-                    <h3 className="text-lg font-bold text-indigo-900 mb-1">Team Reviews</h3>
-                    <p className="text-xs text-indigo-600 mb-4">This is where you review and evaluate the staff you coach.</p>
-                    <div className="flex flex-col md:flex-row gap-4">
-                      <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">
-                        <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">1</div>
-                        <div>
-                          <p className="font-bold text-sm text-slate-800">Find submitted summaries</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Staff who submitted their summaries appear in the list below. Look for "Submitted" status.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">
-                        <div className="w-7 h-7 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">2</div>
-                        <div>
-                          <p className="font-bold text-sm text-slate-800">Fill the TL Evaluation</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Open their summary → <strong>TL Evaluation</strong> tab → rate effectiveness, add strengths/weaknesses, sign.</p>
-                        </div>
-                      </div>
-                      <div className="flex items-start gap-3 bg-white/80 rounded-xl p-4 border border-indigo-100 flex-1">
-                        <div className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 font-bold text-xs">3</div>
-                        <div>
-                          <p className="font-bold text-sm text-slate-800">Submit to Admin</p>
-                          <p className="text-xs text-slate-500 mt-0.5">Click "Submit to Admin" when done. Admin gives final sign-off.</p>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[10px] font-bold uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full">Your next step</span>
+                    <h4 className="text-lg font-sans font-extrabold mt-1.5">{myNextStep.label}</h4>
+                    <p className="text-xs text-indigo-100 mt-0.5">{myNextStep.description}</p>
                   </div>
-                )}
-
-                {/* ADMIN TAB */}
-                {currentTab === "admin" && (
-                  <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <ShieldCheck className="w-5 h-5 text-amber-600" />
-                      <h3 className="text-lg font-bold text-slate-900">Admin Dashboard</h3>
-                    </div>
-                    <p className="text-xs text-slate-500 mb-4">Full oversight of all staff reviews and evaluations.</p>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-white/80 rounded-xl p-4 border border-slate-200 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-[10px]">1</div>
-                          <p className="font-bold text-sm text-slate-800">Track all staff</p>
-                        </div>
-                        <p className="text-xs text-slate-500">See who has submitted, who's in draft, who hasn't started. The <strong>Reports & Reviews</strong> sub-tab shows every evaluation.</p>
-                      </div>
-                      <div className="bg-white/80 rounded-xl p-4 border border-slate-200 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-[10px]">2</div>
-                          <p className="font-bold text-sm text-slate-800">Approve or decline</p>
-                        </div>
-                        <p className="text-xs text-slate-500">When a coach submits an evaluation, review it. Approve to finalize, or decline with a reason to send it back.</p>
-                      </div>
-                      <div className="bg-white/80 rounded-xl p-4 border border-slate-200 space-y-2">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-[10px]">3</div>
-                          <p className="font-bold text-sm text-slate-800">Export & manage</p>
-                        </div>
-                        <p className="text-xs text-slate-500">Export PDFs, generate AI reports. Use <strong>Settings</strong> for deadlines and requirements. <strong>Team Members</strong> for user roles.</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                  <button
+                    onClick={() => {
+                      if (myNextStep.type === "fill-summary" && myNextStep.quarter && user) {
+                        handleSelectStaffSummary(user, myNextStep.quarter);
+                      } else if (myNextStep.type === "nominate") {
+                        document.getElementById("coaching-nominations-card")?.scrollIntoView({ behavior: "smooth" });
+                      } else if (myNextStep.type === "invitation" || myNextStep.type === "leader") {
+                        setCurrentTab("team-reviews");
+                      } else if (myNextStep.type === "admin") {
+                        setCurrentTab("admin");
+                      } else if (myNextStep.type === "meeting") {
+                        if (filteredStaffProfiles.length > 0) {
+                          setScheduleStaffUid(filteredStaffProfiles[0].uid);
+                          setShowScheduler(true);
+                        }
+                      }
+                    }}
+                    className="shrink-0 inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-indigo-700 text-sm font-bold rounded-xl shadow transition-transform hover:scale-[1.02]"
+                  >
+                    {myNextStep.btn}
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             )}
 
             {/* TAB: MY REVIEWS */}
             {currentTab === "my-reviews" && (
               <div className="space-y-6 animate-fade-in">
-                {/* Persistent "Next Step" guidance panel */}
-                {myNextStep && (
-                  <div className="bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-500 text-white rounded-2xl p-6 shadow-sm relative overflow-hidden">
-                    <div className="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full" />
-                    <div className="absolute -right-2 -top-2 w-20 h-20 bg-white/10 rounded-full" />
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 relative">
-                      <div className="bg-white/20 rounded-2xl p-3.5 shrink-0">
-                        {myNextStep.type === "done" ? (
-                          <CheckCircle2 className="w-7 h-7" />
-                        ) : myNextStep.type === "admin" || myNextStep.type === "leader" ? (
-                          <ShieldCheck className="w-7 h-7" />
-                        ) : myNextStep.type === "invitation" || myNextStep.type === "nominate" ? (
-                          <HeartHandshake className="w-7 h-7" />
-                        ) : (
-                          <ClipboardList className="w-7 h-7" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-[10px] font-bold uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full">Your next step</span>
-                        <h4 className="text-lg font-sans font-extrabold mt-1.5">{myNextStep.label}</h4>
-                        <p className="text-xs text-indigo-100 mt-0.5">{myNextStep.description}</p>
-                      </div>
-                      <button
-                        onClick={() => {
-                          if (myNextStep.type === "start-review" && myNextStep.quarter) {
-                            handleSelectMyReview(myNextStep.quarter);
-                          } else if (myNextStep.type === "resume-review" && myNextStep.quarter) {
-                            handleSelectMyReview(myNextStep.quarter);
-                          } else if (myNextStep.type === "nominate") {
-                            document.getElementById("coaching-nominations-card")?.scrollIntoView({ behavior: "smooth" });
-                          } else if (myNextStep.type === "invitation") {
-                            setCurrentTab("team-reviews");
-                          } else if (myNextStep.type === "leader") {
-                            setCurrentTab("team-reviews");
-                          } else if (myNextStep.type === "admin") {
-                            setCurrentTab("admin");
-                          }
-                        }}
-                        className="shrink-0 inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-indigo-700 text-sm font-bold rounded-xl shadow transition-transform hover:scale-[1.02]"
-                      >
-                        {myNextStep.type === "done"
-                          ? "OK"
-                          : myNextStep.type === "start-review"
-                            ? "Start"
-                            : myNextStep.type === "resume-review"
-                              ? "Continue"
-                              : myNextStep.type === "leader"
-                                ? "Open Team Reviews"
-                                : myNextStep.type === "admin"
-                                  ? "Open Admin"
-                                  : myNextStep.type === "invitation"
-                                    ? "Respond"
-                                    : "Pick Coach"}
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                )}
-
                 {/* Pending Coaching Invitation Banner (nominated coach, awaiting their response) */}
                 {hasPendingInvitation && !isAdmin && (
                   <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border-2 border-emerald-200 dark:border-emerald-800 rounded-2xl p-5 shadow-sm animate-scale-up flex flex-col sm:flex-row sm:items-center gap-4">

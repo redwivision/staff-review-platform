@@ -544,6 +544,11 @@ The review comment said: "From the first information page will include: Date of 
 
 These are known gaps with planned improvements for the next iteration:
 
+### Monthly Development Review Form Is De-prioritized
+- The current UI and the "Next Step" guidance panel focus **only on the Quarterly Summary form** (fill → submit to coach → TL evaluation → admin).
+- The monthly **Development Review** form still exists and is accessible via the quarter cards, but it is **not** part of the active guided workflow and is not surfaced by the Next Step panel.
+- **Planned:** Bring the monthly form back into the guided/onboarding flow once the quarterly journey is fully polished.
+
 ### Notifications
 - No email or push notifications for submissions, evaluations, or deadline reminders
 - **Planned:** Supabase Edge Functions + SendGrid for email triggers

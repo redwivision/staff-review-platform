@@ -357,11 +357,6 @@ export default function App() {
 
     // MY REVIEWS — staff member's quarterly self-review journey
     if (currentTab === "my-reviews") {
-      // Step 1: nominate a coach so they can receive and evaluate the form
-      if (memberNominations.length === 0) {
-        return { type: "nominate" as const, quarter: null, label: "Step 1 · Pick your coach", description: "Choose the Team Leader who will guide your review. They need to be chosen before you can submit to them.", btn: "Pick Coach" };
-      }
-
       // Step 2: fill & submit the quarterly form (only when that quarter is unlocked)
       const draftOrDeclined = mySummaries.find(s =>
         (s.status === "Draft" || s.status === "Declined") &&
@@ -369,18 +364,20 @@ export default function App() {
       );
       const unlockedQ = quarters.find(q => !mySummaries.some(ss => ss.quarter === q) && isQuarterlyUnlockedForUser(q));
 
-      if (draftOrDeclined) {
-        return { type: "fill-summary" as const, quarter: draftOrDeclined.quarter, label: "Step 2 · Continue your quarterly form", description: `Finish the ${QUARTER_INFO[draftOrDeclined.quarter].name} Quarterly Summary, then press "Submit to Coach".`, btn: "Continue Form" };
-      }
-      if (unlockedQ) {
+      // If a form is ready, and a coach is already chosen, guide them to the form.
+      if (memberNominations.length > 0 && (draftOrDeclined || unlockedQ)) {
+        if (draftOrDeclined) {
+          return { type: "fill-summary" as const, quarter: draftOrDeclined.quarter, label: "Step 2 · Continue your quarterly form", description: `Finish the ${QUARTER_INFO[draftOrDeclined.quarter].name} Quarterly Summary, then press "Submit to Coach".`, btn: "Continue Form" };
+        }
         return { type: "fill-summary" as const, quarter: unlockedQ, label: "Step 2 · Start your quarterly form", description: `Open the ${QUARTER_INFO[unlockedQ].name} Quarterly Summary, fill it in, then press "Submit to Coach".`, btn: "Start Form" };
       }
 
-      // Step 3: submitted to coach / all done / waiting-to-open
+      // Otherwise, always surface the coach step — never show a "locked" state.
+      // If they've already submitted to their coach, keep it with the coach.
       if (mySummaries.some(s => s.status === "Submitted" || s.status === "CoachSubmitted")) {
-        return { type: "wait" as const, quarter: null, label: "Great job — it's with your coach", description: "Your quarterly form is submitted to your coach. They'll add their evaluation and send it to Admin.", btn: "OK" };
+        return { type: "wait" as const, quarter: null, label: "Great job — it's with your coach", description: "Your quarterly form is submitted to your coach. They'll add their evaluation and send it to Admin.", btn: "View Coach" };
       }
-      return { type: "locked" as const, quarter: null, label: "Your quarterly form opens soon", description: "This quarter is locked by Admin for now. You'll be able to fill it the moment it opens.", btn: "OK" };
+      return { type: "nominate" as const, quarter: null, label: memberNominations.length > 0 ? "Your coach is ready" : "Step 1 · Pick your coach", description: memberNominations.length > 0 ? "Your coach is chosen and your form will open once it's ready. You can review your coach below." : "Choose the Team Leader who will guide your review. You can pick them now even before the form opens.", btn: "View Coach" };
     }
 
     // TEAM REVIEWS — coach/leader evaluates their staff's summaries
@@ -2753,8 +2750,6 @@ export default function App() {
                   <div className="bg-white/20 rounded-2xl p-3.5 shrink-0">
                     {myNextStep.type === "wait" ? (
                       <CheckCircle2 className="w-7 h-7" />
-                    ) : myNextStep.type === "locked" ? (
-                      <Lock className="w-7 h-7" />
                     ) : myNextStep.type === "admin" || myNextStep.type === "leader" ? (
                       <ShieldCheck className="w-7 h-7" />
                     ) : myNextStep.type === "invitation" || myNextStep.type === "nominate" ? (
@@ -2774,7 +2769,7 @@ export default function App() {
                     onClick={() => {
                       if (myNextStep.type === "fill-summary" && myNextStep.quarter && user) {
                         handleSelectStaffSummary(user, myNextStep.quarter);
-                      } else if (myNextStep.type === "nominate") {
+                      } else if (myNextStep.type === "nominate" || myNextStep.type === "wait") {
                         document.getElementById("coaching-nominations-card")?.scrollIntoView({ behavior: "smooth" });
                       } else if (myNextStep.type === "invitation" || myNextStep.type === "leader") {
                         setCurrentTab("team-reviews");

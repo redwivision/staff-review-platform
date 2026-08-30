@@ -19,6 +19,9 @@
 12. [Environment Variables](#12-environment-variables)
 13. [Common Issues & Fixes](#13-common-issues--fixes)
 14. [Quick Reference Commands](#14-quick-reference-commands)
+15. [Known Limitations (Current MVP)](#15-known-limitations-current-mvp)
+16. [Security Fixes + The ONE Task Only You Can Do](#16-security-fixes-what-i-fixed--the-one-task-only-you-can-do)
+17. [Quick Glance — Did It Work?](#17-quick-glance--did-it-work)
 
 ---
 
@@ -115,7 +118,7 @@ currentTab state:
 ```
 
 ### Real-Time Updates
-The app polls Supabase on a 30-second interval (plus an initial fetch on load) — when data changes in the database, every connected user's screen refreshes automatically. No manual refresh needed.
+The app first tries **Supabase Realtime** (changes appear instantly, pushed to all open screens). If Realtime isn't enabled on the database yet, it automatically falls back to checking every 30 seconds. Either way the screen stays up to date without a manual refresh.
 
 ### Mock Data Mode
 There's a toggle for offline/mock data mode (stored in `localStorage`). This is useful when Supabase isn't configured. All data lives in the browser's localStorage instead.
@@ -148,7 +151,7 @@ There's a toggle for offline/mock data mode (stored in `localStorage`). This is 
   "id": "abc123_1st_2025-2026",
   "userId": "abc123",
   "quarter": "1st",
-  "year": "2025-2026",
+  "year": "2025/2026",
   "status": "Draft" | "Submitted",
   "staffMemberName": "John Doe",
   "ministryAssignment": "Youth Ministry",
@@ -593,3 +596,98 @@ These are known gaps with planned improvements for the next iteration:
 ### Data Migration
 - No import/export tool for migrating from legacy systems (spreadsheets, paper forms)
 - **Planned:** CSV/Excel import wizard for bulk onboarding
+
+---
+
+## 16. Security Fixes (What I Fixed) + The ONE Task Only You Can Do
+
+> Read this before your presentation. The first part explains, in plain words, the
+> safety problems we found and fixed. The second part is **the single manual step
+> that only you can do** (I can't do it from here). It takes about 5 minutes.
+
+### 16a. In plain words — what was wrong and what I fixed
+
+Think of the database like a building with locked doors (called "RLS"). Before, the
+doors were basically **open to everyone** — any logged-in person could look at
+anything and even mark themselves as an admin. We closed those doors. Here's the list:
+
+1. **Anyone could read every table and even promote themselves to Admin.**
+   Fixed by turning on "Row Level Security" in the database and writing rules for
+   who can see/edit what. A normal user can now only see/edit their own stuff.
+2. **Admin was decided by the website using your email address.**
+   Someone could lie about their email or edit the browser and become Admin.
+   Now "am I an admin?" is read only from the database, which is protected. Only the
+   first person to sign up (or an existing admin) gets Admin powers.
+3. **A user could promote themselves to "Coach/Leader" by faking an approval.**
+   There was a trick: nominate yourself as your own coach, mark it "approved and
+   accepted", and you'd become a leader. Fixed — you can no longer approve your own
+   request, and the system refuses self-nomination.
+4. **If the database had a hiccup, the site would quietly show "nothing here".**
+   This looked the same as "you have no data", which could make an admin think
+   records were deleted. Now the site waits and warns instead of pretending.
+5. **Every user was shouting "give me ALL the data" every 30 seconds.**
+   With 5,000 users that overwhelms the database. Now it uses push-updates
+   (Realtime) and only fetches your own records.
+6. **The "Print to PDF" button could crash on empty forms.**
+   Added a safety net so it shows a polite message instead of freezing.
+7. **The year was written as both "2025-2026" and "2025/2026" in different places**, which
+   made records land in the wrong year. Now everything uses one format ("2025/2026").
+8. **Coaches' edit records ("activity logs") were being thrown away.**
+   Now they get saved, so the audit trail (who changed what) actually works.
+
+### 16b. The ONE task only you can do (apply the database rules)
+
+I gave the database its new "security rules" in a file, but **I cannot paste them
+into your Supabase account myself — that needs your login**. It's a copy-paste step.
+The rules in the file are NOT live until you do this. Everything is safe to re-run.
+
+**Step-by-step (about 5 minutes):**
+
+1. Go to **https://supabase.com** and sign in with the account that owns the project
+   (the one whose dashboard URL looks like `uqqarisgwdaznsxycvap.supabase.co`).
+2. On the left sidebar click **"SQL Editor"** (sometimes it's under "SQL").
+3. Click the blue **"+ New query"** (top right).
+4. Open the file `supabase-schema.sql` (it's in the project folder on your computer)
+   in a text editor (Notepad / TextEdit / VS Code).
+5. **Select ALL** the text in that file and **copy** it.
+6. **Paste** it into the big empty box in Supabase (replacing anything that was there).
+7. Click the **"Run"** button (bottom right).
+8. You should see a green message, something like **"Success. No rows returned."**
+   That means it worked.
+
+If you get a red error, copy the red message and paste it back to me — I'll fix it.
+
+### 16c. Optional (recommended but not required): turn on Realtime
+
+Our app tries to use instant push-updates first. To make that actually work, turn on
+Realtime for the tables. To do it:
+
+1. In Supabase, click **"Database"** in the left sidebar, then **"Replication"**.
+2. Under **"Source" → "Enable Realtime"**, click **"Enable"**.
+3. Under the table list, toggle on the tables: `users`, `development_reviews`,
+   `quarterly_summaries`, `coaching_requests`, `meetings`, `follow_up_tasks`,
+   `activity_logs`, `requirement_settings`, `review_schedules`.
+
+If you skip this, the app still works — it just falls back to checking every 30
+seconds instead of instant updates.
+
+### 16d. What is still left undone (lower priority)
+
+- The app download is big (~1.3 MB) and could be split into smaller pieces so it
+  loads faster. Not done yet — planned.
+- A normal user is currently able to type words into the leader/coach section of
+  their own form. That's a small integrity gap, not a security hole. Planned fix.
+- The lists don't yet split results into pages for super-large datasets. Planned.
+
+---
+
+## 17. Quick Glance — Did It Work?
+
+After you run the SQL and log in:
+
+| Expected behaviour | Check |
+|-------------------|-------|
+| A normal member can only see their own reviews/summaries | Go to "My Reviews" — you see only you |
+| A member **cannot** see/edit the Admin panel | The Admin tab should not appear for them |
+| The first person to sign up becomes Admin | Sign up a brand-new account and check the Admin panel |
+| The day-to-day app looks exactly the same | Nothing visual changed (by design)

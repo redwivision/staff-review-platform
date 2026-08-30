@@ -1,693 +1,745 @@
-# Asseso — Everything You Need to Know
+# Learn Software Engineering With Asseso
 
-> This document is your single source of truth. Read it before your presentation.
+> This guide does two jobs at once:
+> 1. It teaches you **software engineering and web development** from the ground up.
+> 2. It uses **Asseso** (the real app in this folder) as the live, working example
+>    we study as we learn.
+>
+> You don't need to know any programming to start. You learn by doing — and this
+> project is a real app with real users, real security, and real deployment. That's
+> the best kind of classroom.
+
+---
+
+## How To Use This Guide
+
+Think of it like a course, not a reference book. It has **Parts** (A–E). Each Part
+has **concepts** (explained simply), **concrete examples from our code**, and a short
+**"Try It"** exercise. Read them in order the first time. After that, use the
+**Quick-Reference Appendix** at the end for things like commands.
+
+**A quick warning before you start:** some parts of this app intentionally use
+special jargon (PDP, CMO, KDA, TL). That's a requirement from the client — it's their
+real HR vocabulary. Don't be scared of the words; they're just labels on forms.
 
 ---
 
 ## Table of Contents
-1. [What Is This App?](#1-what-is-this-app)
-2. [How It Works (Simple Version)](#2-how-it-works-simple-version)
-3. [Tech Stack Explained Like You're 10](#3-tech-stack-explained)
-4. [System Architecture](#4-system-architecture)
-5. [Database Design](#5-database-design)
-6. [Frontend Design](#6-frontend-design)
-7. [User Roles & Permissions](#7-user-roles--permissions)
-8. [The Complete User Journey](#8-the-complete-user-journey)
-9. [File Map — What Does What](#9-file-map)
-10. [Deployment — How It Gets to Vercel](#10-deployment)
-11. [How Changes Flow (Git → Vercel → Users)](#11-how-changes-flow)
-12. [Environment Variables](#12-environment-variables)
-13. [Common Issues & Fixes](#13-common-issues--fixes)
-14. [Quick Reference Commands](#14-quick-reference-commands)
-15. [Known Limitations (Current MVP)](#15-known-limitations-current-mvp)
-16. [Security Fixes + The ONE Task Only You Can Do](#16-security-fixes-what-i-fixed--the-one-task-only-you-can-do)
-17. [Quick Glance — Did It Work?](#17-quick-glance--did-it-work)
+
+**Part A — The Mindset (What IS software engineering?)**
+- [A1. What software engineering really is](#a1-what-software-engineering-really-is)
+- [A2. The app in one sentence](#a2-the-app-in-one-sentence)
+- [A3. Vocabulary cheat sheet](#a3-vocabulary-cheat-sheet)
+
+**Part B — Web Fundamentals (the tech behind Asseso)**
+- [B1. How the web works](#b1-how-the-web-works)
+- [B2. The three sides of a web app](#b2-the-three-sides-of-a-web-app)
+- [B3. Your exact tech stack, explained](#b3-your-exact-tech-stack-explained)
+
+**Part C — Inside This Codebase (a guided tour)**
+- [C1. Reading a project folder](#c1-reading-a-project-folder)
+- [C2. The main file (App.tsx)](#c2-the-main-file-aptsx)
+- [C3. The database design](#c3-the-database-design)
+- [C4. The two important forms](#c4-the-two-important-forms)
+- [C5. How authentication works](#c5-how-authentication-works)
+- [C6. How permissions work (who can do what)](#c6-how-permissions-work-who-can-do-what)
+
+**Part D — The Engineering Process (how real projects run)**
+- [D1. Version control with Git](#d1-version-control-with-git)
+- [D2. Deployment (getting it live)](#d2-deployment-getting-it-live)
+- [D3. Testing like an engineer](#d3-testing-like-an-engineer)
+- [D4. Security — why it matters and what we did](#d4-security--why-it-matters-and-what-we-did)
+- [D5. Scaling to many users (weak wifi included)](#d5-scaling-to-many-users-weak-wifi-included)
+
+**Appendix (reference — keep these handy)**
+- [Appendix A. Full file map](#appendix-a-full-file-map)
+- [Appendix B. Commands you'll use](#appendix-b-commands-youll-use)
+- [Appendix C. The ONE thing only you can do](#appendix-c-the-one-thing-only-you-can-do)
+- [Appendix D. Common issues & fixes](#appendix-d-common-issues--fixes)
+- [Appendix E. Known limitations (honest review)](#appendix-e-known-limitations-honest-review)
 
 ---
 
-## 1. What Is This App?
+# PART A — THE MINDSET
 
-**Asseso** is a staff performance review platform for the Africa Region team. It replaces paper/digital forms with a web app where:
+## A1. What software engineering really is
 
-- **Staff members** fill out quarterly self-reviews (Development Reviews) and quarterly summaries
-- **Coaches/Team Leaders** evaluate their staff and compile summaries
-- **Admins** see everything, generate PDF reports, and use AI to synthesize reviews
+A common myth: "software engineering is writing lots of code." It's not. Code is only
+a small part. Software engineering is:
 
-Think of it as a digital HR performance review system, purpose-built for a ministry context.
+> **Turning a real-world problem into a reliable solution that real people can use —
+> and keeping that solution working and safe as it grows.**
 
----
+An engineer mostly does these things, in a loop:
 
-## 2. How It Works (Simple Version)
+1. **Understand the problem.** What does the user actually need?
+2. **Design a solution.** What parts do we need? How do they fit together?
+3. **Build it.** Write code, in small pieces.
+4. **Test it.** Does it do the right thing? Does it break?
+5. **Ship it.** Get it to real users.
+6. **Keep it running.** Fix bugs, make it faster, keep it secure, handle more users.
 
-```
-┌─────────────┐     ┌─────────────────┐     ┌──────────────┐
-│  STAFF MEMBER │────▶│  COACH / TL     │────▶│    ADMIN     │
-│  fills form   │     │  evaluates &    │     │  sees all,   │
-│  (self-review)│     │  submits        │     │  exports PDF │
-└─────────────┘     └─────────────────┘     └──────────────┘
-       │                    │                       │
-       ▼                    ▼                       ▼
-  ┌─────────────────────────────────────────────────────┐
-  │   SUPABASE (PostgreSQL Database)  │
-  │  • users              — who's who                       │
-  │  • development_reviews — self-review forms             │
-  │  • quarterly_summaries — TL evaluation forms           │
-  │  • activity_logs      — edit audit trail               │
-  │  • follow_up_tasks    — coaching follow-ups            │
-  │  • coaching_requests  — coach nomination workflow      │
-  │  • meetings           — scheduled meetings             │
-  └─────────────────────────────────────────────────────┘
-```
-
-**The two main forms:**
-
-| Form | Who fills it | What it captures |
-|------|-------------|-----------------|
-| **Development Review** | Staff member | Self-reflection on 4 areas: Heart, Personal Life, Relational Life, Ministry Effectiveness |
-| **Quarterly Summary** | Staff + Coach | General info, Personal Dev Plan, Critical Objectives (CMO), Key Assignments (KDA), TL Evaluation |
+You'll see **all six steps done for real** in this project. That's what makes Asseso a
+great thing to learn from — it's not a toy. It went through all of it.
 
 ---
 
-## 3. Tech Stack Explained
+## A2. The app in one sentence
 
-| Technology | What It Does | Why It Matters |
-|-----------|-------------|----------------|
-| **React 19** | Builds the user interface (buttons, forms, pages) | Everything the user sees and clicks |
-| **TypeScript** | JavaScript with type safety — catches errors before they happen | Prevents bugs like "undefined is not a function" |
-| **Vite** | Dev server + build tool — makes development fast | When you run `npm run dev`, Vite is what starts |
-| **Tailwind CSS 4** | Utility-first CSS framework — styles everything | All the colors, spacing, layouts come from here |
-| **Supabase Auth** | Handles login/signup | Users sign in with email + password |
-| **Supabase (PostgreSQL)** | Cloud database (SQL) | All data lives here — reviews, users, logs |
-| **Express.js** | Backend API server | Only used for one thing: the AI synthesis endpoint |
-| **Google Gemini AI** | Generates AI-powered review synthesis | Admin can generate a 1-page AI summary of evaluations |
-| **jsPDF** | Generates PDF files in the browser | "Export to PDF" button |
-| **Motion** | Animation library | Smooth transitions between views |
-| **Lucide React** | Icon library | All the little icons (User, Save, Heart, etc.) |
+**Asseso is a website that replaces paper performance-review forms** for a staff
+team, so staff fill out reviews online, team leaders evaluate them, and admins see
+everything and export PDF reports.
 
-### How They Connect
-```
-User's Browser
-    │
-    ├── React + Vite (UI) ──────── reads/writes ────▶ Supabase (PostgreSQL) (data)
-    │                                                     │
-    │                                                     ├── /users
-    │                                                     ├── /developmentReviews
-    │                                                     ├── /quarterlySummaries
-    │                                                     ├── /activityLogs
-    │                                                     ├── /followUpTasks
-    │                                                     ├── /coachingRequests
-    │                                                     └── /meetings
-    │
-    └── Express Server (only for AI) ── calls ──▶ Google Gemini API
-```
+That one sentence already tells us the **users and the jobs**:
+
+| Person | Their job in the app |
+|--------|---------------------|
+| **Staff member** | Fill out their own review forms |
+| **Coach / Team Leader** | Evaluate the staff they coach |
+| **Admin** | See everything, manage people, make PDF reports |
+
+Most real apps start exactly like this: **"instead of paper, do it on a computer."**
+That's a valid product idea. The engineering challenge is making it fast, safe, and
+able to handle lots of people.
 
 ---
 
-## 4. System Architecture
+## A3. Vocabulary cheat sheet
 
-### Single-Page Application (SPA)
-The entire app is ONE HTML page (`index.html`). React handles all the "navigation" by showing/hiding different components based on state. There are no separate HTML pages.
+Before we go further, here are the words you'll keep seeing, in plain English:
 
-### State-Driven Navigation
-```
-currentTab state:
-  "my-reviews"  → Staff member sees their own reviews
-  "team-reviews" → Coach sees their coached staff
-  "admin"       → Admin dashboard (with sub-tabs: tracking, control, users)
-  "meetings"    → Meeting scheduler
-```
+| Word | Plain meaning |
+|------|---------------|
+| **Frontend** | Everything the user sees and clicks (the "visible part") |
+| **Backend** | The part that stores/manages data and enforces rules (the "engine room") |
+| **Database** | A place that stores data so it can be read and changed reliably |
+| **API** | A set of rules for how software talks to other software |
+| **Client** | The browser/app on the user's device |
+| **Server** | A computer "in the cloud" that runs code and stores data |
+| **Deploy** | Publish your app so real users can reach it |
+| **Bug** | A mistake in the code that makes it behave wrongly |
+| **Repo / Repository** | A folder that stores your code and its full history |
 
-### Real-Time Updates
-The app first tries **Supabase Realtime** (changes appear instantly, pushed to all open screens). If Realtime isn't enabled on the database yet, it automatically falls back to checking every 30 seconds. Either way the screen stays up to date without a manual refresh.
-
-### Mock Data Mode
-There's a toggle for offline/mock data mode (stored in `localStorage`). This is useful when Supabase isn't configured. All data lives in the browser's localStorage instead.
+You don't need to memorize these. They'll make sense as you see them in action.
 
 ---
 
-## 5. Database Design
+# PART B — WEB FUNDAMENTALS
 
-### Supabase Tables
+## B1. How the web works
 
-#### `users/{uid}`
-```json
-{
-  "uid": "abc123",
-  "name": "John Doe",
-  "email": "john@example.com",
-  "role": "Ministry Coordinator",
-  "isLeader": false,
-  "isAdmin": false,
-  "createdAt": 1700000000000
-}
+When you open a website, three things happen, in order:
+
+1. **Your browser asks a server** for the page ("give me this website").
+2. **The server sends back the files** (HTML, CSS, JavaScript).
+3. **Your browser runs those files** to draw the page on your screen.
+
+With an old-style website (called a "multi-page app"), the server sends a whole new
+HTML page every time you click something. That's slow because the browser re-downloads
+and redraws everything.
+
+Asseso is a different, more modern kind: a **Single-Page Application (SPA)**.
+- The browser downloads **one** main page at the start.
+- After that, React (the frontend library) **swaps parts of the page in and out**
+  instantly without re-downloading anything.
+- It feels like a smooth app instead of a clicky website.
+
+That's why our `index.html` is tiny (less than 1 KB) — it's just a shell. Everything
+else is JavaScript that runs in the browser.
+
+### Try It
+Open `index.html` in this folder. Notice it barely contains anything. Then look at
+`src/main.tsx` — it's the actual starting point: it grabs the `<div id="root">` from
+the HTML and tells React "render the whole app here."
+
+---
+
+## B2. The three sides of a web app
+
+Almost every web app has three parts. Asseso has all three:
+
 ```
-- **Primary key / row ID** = also stored in `uid` (matches the Supabase auth user ID)
-- `isLeader` = true means this person can evaluate others
-- `isAdmin` = true means full access to everything
-
-#### `developmentReviews/{reviewId}`
-```json
-{
-  "id": "abc123_1st_2025-2026",
-  "userId": "abc123",
-  "quarter": "1st",
-  "year": "2025/2026",
-  "status": "Draft" | "Submitted",
-  "staffMemberName": "John Doe",
-  "ministryAssignment": "Youth Ministry",
-  "supervisorName": "Jane Leader",
-  "monthsCovered": "July - October 2025",
-  "heart": {
-    "strengths": ["", "", ""],
-    "needsImprovement": ["", "", ""],
-    "suggestedActionPoints": ["", "", ""]
-  },
-  "personalLife": { ... },
-  "relationalLife": { ... },
-  "ministryEffectiveness": { ... },
-  "updatedAt": 1700000000000,
-  "lastUpdatedBy": "Team Member",
-  "leaderSectionComments": {}
-}
-```
-- **Document ID pattern:** `{userId}_{quarter}_{year}` — ensures one review per person per quarter
-- Each of the 4 quadrants has 3 sub-fields, each with 3 text inputs = 36 total fields
-
-#### `quarterlySummaries/{summaryId}`
-```json
-{
-  "id": "abc123_1st_2025-2026_summary",
-  "userId": "abc123",
-  "status": "Draft" | "Submitted" | "CoachSubmitted" | "Declined",
-  "coachUid": "coach_uid_here",
-  "coachName": "Coach Name",
-  "quarter": "1st",
-  "year": "2025-2026",
-  "staffName": "John Doe",
-  "teamLeaderName": "Jane Leader",
-  "dateJoinedStaff": "2018",
-  "reviewerNamePosition": "",
-  "supervisedBySince": "2022",
-  "presentPositionSince": "2023",
-  "position": "Ministry Coordinator",
-  "date": "2025-09-15",
-  "suggestions": ["", ""],
-  "pdp": { "heart": {...}, "personalLife": {...}, "relationalLife": {...} },
-  "cmo": [ { "objective": "", "desiredResult": "" }, ... ],
-  "kda": [ { "assignment": "" }, ... ],
-  "evaluation": {
-    "overallEffectiveness": "One of the best" | "Satisfactory" | "Ineffective",
-    "strengths": ["", "", ""],
-    "weaknesses": ["", "", ""],
-    "lackConfidence": "",
-    "readyForGreaterResp": "Yes" | "No",
-    "recommendReassignment": "Yes" | "No",
-    "teamLeaderSignature": "",
-    ...
-  },
-  "additionalComments": "",
-  "updatedAt": 1700000000000
-}
-```
-- **Document ID pattern:** `{userId}_{quarter}_{year}_summary`
-- `coachUid` / `coachName` tracks which coach is evaluating this summary
-- `status` workflow: `Draft` → `Submitted` (by staff) → `CoachSubmitted` (by coach) → `Declined` (by admin, sends back)
-
-#### `activityLogs/{logId}`
-```json
-{
-  "id": "unique_id",
-  "userId": "staff_uid",
-  "staffName": "John Doe",
-  "editedBy": "Jane Leader",
-  "editorUid": "leader_uid",
-  "activityType": "review" | "summary",
-  "quarter": "1st",
-  "year": "2025-2026",
-  "action": "Draft Saved",
-  "timestamp": 1700000000000
-}
+┌─────────────────────┐
+│  1. FRONTEND        │   React + TypeScript + Vite + Tailwind
+│   (what users see)  │   Lives in ./src  — runs in the browser
+└──────────┬──────────┘
+           │ reads / writes data (secrets hidden)
+           ▼
+┌─────────────────────┐
+│  2. BACKEND         │   Supabase (a "Backend-as-a-Service")
+│   (data + rules)    │   PostgreSQL database + Auth + Row-Level Security
+└──────────┬──────────┘
+           │ (only one job)
+           ▼
+┌─────────────────────┐
+│  3. AI SERVICE      │   Google Gemini — only used for the AI review summary
+└─────────────────────┘
 ```
 
-#### `coachingRequests/{requestId}`
-```json
-{
-  "id": "req_memberUid_coachName",
-  "memberId": "staff_uid",
-  "memberName": "John Doe",
-  "coachName": "Jane Leader",
-  "status": "pending" | "approved" | "rejected",
-  "acceptedByCoach": "pending" | "accepted" | "rejected",
-  "coachUid": "leader_uid"
-}
-```
-- This is the coaching nomination workflow: Staff nominates a coach → Admin approves → Coach accepts
+An important pattern to learn: **separation of concerns.** Each part has one job, and
+they talk through clear interfaces (the Supabase API). Keeping them separate makes the
+app easier to understand, test, and change.
 
-#### `followUpTasks/{taskId}`
-- Tracks coaching follow-up progress for each staff member's review quadrants
-- Auto-generated from review progress, can be manually overridden by admins
+> **A real "backend" note:** Most apps use a backend you write yourself (like the
+> Express.js server you'll see). Asseso mostly uses **Supabase** as its "backend,"
+> which means the database, login system, and security rules are all provided by a
+> cloud service. That's a very common modern approach — it saves a ton of work. The
+> small Express server exists for exactly one feature (AI synthesis).
 
-#### `meetings/{meetingId}`
-- Scheduled coaching/review meetings
+---
 
-#### `requirementSettings/{settingsId}`
-- Admin-configurable settings for which review sections are mandatory
+## B3. Your exact tech stack, explained
 
-### Data Relationships
-```
-users (uid)
-  ├── developmentReviews (userId = user.uid)     — 1 user has many reviews
-  ├── quarterlySummaries (userId = user.uid)     — 1 user has many summaries
-  ├── activityLogs (userId = user.uid)           — audit trail
-  └── coachingRequests (memberId = user.uid)     — coaching relationships
+A "tech stack" is just the list of technologies a project uses. Here is Asseso's, with
+*why each one is there*:
 
-quarterlySummaries
-  └── coachUid → users.uid                      — links summary to its coach
+| Technology | What it does | Why it's here |
+|-----------|-------------|---------------|
+| **React 19** | Builds the user interface | The visible part of the app |
+| **TypeScript** | JavaScript with type safety | Catches whole classes of bugs before you even run the app |
+| **Vite** | Build tool + dev server | Makes development fast; `npm run dev` starts it |
+| **Tailwind CSS 4** | Styling system | All the colors, spacing, rounded corners come from here |
+| **Supabase** | Cloud database + auth + security | Where all the real data lives |
+| **Supabase Auth** | Login / sign up | Email + password accounts |
+| **jsPDF** | Creates PDF files in the browser | The "Export to PDF" button |
+| **Motion** | Animation library | Smooth transitions between screens |
+| **Lucide React** | Icon library | The little icons (User, Save, Heart…) |
+| **Express** | A web server | Only for the AI endpoint |
+
+### About TypeScript (this is worth learning well)
+TypeScript = JavaScript + **types**. A type describes the shape of your data. When you
+write `name: string`, you've told TypeScript "this is text." If you later try to use it
+as a number, TypeScript complains **before** the user ever sees it. This turns a whole
+category of "mystery bugs" into obvious, early errors.
+
+You can see this in action in `src/types.ts` — that file defines the exact shape of a
+"Development Review", a "Quarterly Summary", a "User", etc. The whole rest of the app
+trusts those shapes, so when the app says "this is a review," TypeScript knows exactly
+what fields a review has.
+
+### How to check your types
+```bash
+npm run lint     # runs: tsc --noEmit  → "type check, don't create files"
 ```
 
 ---
 
-## 6. Frontend Design
+# PART C — INSIDE THIS CODEBASE
 
-### Component Hierarchy
+Now we study the actual project. This is the core of learning: **reading real code.**
+
+## C1. Reading a project folder
+
+Open the project folder. Don't be overwhelmed — every file has a purpose. Here's the
+mental map:
+
 ```
-App.tsx (monolithic — 5,485 lines)
-├── Auth Screen (login/signup)
-├── Main Dashboard
-│   ├── Tab: "My Quarterly Reviews" (staff view)
-│   │   ├── ReviewCard (clickable)
-│   │   └── SummaryCard (clickable)
-│   ├── Tab: "Team Evaluation Center" (coach view)
-│   │   ├── Staff list with coached members
-│   │   └── Summary cards for each staff
-│   ├── Tab: "Access Directory (Admin)"
-│   │   ├── Sub-tab: "tracking" — Follow-up tasks
-│   │   ├── Sub-tab: "control" — Admin reports & scheduling
-│   │   └── Sub-tab: "users" — User role management
-│   └── Tab: "Meetings"
-├── ReviewFormEditor (modal)     — The Development Review form
-├── SummaryFormEditor (modal)    — The Quarterly Summary form
-├── AdminReports (modal)         — Admin report view + AI synthesis
-├── AdminCoachingPanel (modal)   — Coaching oversight
-├── CoachingNominations (modal)  — Staff nominate coaches
-├── CoachingInvitations (modal)  — Coach accept/reject
-├── UserManagement               — Role management
-├── ActivityLog                  — Audit trail view
-└── PDF Export                   — jsPDF generation
+staff-review-platform/
+├── src/                 ← THE entire frontend lives here
+│   ├── main.tsx         ← entry point (React starts here)
+│   ├── App.tsx          ← the main component (the whole app)
+│   ├── supabase.ts      ← connects to Supabase
+│   ├── supabaseDb.ts    ← talks to the database (data layer)
+│   ├── dataLayer.ts     ← the "safe" way writes happen
+│   ├── types.ts         ← the shapes of all data (very important)
+│   ├── utils/           ← helper functions (like PDF export)
+│   └── components/      ← separate, reusable UI pieces
+├── server.ts            ← the tiny Express server (AI feature)
+├── index.html           ← the single-page shell
+├── supabase-schema.sql  ← the database rules (security + tables)
+├── package.json         ← list of packages + the commands
+├── vite.config.ts       ← build settings
+└── tsconfig.json        ← TypeScript settings
 ```
 
-### The Two Main Forms (Form Editors)
+**The single most useful skill you can build:** being able to open a project you've
+never seen and figure out "what does each file do?" Start by reading `package.json` —
+it tells you the commands (`scripts`) and the packages (`dependencies`).
 
-#### ReviewFormEditor (Development Review)
-- **5 tabs:** Header → Heart → Personal Life → Relational Life → Ministry Effectiveness
-- Each quadrant has: Strengths (3 fields) + Needs Improvement (3 fields) + Suggested Actions (3 fields)
-- Progress bar shows completion percentage
-- Staff fills this out; leaders can view and add section comments
-
-#### SummaryFormEditor (Quarterly Summary)
-- **6 tabs:** General & Suggestions → PDP → CMO → KDA → TL Evaluation → Additional Comments (3rd quarter only)
-- Staff fills tabs 1-4 (PDP, CMO, KDA, Suggestions)
-- Coach fills tab 5 (TL Evaluation)
-- Tab 6 is only for 3rd quarter
-
-### Styling
-- **Tailwind CSS** — utility classes directly in JSX (e.g., `className="bg-slate-50 rounded-xl p-5"`)
-- **Dark mode** — toggled via a button, uses Tailwind's `dark:` prefix
-- **Responsive** — grid layouts adapt: `grid-cols-1 md:grid-cols-2 lg:grid-cols-3`
-- **Motion** — page transitions and animations via `motion/react`
+### Try It
+Open `package.json` and find the `"scripts"` section. We have commands called `dev`,
+`build`, `start`, `lint`, `clean`. Can you guess what each does from its name? Now
+check — they match Appendix B at the end of this guide.
 
 ---
 
-## 7. User Roles & Permissions
+## C2. The main file (App.tsx)
 
-| Role | Can Do | Cannot Do |
-|------|--------|-----------|
-| **Staff Member** | Fill own reviews, fill own summaries, submit to coach, nominate coaches | See others' reviews, evaluate anyone |
-| **Coach/Team Leader** | See coached staff's summaries, fill TL Evaluation, submit to admin, schedule meetings | Modify staff's self-review quadrants (read-only) |
-| **Admin** | See everything, manage users, generate PDFs, AI synthesis, decline evaluations, manage follow-ups | — (full access) |
+`App.tsx` is the biggest file (thousands of lines). It is the **top-level component**:
+it decides *what screen to show* based on a piece of state called `currentTab`.
 
-### How Roles Work
-- `isLeader` flag on user profile → unlocks coach/leader features
-- `isAdmin` flag OR email = `lewikb13@gmail.com` → unlocks admin features
-- Supabase Row-Level Security policies enforce these permissions at the database level
+Here is the core React idea, and it's the single most important concept in React:
 
-### Coaching Workflow
-1. Staff member goes to "My Coaches" and nominates someone by name
-2. Admin sees the request in the Admin Coaching Panel and approves it
-3. The nominated coach gets an invitation and accepts/rejects
-4. Once accepted, the coach can see that staff member's summaries
+> **The UI is a *function* of your data/state.** When the state changes, the screen
+> re-draws to match. You never manually "edit" the page — you change the state and
+> React updates the screen for you.
+
+In plain terms: `currentTab` is a variable that says `"my-reviews"` or `"admin"` or
+`"meetings"`. Wherever that value is, React shows the matching screen. Clicking a
+navigation button *changes* `currentTab`, and React instantly redraws.
+
+```js
+// Pseudo-code of the idea (not exact real code):
+const currentTab = userClickedOnTab;      // e.g. "admin"
+if (currentTab === "admin")  showAdminPanel();
+if (currentTab === "meetings") showMeetings();
+```
+
+**A note on size:** `App.tsx` is very large. An experienced engineer would probably
+split it into smaller files. That's a real lesson: big files are harder to read and
+test. This project is honest about that — it's listed in Appendix E as a known
+limitation, and we already made it much better for users by *lazy-loading* the
+separate components (see D5).
+
+### Reusable components
+One of React's superpowers: you write a piece of UI **once** as a "component" and reuse
+it. Look in `src/components/`. Each file is one reusable piece:
+
+- `ReviewFormEditor.tsx` — the Development Review form
+- `SummaryFormEditor.tsx` — the Quarterly Summary form
+- `AdminReports.tsx` — the admin's report screen
+- `UserManagement.tsx` — the screen admin uses to change people's roles
+- …and more.
+
+### Try It
+In `src/App.tsx`, find the string `currentTab`. What controls which tab is shown?
+Search for `setCurrentTab(` to see what changes it. This one exercise teaches you how
+almost the whole app is wired together.
 
 ---
 
-## 8. The Complete User Journey
+## C3. The database design
 
-### Staff Member Flow
-1. **Sign up** → email + password + name + role
-2. **My Quarterly Reviews** tab shows their reviews and summaries
-3. Click **"New Review"** → opens ReviewFormEditor → fill out the 4 quadrants → Save
-4. Click **"New Summary"** → opens SummaryFormEditor → fill Section 1 (General Info) + tabs 2-4 (PDP, CMO, KDA) → Save
-5. Click **"Submit to Coach"** → locks the form, sends to their coach
+The database is PostgreSQL (via Supabase). Think of a database as **a set of
+structured tables**, like organized spreadsheets where every row has a fixed list of
+columns and every row has a unique `id`.
 
-### Coach Flow
-1. **Team Evaluation Center** tab shows staff they're coaching
-2. Click on a staff member's summary → fills out **TL Evaluation** tab (tab 5)
-3. Clicks **"Submit to Admin"** → locks evaluation, sends to admin
+Here are the main tables. I'll use "shape" notation (id, fields) so you can picture them:
 
-### Admin Flow
-1. **Access Directory** → "control" sub-tab
-2. Sees all submitted evaluations in a grid
-3. Can **Export to PDF** (single or bulk)
-4. Can click **"AI Synthesize"** to generate a 1-page AI summary via Gemini
-5. Can **Decline** evaluations (with reason) → sends back to coach for corrections
-6. **"users"** sub-tab → manage who is a leader, who is an admin
+### `users` — who's who
+- `uid`, `name`, `email`, `role`, `isLeader`, `isAdmin`, `createdAt`
+- `uid` equals the auth login id (ties a login to a profile).
+
+### `development_reviews` — the self-review forms
+- `id`, `userId`, `quarter`, `year`, `status`
+- Then the four review areas: Heart, Personal Life, Relational Life, Ministry
+  Effectiveness. Each area has Strengths / Needs Improvement / Suggested Actions.
+
+### `quarterly_summaries` — the coach evaluation forms
+- `id`, `userId`, `status`, `coachUid`, `coachName`, `quarter`, `year`
+- Sections: General Info, PDP, CMO, KDA, TL Evaluation.
+
+### Other tables
+- `activity_logs` — an **audit trail**: who changed what, and when.
+- `coaching_requests` — the "staff asks someone to be their coach" workflow.
+- `follow_up_tasks`, `meetings`, `requirement_settings` — supporting data.
+
+Be careful: keep the **table names** (`quarterly_summaries`, `development_reviews`)
+separate from the **database shapes** (like `quarterlySummaries`). The code often uses
+camelCase (`quarterlySummaries`) while the database table uses snake_case
+(`quarterly_summaries`). The mapping layer (`supabaseDb.ts`) translates between them.
+
+### Try It
+Open `supabase-schema.sql`. It's the *blueprint* for the whole database — run it and
+you create every table and every security rule. Skim it. Even if the SQL looks foreign
+now, notice how it's just "recipe instructions" telling the database what to build.
 
 ---
 
-## 9. File Map
+## C4. The two important forms
+
+The heart of the product is two forms. Understanding these two screens tells you what
+the whole product does.
+
+### Development Review (self-review) — `ReviewFormEditor.tsx`
+- The **staff member** fills this out about themselves.
+- Organized into 4 tabs (Heart, Personal Life, Relational Life, Ministry Effectiveness).
+- Shows a progress bar ("how much have you filled in?") — that's computed in code, not
+  stored; the app counts filled fields.
+
+### Quarterly Summary (coach evaluation) — `SummaryFormEditor.tsx`
+- The **staff member** fills the first sections (personal details, Personal Dev Plan,
+  Critical Objectives / CMO, Key Assignments / KDA).
+- The **coach** fills the TL Evaluation section.
+- Has a status that moves through a workflow: `Draft → Submitted → CoachSubmitted → Declined`.
+
+The word **"status"** here is powerful — it's a **state machine**: the form can only be
+in certain states, and only certain transitions are allowed. This is a real software
+engineering concept you'll use again and again.
+
+### Try It
+Open `src/types.ts`. Find the type for the summary's `status`. What are the allowed
+values? Now look at `src/utils.ts` for `calculateReviewProgress` — can you guess how it
+turns "some fields filled" into a percentage?
+
+---
+
+## C5. How authentication works
+
+Authentication = **proving who you are** (logging in).
+
+Asseso uses **Supabase Auth**, which handles the tricky parts securely:
+- Passwords are **never stored as plain text** — they're hashed (scrambled) so even the
+  database owner can't read them.
+- Login uses email + password, and Supabase returns a **session token** the app uses to
+  prove "I'm logged in as this person."
+
+In the code you'll see functions like `supabaseSignIn` and `supabaseSignUp` in
+`supabaseDb.ts`. These are thin wrappers around Supabase's login/signup.
+
+### Why this matters for security
+A common beginner mistake is trusting the frontend ("the user said they're admin, so
+they are"). **That is unsafe** — anyone can edit a browser's data. The correct rule:
+
+> **The frontend is just a window. The *database* is the one that decides the truth.**
+
+That's why this app reads "am I an admin?" from the *database*, not from something the
+browser invented. We'll see this again in C6 and D4.
+
+### Try It
+Look at `src/supabase.ts`. Can you see where the app connects to Supabase (the URL and
+the anon key)? Note: these come from environment variables, not hard-coded — which is
+the secure way (see Appendix D / env variables).
+
+---
+
+## C6. How permissions work (who can do what)
+
+There are three levels of "who can do what":
+
+| Role | In the app |
+|------|-----------|
+| **Staff Member** | Fill their own reviews; submit to their coach |
+| **Coach / Team Leader** | Evaluate the staff they coach |
+| **Admin** | See everything, manage users, export PDFs, decline evaluations |
+
+There are **two layers of permission**, and both matter:
+
+1. **The UI layer (frontend):** Decide which *buttons and screens* to show. E.g., the
+   Admin tab only appears for admins. This is about *looks and convenience*.
+2. **The database layer (backend):** Decide whether a request is *allowed*. This is
+   called **Row-Level Security (RLS)** and it's in `supabase-schema.sql`. This is the
+   layer that actually *enforces* the rules.
+
+Role flags:
+- `isLeader` on a user → unlocks coach/leader features.
+- `isAdmin` on a user → unlocks admin features. **Only the database decides this.**
+
+Here is the key lesson:
+
+> **Always enforce security in the database (RLS), not just in the UI.**
+> The UI can be bypassed. The database cannot — well, not without the real keys.
+
+### Try It
+Look for the RLS helper functions in `supabase-schema.sql`, like `is_admin_user` and
+`is_coach_of`. If you can't follow the SQL yet, that's okay — just notice that *these
+functions are the security gate*, and read the plain-English version in D4.
+
+---
+
+# PART D — THE ENGINEERING PROCESS
+
+This is how real projects actually run, and how Asseso was (and is) engineered.
+
+## D1. Version control with Git
+
+Git is a **time machine for your code**. It records every change so you can:
+- See what changed and why.
+- Go back if you break something.
+- Save a "snapshot" (a **commit**) with a message explaining what you did.
+
+Here's the daily rhythm:
+
+```bash
+git status            # what has changed?
+git diff              # show me the actual changes, line by line
+git add .             # "stage" the changes (put them in the box)
+git commit -m "..."   # take the snapshot, with a message
+git push origin main  # upload to GitHub (which triggers deployment)
+```
+
+### Commit messages are communication
+A good commit message explains the *why*, not just the *what*. Bad: `"stuff changed"`.
+Good: `"Harden admin check so roles come only from the database"`. Future you (and
+collaborators) will thank you.
+
+### Try It
+Run `git log --oneline -5` in this folder. You'll see the recent history of this
+project — real commits describing real work, including the security fixes we'll talk
+about in D4.
+
+---
+
+## D2. Deployment (getting it live)
+
+"Deployment" is the process of making your app reachable by real users. For Asseso:
+
+1. You **push** code to GitHub (branch `main`).
+2. **Vercel** (the hosting service) notices the push automatically.
+3. Vercel runs `npm run build`, which turns your source into a `dist/` folder of
+   optimized, ready-to-serve files.
+4. Vercel serves those files on the internet — usually live within about a minute.
+
+This "push → auto-build → auto-deploy" setup is called **continuous deployment (CD)**.
+
+```bash
+npm run build
+# does two things:
+#   1. vite build           → builds the React frontend → dist/
+#   2. esbuild server.ts    → bundles the Express server → dist/server.cjs
+```
+
+### Environment variables
+Real secrets (the Supabase URL and anon key, the AI key) are **not** in the code. They
+live in Vercel as "environment variables." That way:
+- Secrets aren't accidentally uploaded to GitHub.
+- Each environment (dev vs. production) can have its own values.
+
+Variables starting with `VITE_` are visible to the browser (that's how the frontend
+gets the Supabase keys — it needs them, and the anon key is designed to be public).
+Anything else stays server-side only. See Appendix D for the exact list.
+
+### Try It
+Find `.env.example` in the folder. Compare it to `src/supabase.ts` — see how the code
+reads `import.meta.env.VITE_SUPABASE_URL`? That's how environment variables flow into
+the frontend.
+
+---
+
+## D3. Testing like an engineer
+
+Engineers test because users will try things the developer never imagined. There are a
+few kinds of testing in the real world:
+
+- **Manual testing:** You click through the app and check it behaves. Fast, but
+  humans forget things.
+- **Type checking (`npm run lint`):** TypeScript's built-in check. Already catches a
+  huge class of bugs.
+- **Build test (`npm run build`):** Proves the whole app can compile into something
+  shippable. If the build fails, don't deploy.
+- **Automated tests:** Code that tests other code (e.g., Playwright, Cypress, k6).
+  Not fully set up here yet — noted as future work in Appendix E.
+
+The CLI guide for this project is written in `TESTING_GUIDE.md` — it's your
+step-by-step checklist to click through the app and confirm each feature works.
+
+**Engineers' golden rule:** *"If it isn't tested, it's already broken somewhere."*
+Before you push, at minimum run both `npm run lint` and `npm run build`.
+
+### Try It
+Run both commands:
+```bash
+npm run lint     # type check — should print nothing (no errors = good)
+npm run build    # full build — should succeed
+```
+If either fails, you've found a bug. That's the job!
+
+---
+
+## D4. Security — why it matters and what we did
+
+Security is about making sure **only the right people can do the right things** with
+the data. For a system holding sensitive HR reviews, this is not optional.
+
+When we reviewed this app, we found (and fixed) real problems. This is exactly what a
+security review looks like. Here's what we found and what we did — in plain words:
+
+1. **Anyone could read everything and even promote themselves to Admin.**
+   The database doors (RLS) weren't locked. → We turned on Row-Level Security and
+   wrote rules so a normal user sees only their own data.
+2. **"Am I admin?" was decided by the website using an email address.**
+   That's forgeable. → Now the database itself decides; only the first user to sign up
+   (or an existing admin) gets admin powers.
+3. **A user could get promoted to Coach by pretending to approve their own request.**
+   → Now self-nomination is rejected and a single user can't approve themself.
+4. **If the database hiccupped, the app silently showed "no data."**
+   That's dangerous — an admin might think records were deleted. → Now it waits and
+   warns instead of quietly pretending everything is fine.
+5. **Deletes by coaches were being thrown away.**
+   → Now they're recorded so the audit trail (who changed what) actually works.
+
+The security rules all live in **`supabase-schema.sql`**. But here's the crucial
+honest bit: **these rules are written, but not yet applied to the live database.** That
+can only be done through the Supabase dashboard with an account that owns the project
+— which we explain, step by step, in **Appendix C**. Until that's done, the security
+rules are inert. This is a perfect real-world example of *the difference between
+"written" and "shipped."*
+
+> **Lesson for you:** Security isn't a feature you add at the end. It's a set of rules
+> enforced at the data layer, reviewed regularly, and actually applied to production.
+
+---
+
+## D5. Scaling to many users (weak wifi included)
+
+"Scaling" means: *can this keep working when lots of people use it?* A version that
+works for 3 users can collapse at 5,000. Things we consider:
+
+**1. Not asking for too much data.**
+An early version of the app had every user download ALL the data every 30 seconds.
+With thousands of users that's a flood. → We changed it so a normal staff member only
+fetches **their own** records, and admins/leaders fetch what they actually need.
+
+**2. Update speed.**
+Now the app tries **Supabase Realtime** first (instant push updates), and only falls
+back to polling (checking every ~30s) if Realtime isn't enabled. Push is far more
+efficient at scale.
+
+**3. Fast initial load — critical on weak wifi.**
+This is the one you (the user) specifically asked about. A huge app is painful on
+slow wifi. We cut the initial download by almost half:
+- **Before:** the whole app (including the PDF generator and every admin screen) was
+  one ~1.34 MB file (371 KB when compressed).
+- **After:** the first screen only downloads ~735 KB (202 KB compressed). Everything
+  else — PDFs, admin panels, forms — is **lazy-loaded**: it only downloads **when a
+  user actually opens it**.
+
+This is the **code-splitting / lazy-loading** trick, a standard engineering
+performance technique. Professional apps use exactly this to stay fast on mobile and
+slow networks.
+
+### Try It
+Look at the top of `src/App.tsx` and find `React.lazy` and `Suspense`. That's the
+performance trick in action. Now run `npm run build` and look at the size line for the
+main `index-*.js` chunk — that's what users download first. Compare it to what a
+single-big-file version would be.
+
+---
+
+# APPENDIX — REFERENCE
+
+## Appendix A. Full file map
 
 ```
 staff-review-platform/
 ├── src/
-│   ├── App.tsx                    ← THE main file (~5,600 lines, monolithic SPA)
-│   ├── main.tsx                   ← React entry point (renders App)
-│   ├── supabase.ts                ← Supabase client initialization + config
-│   ├── supabaseDb.ts              ← Data access layer (CRUD + polling subscriptions)
-│   ├── dataLayer.ts               ← Unified write layer for forms and actions
-│   ├── types.ts                   ← TypeScript interfaces (all data shapes)
-│   ├── constants.ts               ← Review sections, quarter info
-│   ├── utils.ts                   ← Helper functions (create reviews, calculate progress)
-│   ├── index.css                  ← Global styles + Tailwind
+│   ├── App.tsx                    ← main component, whole app + tab navigation
+│   ├── main.tsx                   ← React entry point (starts the app)
+│   ├── supabase.ts                ← Supabase client setup (URL + anon key)
+│   ├── supabaseDb.ts              ← data access (reads/writes + realtime/poll)
+│   ├── dataLayer.ts               ← the "safe" unified write layer
+│   ├── types.ts                   ← TypeScript shapes for ALL data ★ READ THIS
+│   ├── constants.ts               ← review sections, quarter info
+│   ├── utils.ts                   ← helpers (create reviews, progress calc)
+│   ├── index.css                  ← global styles + Tailwind
 │   ├── components/
 │   │   ├── ReviewFormEditor.tsx   ← Development Review form (4 quadrants)
-│   │   ├── SummaryFormEditor.tsx  ← Quarterly Summary form (6 tabs) ★ WE EDITED THIS
-│   │   ├── AdminReports.tsx       ← Admin report dashboard + AI synthesis ★ WE EDITED THIS
-│   │   ├── AdminCoachingPanel.tsx ← Coaching oversight for admins
-│   │   ├── ActivityLog.tsx        ← Audit trail view
-│   │   ├── CoachingInvitations.tsx← Coach accept/reject
-│   │   ├── CoachingNominations.tsx← Staff nominate coaches
-│   │   └── UserManagement.tsx     ← Admin role management
+│   │   ├── SummaryFormEditor.tsx  ← Quarterly Summary form (6 tabs)
+│   │   ├── AdminReports.tsx       ← admin reports + AI synthesis
+│   │   ├── AdminCoachingPanel.tsx ← admin coaching oversight
+│   │   ├── ActivityLog.tsx        ← audit trail view
+│   │   ├── CoachingInvitations.tsx← coach accept/reject
+│   │   ├── CoachingNominations.tsx← staff nominate coaches
+│   │   └── UserManagement.tsx     ← admin role management
 │   └── utils/
-│       └── pdfExport.ts           ← PDF generation ★ WE EDITED THIS
-├── server.ts                      ← Express server (only for Gemini AI endpoint)
-├── index.html                     ← Single HTML shell
-├── package.json                   ← Dependencies + scripts
+│       └── pdfExport.ts           ← PDF generation (lazy-loaded)
+├── server.ts                      ← Express server (AI endpoint only)
+├── index.html                     ← single HTML shell
+├── supabase-schema.sql            ← database blueprint + security rules
+├── package.json                   ← dependencies + scripts
 ├── vite.config.ts                 ← Vite build config
 ├── tsconfig.json                  ← TypeScript config
-├── supabase-schema.sql            ← Database schema + security policies
-├── .env.example                   ← Environment variable template
-└── .gitignore                     ← Files excluded from git
+└── .env.example                   ← environment variable template
 ```
 
----
+## Appendix B. Commands you'll use
 
-## 10. Deployment
-
-### Current Setup
-- **GitHub repo:** `https://github.com/redwivision/staff-review-platform`
-- **Branch:** `main`
-- **Hosting:** Vercel (connected to GitHub — auto-deploys on push to `main`)
-- **Database:** Supabase (PostgreSQL, separate from hosting)
-- **Auth:** Supabase Auth (separate from hosting)
-
-### How Vercel Deployment Works
-1. You push code to `main` branch on GitHub
-2. Vercel detects the push automatically
-3. Vercel runs `npm run build` → creates `dist/` folder
-4. Vercel deploys the static files to its CDN
-5. Your live site updates (usually takes 30-60 seconds)
-
-### Build Process
 ```bash
-npm run build
-# This runs TWO commands:
-# 1. vite build          → builds React frontend → dist/
-# 2. esbuild server.ts   → bundles Express server → dist/server.cjs
+npm install             # first time: download all dependencies
+npm run dev             # start local dev server → http://localhost:3000
+npm run lint            # type check (tsc --noEmit) — find errors
+npm run build           # create production build (also tests it compiles)
+npm run start           # run the built app locally after `build`
+npm run clean           # remove the dist/ build folder
+
+# Git
+git status              # what changed?
+git diff                # show the changes in detail
+git add .               # stage changes
+git commit -m "msg"     # snapshot + message
+git push origin main    # upload → triggers deploy
 ```
 
-### Important Note About the Server
-The Express server (`server.ts`) is **only used for the Gemini AI endpoint**. The main app is purely client-side (React + Supabase). On Vercel, the server isn't actually used — the AI synthesis might work differently in production (or may not be deployed at all if Vercel is set up for static hosting only).
+## Appendix C. The ONE thing only you can do
 
----
+> This is the one manual step I (the assistant) cannot do for you, because it needs
+> your Supabase login. It applies the database security rules from D4. Without it,
+> those rules are written but NOT active. Takes about 5 minutes and is safe to re-run.
 
-## 11. How Changes Flow
+**Step-by-step:**
+1. Go to **https://supabase.com** and sign in with the account that owns the project.
+2. On the left click **"SQL Editor"**.
+3. Click **"+ New query"**.
+4. Open `supabase-schema.sql` in a text editor (Notepad / TextEdit / VS Code).
+5. Select all, copy it.
+6. Paste into the big box (replacing anything there).
+7. Click **"Run"**.
+8. You should see **"Success. No rows returned."**
 
-```
-You edit code locally
-    │
-    ▼
-git add . && git commit -m "your message"
-    │
-    ▼
-git push origin main
-    │
-    ▼
-GitHub receives the push
-    │
-    ▼
-Vercel detects the change → triggers build
-    │
-    ▼
-Build succeeds? → Deployed to production URL
-Build fails? → Vercel shows error, site unchanged
-```
+If you get a red error, copy the red message and send it back — we'll fix it.
 
-**To test locally before pushing:**
-```bash
-npm install          # install dependencies (first time only)
-npm run dev          # starts local dev server on http://localhost:3000
-```
+**Optional but recommended:** enable Realtime for faster updates:
+1. Supabase → **"Database"** → **"Replication"**.
+2. Click **"Enable Realtime"**.
+3. Turn on the toggle for these tables: `users`, `development_reviews`,
+   `quarterly_summaries`, `coaching_requests`, `meetings`, `follow_up_tasks`,
+   `activity_logs`, `requirement_settings`, `review_schedules`.
+   If skipped, the app still works (it just falls back to checking every ~30s).
 
----
-
-## 12. Environment Variables
-
-These are secrets that the app needs but shouldn't be in the code:
-
-| Variable | Purpose | Where to Set |
-|----------|---------|-------------|
-| `VITE_SUPABASE_URL` | Supabase project URL (e.g. `https://xxx.supabase.co`) | Vercel dashboard → Settings → Environment Variables |
-| `VITE_SUPABASE_ANON_KEY` | Supabase anon/public key (starts with `eyJ...`) | Vercel dashboard |
-| `GEMINI_API_KEY` | AI synthesis | Vercel dashboard (server-side only) |
-
-**IMPORTANT:** Variables prefixed with `VITE_` are exposed to the browser. All others are server-side only.
-
----
-
-## 13. Common Issues & Fixes
+## Appendix D. Common issues & fixes
 
 | Problem | Cause | Fix |
 |---------|-------|-----|
-| App shows blank white screen | Missing env vars or build error | Check Vercel build logs, ensure env vars are set |
-| Login doesn't work | Supabase config wrong | Verify `VITE_SUPABASE_URL`/`VITE_SUPABASE_ANON_KEY` match your Supabase project |
-| Changes not showing on live site | Build might have failed | Check Vercel dashboard → Deployments → see build log |
-| `npm run dev` fails | Missing `node_modules` | Run `npm install` first |
-| TypeScript errors | Code changes broke types | Run `npm run lint` to check |
-| Database permission denied | RLS policy blocking | Review `supabase-schema.sql` RLS policies — user might not have the right role |
+| Blank white screen | Missing env vars, or build error | Check Vercel build log; ensure env vars are set |
+| Login doesn't work | Supabase config wrong | Verify `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` |
+| Changes not live | Build failed | Vercel → Deployments → see error |
+| `npm run dev` fails | `node_modules` missing | Run `npm install` |
+| TypeScript errors | Code broke types | Run `npm run lint` to see exactly where |
+| Permission denied in DB | RLS blocks the request | Check the user's role; review RLS in `supabase-schema.sql` |
+
+### Environment variables (reference)
+| Variable | Purpose |
+|----------|---------|
+| `VITE_SUPABASE_URL` | Supabase project URL (e.g. `https://xxx.supabase.co`) |
+| `VITE_SUPABASE_ANON_KEY` | Supabase public/anon key (starts with `eyJ...`) |
+| `GEMINI_API_KEY` | AI synthesis (server-only) |
+
+`VITE_` variables are visible to the browser. All others are server-side only.
+
+## Appendix E. Known limitations (honest review)
+
+A good engineer is honest about what's not done yet. These are the current gaps:
+
+- **`App.tsx` is a very large single file.** It works, and we already lazy-loaded its
+  parts, but splitting it into smaller files would be cleaner for future developers.
+- **Monthly Development Review form** is de-prioritized; the guided flow focuses on the
+  Quarterly Summary.
+- **No email/push notifications.** (Planned: Supabase Edge Functions + SendGrid.)
+- **No file uploads.** (Planned: Supabase Storage.)
+- **Single role per user** — no hybrid staff+coach. (Planned: multi-role.)
+- **Hardcoded July–June fiscal quarters.** (Planned: admin-configurable.)
+- **Offline mode** is dev-only, not real offline support.
+- **AI synthesis (Gemini)** — intentionally not worked on here (per the project owner).
+- **PDF** uses a static template (no custom branding/logos).
+- **Web-only** — no native mobile app yet.
+- **Coach matching is manual** (admins approve one by one).
+- **Automated test tooling** (Playwright/Cypress/k6) isn't installed yet.
+- **A normal user can type into the leader/coach section of their own form** — a small
+  data-integrity gap (not a security hole). Planned fix.
+- **Lists don't paginate results yet** for very large datasets.
 
 ---
 
-## 14. Quick Reference Commands
+## Final words (read this)
 
-```bash
-# First time setup
-npm install
+You now have the tools to understand *how* this app works and *how* real software
+projects run. The biggest skill you're building isn't "memorize this stack" — it's:
 
-# Development (local testing)
-npm run dev                  # Starts on http://localhost:3000
+**"Read a real project, figure out what problem it solves, and know where the rules
+are enforced."**
 
-# Type checking (find errors without running)
-npm run lint                 # Runs tsc --noEmit
+Do the **Try It** exercises. Run `npm run lint` and `npm run build`. Then do the one
+manual task in **Appendix C**. That act — writing rules and *actually applying them to
+the real system* — is the difference between a student and an engineer.
 
-# Build for production
-npm run build                # Creates dist/ folder
-
-# Start production server locally
-npm run start                # Runs the built server on port 3000
-
-# Clean build artifacts
-npm run clean                # Removes dist/ folder
-
-# Git workflow
-git status                   # See what files changed
-git add .                    # Stage all changes
-git commit -m "message"      # Commit with message
-git push origin main         # Push to GitHub → triggers Vercel deploy
-```
-
----
-
-## Appendix: What We Changed (The Review Comment Fix)
-
-The review comment said: "From the first information page will include: Date of Joined staff, In position since (month/year), Reviewer Name, Supervised by current team leader since (month/year)"
-
-**These fields already existed** but were poorly labeled and organized. We redesigned Section 1 of the Quarterly Summary form to be crystal clear:
-
-### Before
-- 7 flat fields in a grid, no grouping
-- Labels like "Supervised By TL Since (Mo/Yr)" — confusing abbreviations
-- No hint text explaining what to enter
-
-### After
-- **3 visual cards** with icons and headers:
-  1. **Staff Identity** — Staff Name, Team Leader Name, Reviewer Name & Position
-  2. **Role & Timeline** — Current Position, Date Joined Staff, In Present Position Since, Supervised By Current Team Leader Since, Date Completed
-  3. **Staff Suggestions** — Suggestion 1, Suggestion 2
-- **Every field has hint text** (e.g., "Month/Year when the current Team Leader started supervising")
-- **No abbreviations** — "TL" → "Team Leader"
-- **Consistent labels** across the form, admin reports, and PDF export
-
-### Files Changed
-1. `src/components/SummaryFormEditor.tsx` — Redesigned header tab
-2. `src/components/AdminReports.tsx` — Updated admin report labels
-3. `src/utils/pdfExport.ts` — Updated PDF export labels
-
----
-
-## 15. Known Limitations (Current MVP)
-
-These are known gaps with planned improvements for the next iteration:
-
-### Monthly Development Review Form Is De-prioritized
-- The current UI and the "Next Step" guidance panel focus **only on the Quarterly Summary form** (fill → submit to coach → TL evaluation → admin).
-- The monthly **Development Review** form still exists and is accessible via the quarter cards, but it is **not** part of the active guided workflow and is **no longer required before the quarterly form** — a staff member can fill and submit their Quarterly Summary as soon as the quarter is unlocked.
-- The quarterly form is gated **only** by the admin's "unlock" schedule (instant unlock, or a scheduled date/time).
-- **Planned:** Bring the monthly form back into the guided/onboarding flow once the quarterly journey is fully polished.
-
-### Notifications
-- No email or push notifications for submissions, evaluations, or deadline reminders
-- **Planned:** Supabase Edge Functions + SendGrid for email triggers
-
-### File Attachments
-- Reviews and summaries are text-only — no ability to upload documents, images, or evidence
-- **Planned:** Supabase Storage integration for file uploads
-
-### Role Flexibility
-- A user has a single role (Staff, Coach, or Admin) — no hybrid roles (e.g., staff who is also a coach)
-- **Planned:** Multi-role support with granular permissions
-
-### Quarter Structure
-- Quarters follow a hardcoded July–June fiscal calendar
-- **Planned:** Admin-configurable quarter definitions for different organizational calendars
-
-### Offline Mode
-- The bypass/offline mode (localStorage) is for development and testing only — not a real offline feature
-- **Planned:** Service worker + offline persistence for genuine offline capability
-
-### AI Synthesis
-- The Gemini AI review synthesis generates a first draft that requires human review and editing before sharing
-- **Planned:** Multi-pass AI with human-in-the-loop feedback and custom prompt templates
-
-### PDF Export
-- PDFs use a static template layout — no custom branding, logos, or layout options
-- **Planned:** Configurable PDF templates with org branding
-
-### Mobile Experience
-- Web-only, no native mobile app — responsive design works on mobile browsers but no push notifications or native gestures
-- **Planned:** React Native or PWA with push notifications
-
-### Coach Assignment
-- Coach-staff matching is manual — admins approve coaching requests one by one
-- **Planned:** Automatic matching based on department, availability, or org hierarchy
-
-### Audit Trail
-- Activity logs track edits and submissions, but deletes are blocked by security rules — no soft-delete or recovery mechanism
-- **Planned:** Soft-delete with audit logging and admin recovery tools
-
-### Data Migration
-- No import/export tool for migrating from legacy systems (spreadsheets, paper forms)
-- **Planned:** CSV/Excel import wizard for bulk onboarding
-
----
-
-## 16. Security Fixes (What I Fixed) + The ONE Task Only You Can Do
-
-> Read this before your presentation. The first part explains, in plain words, the
-> safety problems we found and fixed. The second part is **the single manual step
-> that only you can do** (I can't do it from here). It takes about 5 minutes.
-
-### 16a. In plain words — what was wrong and what I fixed
-
-Think of the database like a building with locked doors (called "RLS"). Before, the
-doors were basically **open to everyone** — any logged-in person could look at
-anything and even mark themselves as an admin. We closed those doors. Here's the list:
-
-1. **Anyone could read every table and even promote themselves to Admin.**
-   Fixed by turning on "Row Level Security" in the database and writing rules for
-   who can see/edit what. A normal user can now only see/edit their own stuff.
-2. **Admin was decided by the website using your email address.**
-   Someone could lie about their email or edit the browser and become Admin.
-   Now "am I an admin?" is read only from the database, which is protected. Only the
-   first person to sign up (or an existing admin) gets Admin powers.
-3. **A user could promote themselves to "Coach/Leader" by faking an approval.**
-   There was a trick: nominate yourself as your own coach, mark it "approved and
-   accepted", and you'd become a leader. Fixed — you can no longer approve your own
-   request, and the system refuses self-nomination.
-4. **If the database had a hiccup, the site would quietly show "nothing here".**
-   This looked the same as "you have no data", which could make an admin think
-   records were deleted. Now the site waits and warns instead of pretending.
-5. **Every user was shouting "give me ALL the data" every 30 seconds.**
-   With 5,000 users that overwhelms the database. Now it uses push-updates
-   (Realtime) and only fetches your own records.
-6. **The "Print to PDF" button could crash on empty forms.**
-   Added a safety net so it shows a polite message instead of freezing.
-7. **The year was written as both "2025-2026" and "2025/2026" in different places**, which
-   made records land in the wrong year. Now everything uses one format ("2025/2026").
-8. **Coaches' edit records ("activity logs") were being thrown away.**
-   Now they get saved, so the audit trail (who changed what) actually works.
-
-### 16b. The ONE task only you can do (apply the database rules)
-
-I gave the database its new "security rules" in a file, but **I cannot paste them
-into your Supabase account myself — that needs your login**. It's a copy-paste step.
-The rules in the file are NOT live until you do this. Everything is safe to re-run.
-
-**Step-by-step (about 5 minutes):**
-
-1. Go to **https://supabase.com** and sign in with the account that owns the project
-   (the one whose dashboard URL looks like `uqqarisgwdaznsxycvap.supabase.co`).
-2. On the left sidebar click **"SQL Editor"** (sometimes it's under "SQL").
-3. Click the blue **"+ New query"** (top right).
-4. Open the file `supabase-schema.sql` (it's in the project folder on your computer)
-   in a text editor (Notepad / TextEdit / VS Code).
-5. **Select ALL** the text in that file and **copy** it.
-6. **Paste** it into the big empty box in Supabase (replacing anything that was there).
-7. Click the **"Run"** button (bottom right).
-8. You should see a green message, something like **"Success. No rows returned."**
-   That means it worked.
-
-If you get a red error, copy the red message and paste it back to me — I'll fix it.
-
-### 16c. Optional (recommended but not required): turn on Realtime
-
-Our app tries to use instant push-updates first. To make that actually work, turn on
-Realtime for the tables. To do it:
-
-1. In Supabase, click **"Database"** in the left sidebar, then **"Replication"**.
-2. Under **"Source" → "Enable Realtime"**, click **"Enable"**.
-3. Under the table list, toggle on the tables: `users`, `development_reviews`,
-   `quarterly_summaries`, `coaching_requests`, `meetings`, `follow_up_tasks`,
-   `activity_logs`, `requirement_settings`, `review_schedules`.
-
-If you skip this, the app still works — it just falls back to checking every 30
-seconds instead of instant updates.
-
-### 16d. What is still left undone (lower priority)
-
-- The app download is big (~1.3 MB) and could be split into smaller pieces so it
-  loads faster. Not done yet — planned.
-- A normal user is currently able to type words into the leader/coach section of
-  their own form. That's a small integrity gap, not a security hole. Planned fix.
-- The lists don't yet split results into pages for super-large datasets. Planned.
-
----
-
-## 17. Quick Glance — Did It Work?
-
-After you run the SQL and log in:
-
-| Expected behaviour | Check |
-|-------------------|-------|
-| A normal member can only see their own reviews/summaries | Go to "My Reviews" — you see only you |
-| A member **cannot** see/edit the Admin panel | The Admin tab should not appear for them |
-| The first person to sign up becomes Admin | Sign up a brand-new account and check the Admin panel |
-| The day-to-day app looks exactly the same | Nothing visual changed (by design)
+You're building something real. That's the best way to learn.

@@ -131,8 +131,9 @@ $$;
 
 -- SAFE SELF-PROMOTION: A user may become a leader ONLY if there exists a
 -- coaching request where they are the approved+accepted coach (i.e. someone
--- nominated them and admin approved). This preserves the "accept invitation ->
--- become leader" feature without letting anyone grant themselves privileges.
+-- ELSE nominated them and admin approved). The `member_id <> u.uid` guard
+-- prevents a user from nominating THEMSELVES and then "accepting" to promote
+-- themselves. Never grant privileges from the client.
 create or replace function public.promote_self_to_leader_if_verified()
 returns void
 language plpgsql
@@ -148,9 +149,66 @@ begin
       select 1
       from public.coaching_requests cr
       where cr.coach_uid = u.uid
+        and cr.member_id <> u.uid              -- a real, other-person request
         and cr.status = 'approved'
         and cr.accepted_by_coach = 'accepted'
     );
+end;
+$$;
+
+-- Coaching-request state machine guard.
+-- The member who made a request must never be able to forge an "approved" or
+-- "accepted" state (that is what would let them self-promote). This security-
+-- definer trigger re-validates every INSERT/UPDATE regardless of any RLS policy
+-- or direct client call:
+--   * `status` can leave 'pending' only when the actor is an admin.
+--   * `accepted_by_coach` can leave 'pending' only when the actor is the
+--     assigned coach (coach_uid = auth.uid()) or an admin.
+--   * `coach_uid` can only be set/changed by an admin (or left unchanged by the
+--     original nominating member on INSERT / a coach confirming their identity).
+-- A member can therefore never manufacture an approved+accepted request.
+create or replace function public.coaching_state_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  actor_is_admin boolean := public.is_admin_user();
+  actor_is_coach boolean := (new.coach_uid is not null and new.coach_uid = auth.uid()::text);
+begin
+  if tg_op = 'INSERT' then
+    -- A brand-new request that any (non-admin) member creates cannot start in a
+    -- forged "approved"/"accepted" state. Force safe defaults and never let the
+    -- requester point the request at themselves.
+    if not actor_is_admin then
+      new.status := 'pending';
+      new.accepted_by_coach := 'pending';
+      new.coach_reject_reason := null;
+      if new.coach_uid = auth.uid()::text then
+        new.coach_uid := null;
+      end if;
+    end if;
+    return new;
+  end if;
+
+  -- UPDATE path: OLD is valid here.
+  -- status transitions: only an admin may approve/reject.
+  if new.status in ('approved', 'rejected') and not actor_is_admin then
+    new.status := old.status;
+  end if;
+
+  -- coach acceptance: only the assigned coach (or admin) may set accepted/rejected.
+  if new.accepted_by_coach in ('accepted', 'rejected') and not (actor_is_admin or actor_is_coach) then
+    new.accepted_by_coach := old.accepted_by_coach;
+  end if;
+
+  -- A non-admin may not assign themselves as coach to then "accept" the request.
+  if not actor_is_admin and new.coach_uid = auth.uid()::text and (old.coach_uid is null or old.coach_uid <> auth.uid()::text) then
+    new.coach_uid := old.coach_uid;
+  end if;
+
+  return new;
 end;
 $$;
 
@@ -416,11 +474,16 @@ CREATE POLICY "summaries_coach_or_admin_update"
   WITH CHECK (public.is_admin_user() OR coach_uid = auth.uid()::text OR public.is_coach_of(user_id));
 
 -- ---- COACHING REQUESTS ----
--- The member can manage the requests they made; the named coach or admin can view
--- and update/respond to their invitations.
-CREATE POLICY "coaching_member_all"
-  ON coaching_requests FOR ALL TO authenticated
-  USING (member_id = auth.uid()::text)
+-- Members may create and track their OWN requests, but cannot UPDATE/DELETE
+-- them: the approval state machine is enforced by the coaching_state_guard
+-- trigger, and only the named coach (commit to accepting) or an admin
+-- (approve/reject/delete) may change a request after it is created.
+CREATE POLICY "coaching_member_select"
+  ON coaching_requests FOR SELECT TO authenticated
+  USING (member_id = auth.uid()::text);
+
+CREATE POLICY "coaching_member_insert"
+  ON coaching_requests FOR INSERT TO authenticated
   WITH CHECK (member_id = auth.uid()::text);
 
 CREATE POLICY "coaching_coach_or_admin_select"
@@ -432,6 +495,17 @@ CREATE POLICY "coaching_coach_or_admin_update"
   USING (public.is_admin_user() OR coach_uid = auth.uid()::text)
   WITH CHECK (public.is_admin_user() OR coach_uid = auth.uid()::text);
 
+-- Only admins may delete coaching requests.
+CREATE POLICY "coaching_admin_delete"
+  ON coaching_requests FOR DELETE TO authenticated
+  USING (public.is_admin_user());
+
+-- Activate the state-machine guard on the requests table.
+DROP TRIGGER IF EXISTS trg_coaching_state_guard ON public.coaching_requests;
+CREATE TRIGGER trg_coaching_state_guard
+  BEFORE INSERT OR UPDATE ON public.coaching_requests
+  FOR EACH ROW EXECUTE FUNCTION public.coaching_state_guard();
+
 -- ---- ACTIVITY LOGS ----
 -- Owner sees their own logs; coaches/admins see logs for their team / everyone.
 CREATE POLICY "activity_logs_owner_select"
@@ -440,18 +514,37 @@ CREATE POLICY "activity_logs_owner_select"
 
 CREATE POLICY "activity_logs_coach_or_admin_select"
   ON activity_logs FOR SELECT TO authenticated
-  USING (public.is_admin_user());
+  USING (public.is_admin_user() OR public.is_coach_of(user_id));
 
--- Owner or their coach / admin may insert a log row.
+-- A user may log their own actions; a coach may log actions on a member they
+-- coach; an admin may log anything. `user_id` is the member the action is about
+-- and `editor_uid` is the actor, so the coach case must reference is_coach_of().
 CREATE POLICY "activity_logs_insert"
   ON activity_logs FOR INSERT TO authenticated
-  WITH CHECK (user_id = auth.uid()::text OR public.is_admin_user());
+  WITH CHECK (
+    user_id = auth.uid()::text
+    OR public.is_admin_user()
+    OR public.is_coach_of(user_id)
+  );
+
+-- Admins may clear the whole activity log.
+CREATE POLICY "activity_logs_admin_delete"
+  ON activity_logs FOR DELETE TO authenticated
+  USING (public.is_admin_user());
 
 -- ---- FOLLOW-UP TASKS ----
-CREATE POLICY "follow_up_owner_all"
+-- Members may read their own tasks and the global coordination tasks, and may
+-- update their OWN rows (their progress). Only admins may create or modify the
+-- shared (global, user_id IS NULL) coordination tasks, so a member cannot alter
+-- the coordinator's assignments or flip the is_override flag team-wide.
+CREATE POLICY "follow_up_select"
+  ON follow_up_tasks FOR SELECT TO authenticated
+  USING (user_id = auth.uid()::text OR user_id IS NULL OR public.is_admin_user());
+
+CREATE POLICY "follow_up_owner_write"
   ON follow_up_tasks FOR ALL TO authenticated
-  USING (user_id = auth.uid()::text OR user_id IS NULL OR public.is_admin_user())
-  WITH CHECK (user_id = auth.uid()::text OR user_id IS NULL OR public.is_admin_user());
+  USING (user_id = auth.uid()::text OR public.is_admin_user())
+  WITH CHECK (user_id = auth.uid()::text OR public.is_admin_user());
 
 -- ---- MEETINGS ----
 CREATE POLICY "meetings_owner_all"

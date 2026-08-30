@@ -434,15 +434,20 @@ export default function App() {
     }
 
     // Check local storage first for bypass mode user
-    const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
-    if (savedLocalUser) {
-      try {
-        const profile = JSON.parse(savedLocalUser) as UserProfile;
-        setUser(profile);
-        setLoading(false);
-        return;
-      } catch (e) {
-        localStorage.removeItem("staff_review_bypass_user");
+    // Local-storage "bypass" sessions are a DEV/testing feature only. They are
+    // never honored in a production build, where the only source of identity is
+    // the authenticated Supabase session + the RLS-protected users table.
+    if (import.meta.env.DEV) {
+      const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
+      if (savedLocalUser) {
+        try {
+          const profile = JSON.parse(savedLocalUser) as UserProfile;
+          setUser(profile);
+          setLoading(false);
+          return;
+        } catch (e) {
+          localStorage.removeItem("staff_review_bypass_user");
+        }
       }
     }
 

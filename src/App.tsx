@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, hasSupabaseConfig } from "./supabase";
 import {
@@ -19,7 +19,7 @@ import {
 } from "./supabaseDb";
 import { UserProfile, DevelopmentReview, QuarterlySummary, FollowUpTask, ReviewRequirementSettings, ActivityLog, CoachingRequest } from "./types";
 import { createNewReview, createNewSummary, getPdfDefaultTasks, calculateReviewProgress } from "./utils";
-import { exportEvaluationToPDF } from "./utils/pdfExport";
+import type { PDFExportOptions } from "./utils/pdfExport";
 import { QUARTER_INFO } from "./constants";
 import {
   dataSaveReview, dataGetReviewById, dataSaveSummary, dataGetSummaryById,
@@ -28,14 +28,18 @@ import {
   dataSaveRequirementSettings, dataSaveReviewSchedule, dataSaveMeeting,
   dataUpdateUserProfile, dataPromoteSelfToLeaderIfVerified,
 } from "./dataLayer";
-import ReviewFormEditor from "./components/ReviewFormEditor";
-import SummaryFormEditor from "./components/SummaryFormEditor";
-import UserManagement from "./components/UserManagement";
-import ActivityLogList from "./components/ActivityLog";
-import CoachingNominations from "./components/CoachingNominations";
-import CoachingInvitations from "./components/CoachingInvitations";
-import AdminCoachingPanel from "./components/AdminCoachingPanel";
-import AdminReports from "./components/AdminReports";
+// Lazy-load each view so its code is fetched only when that view is opened.
+// This shrinks the initial page load for everyone -- important on weak wifi.
+// React's lazy() scrolls to module.default automatically; we only need the
+// promise (with a cast) so that TypeScript agrees with the shape.
+const ReviewFormEditor = lazy(() => import("./components/ReviewFormEditor") as unknown as Promise<{ default: React.ComponentType<any> }>);
+const SummaryFormEditor = lazy(() => import("./components/SummaryFormEditor") as unknown as Promise<{ default: React.ComponentType<any> }>);
+const UserManagement = lazy(() => import("./components/UserManagement") as unknown as Promise<{ default: React.ComponentType<any> }>);
+const ActivityLogList = lazy(() => import("./components/ActivityLog") as unknown as Promise<{ default: React.ComponentType<any> }>);
+const CoachingNominations = lazy(() => import("./components/CoachingNominations") as unknown as Promise<{ default: React.ComponentType<any> }>);
+const CoachingInvitations = lazy(() => import("./components/CoachingInvitations") as unknown as Promise<{ default: React.ComponentType<any> }>);
+const AdminCoachingPanel = lazy(() => import("./components/AdminCoachingPanel") as unknown as Promise<{ default: React.ComponentType<any> }>);
+const AdminReports = lazy(() => import("./components/AdminReports") as unknown as Promise<{ default: React.ComponentType<any> }>);
 import { 
   Heart, 
   User, 
@@ -76,6 +80,21 @@ import {
   ArrowRight,
   Mail
 } from "lucide-react";
+
+// Lazy-load the PDF generator on demand. jspdf + html2canvas + purify add
+// ~390KB to the bundle; loading them only when a user actually clicks
+// "Export to PDF" keeps the initial page small, which matters a lot on weak
+// wifi. Type-only import above ensures the heavy module is not pulled into the
+// main chunk.
+async function runExportEvaluationToPDF(
+  member: UserProfile,
+  quarter: "1st" | "2nd" | "3rd",
+  summary?: QuarterlySummary,
+  options?: PDFExportOptions
+) {
+  const { exportEvaluationToPDF } = await import("./utils/pdfExport");
+  exportEvaluationToPDF(member, quarter, summary, options);
+}
 
 export default function App() {
   // Auth state
@@ -2097,7 +2116,7 @@ export default function App() {
 
         let completedCount = 0;
         for (const item of itemsToExport) {
-          exportEvaluationToPDF(item.member, item.quarter, item.summary, { isDefaultOnly: true });
+          await runExportEvaluationToPDF(item.member, item.quarter, item.summary, { isDefaultOnly: true });
           completedCount++;
           setBulkActionProgress(prev => ({ ...prev, current: completedCount }));
           // Brief pause to allow browser main thread breathing room and smoother UI progress rendering
@@ -2578,6 +2597,14 @@ export default function App() {
   }
 
   return (
+    <Suspense fallback={
+      <div className="flex-1 flex items-center justify-center min-h-screen text-slate-500 dark:text-slate-300">
+        <span className="flex items-center gap-2 text-sm">
+          <span className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+          Loading…
+        </span>
+      </div>
+    }>
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 dark:text-slate-100 flex flex-col font-sans text-slate-800 transition-colors duration-200">
       {/* Welcome Guide — shows on first login, dismissible */}
 
@@ -5030,7 +5057,7 @@ export default function App() {
                     if (isAdmin) {
                       openPdfCustomizer(activeTLEvaluation.member, activeTLEvaluation.quarter, activeTLEvaluation.summary);
                     } else {
-                      exportEvaluationToPDF(activeTLEvaluation.member, activeTLEvaluation.quarter, activeTLEvaluation.summary, { isDefaultOnly: true });
+                      runExportEvaluationToPDF(activeTLEvaluation.member, activeTLEvaluation.quarter, activeTLEvaluation.summary, { isDefaultOnly: true });
                     }
                   }}
                   className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
@@ -5293,7 +5320,7 @@ export default function App() {
                     if (isAdmin) {
                       openPdfCustomizer(activeTLEvaluation.member, activeTLEvaluation.quarter, activeTLEvaluation.summary);
                     } else {
-                      exportEvaluationToPDF(activeTLEvaluation.member, activeTLEvaluation.quarter, activeTLEvaluation.summary, { isDefaultOnly: true });
+                      runExportEvaluationToPDF(activeTLEvaluation.member, activeTLEvaluation.quarter, activeTLEvaluation.summary, { isDefaultOnly: true });
                     }
                   }}
                   className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold transition-all border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 cursor-pointer shadow-sm"
@@ -5637,7 +5664,7 @@ export default function App() {
 
                       let completedCount = 0;
                       for (const item of items) {
-                        exportEvaluationToPDF(item.member, item.quarter, item.summary, exportOptions);
+                        await runExportEvaluationToPDF(item.member, item.quarter, item.summary, exportOptions);
                         completedCount++;
                         setBulkActionProgress(prev => ({ ...prev, current: completedCount }));
                         await new Promise(resolve => setTimeout(resolve, 300));
@@ -5645,7 +5672,7 @@ export default function App() {
 
                       alert(`Successfully generated PDF exports for ${items.length} reports!`);
                     } else if (pdfExportConfig.member && pdfExportConfig.quarter) {
-                      exportEvaluationToPDF(
+                      runExportEvaluationToPDF(
                         pdfExportConfig.member,
                         pdfExportConfig.quarter,
                         pdfExportConfig.summary,
@@ -5702,5 +5729,6 @@ export default function App() {
         )}
       </AnimatePresence>
     </div>
+    </Suspense>
   );
 }

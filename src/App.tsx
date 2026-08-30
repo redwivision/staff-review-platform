@@ -26,7 +26,7 @@ import {
   dataSaveCoachingRequest, dataUpdateCoachingRequest, dataDeleteCoachingRequest,
   dataSaveActivityLog, dataDeleteAllActivityLogs, dataSaveFollowUpTask,
   dataSaveRequirementSettings, dataSaveReviewSchedule, dataSaveMeeting,
-  dataUpdateUserProfile,
+  dataUpdateUserProfile, dataPromoteSelfToLeaderIfVerified,
 } from "./dataLayer";
 import ReviewFormEditor from "./components/ReviewFormEditor";
 import SummaryFormEditor from "./components/SummaryFormEditor";
@@ -164,7 +164,10 @@ export default function App() {
   const [currentTab, setCurrentTab] = useState<"my-reviews" | "team-reviews" | "admin" | "meetings">("my-reviews");
   const [adminSubTab, setAdminSubTab] = useState<"tracking" | "control" | "users">("tracking");
   const [selectedQuarter, setSelectedQuarter] = useState<"1st" | "2nd" | "3rd">("1st");
-  const [selectedYear, setSelectedYear] = useState<string>("2025-2026");
+  // Canonical year format is "YYYY/YYYY" (slash) — the same format persisted in
+  // the database and used by every save/query path. It is never stored/selected
+  // in the dash form.
+  const [selectedYear, setSelectedYear] = useState<string>("2025/2026");
   const [selectedStaffUid, setSelectedStaffUid] = useState<string | null>(null);
   const [activeReview, setActiveReview] = useState<DevelopmentReview | null>(null);
   const [activeSummary, setActiveSummary] = useState<QuarterlySummary | null>(null);
@@ -305,8 +308,12 @@ export default function App() {
     });
   };
 
-  // Computed Coaching State Values
-  const isAdmin = user && (user.isAdmin === true || user.email === "lewikb13@gmail.com" || user.role?.toLowerCase() === "admin");
+  // Computed Coaching State Values.
+  // Admin is derived ONLY from the server-fetched profile (users.is_admin in the
+  // database). It must never be inferred from a client-supplied email or role
+  // string, because those can be forged. The DB (RLS) is the real authority;
+  // this flag only controls which UI to show.
+  const isAdmin = user && user.isAdmin === true;
 
   const myActiveCoachedUids = user
     ? coachingRequests
@@ -449,38 +456,37 @@ export default function App() {
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
         try {
+          // Admin/leader come ONLY from the profile row in the database, which is
+          // protected by RLS. The client never overrides privileges.
           const profile = await supabaseGetUser(session.user.id);
           if (profile) {
-            if (profile.email === "lewikb13@gmail.com" && (!profile.isLeader || !profile.isAdmin)) {
-              profile.isLeader = true;
-              profile.isAdmin = true;
-              profile.role = "Admin";
-              await supabaseUpsertUser(profile);
-            }
             setUser(profile);
           } else {
+            // No profile row yet: create a basic, unprivileged member row. The
+            // DB grants admin only via the first-user bootstrap trigger (or an
+            // existing admin), never from the client.
             const fallbackProfile: UserProfile = {
               uid: session.user.id,
               name: session.user.user_metadata?.name || "Staff Member",
-              role: session.user.email === "lewikb13@gmail.com" ? "Admin" : "Assigned Staff",
+              role: "Assigned Staff",
               email: session.user.email || "",
-              isLeader: session.user.email === "lewikb13@gmail.com",
-              isAdmin: session.user.email === "lewikb13@gmail.com",
+              isLeader: false,
+              isAdmin: false,
               createdAt: Date.now()
             };
-            await supabaseUpsertUser(fallbackProfile);
-            setUser(fallbackProfile);
+            try { await supabaseUpsertUser(fallbackProfile); } catch (_e) { /* RLS may reject; ignore */ }
+            const refreshed = await supabaseGetUser(session.user.id);
+            setUser(refreshed || fallbackProfile);
           }
         } catch (e) {
           console.error("Error loading user profile:", e);
-          // Still create a basic profile from auth metadata so the app works
           const fallbackProfile: UserProfile = {
             uid: session.user.id,
             name: session.user.user_metadata?.name || "Staff Member",
-            role: session.user.email === "lewikb13@gmail.com" ? "Admin" : "Assigned Staff",
+            role: "Assigned Staff",
             email: session.user.email || "",
-            isLeader: session.user.email === "lewikb13@gmail.com",
-            isAdmin: session.user.email === "lewikb13@gmail.com",
+            isLeader: false,
+            isAdmin: false,
             createdAt: Date.now()
           };
           setUser(fallbackProfile);
@@ -614,19 +620,33 @@ export default function App() {
     }
 
     // ─── SUPABASE REALTIME SUBSCRIPTIONS ────────────────────────────────────
+    // Scaling note: full-table fetches ("all reviews"/"all summaries") are only
+    // needed by leaders/admins for the reporting views, and are only subscribed
+    // for those users. A regular staff member only polls their OWN filtered rows,
+    // which avoids every one of 5,000 users pulling the entire table every 30s.
     const isLeaderOrCoachNow = user.isLeader || isAdmin;
-    const unsubMyReviews = subscribeReviews((reviews) => setMyReviews(reviews.filter(r => r.userId === user.uid)), user.uid);
-    const unsubAllReviews = subscribeReviews((reviews) => setAllReviews(reviews));
-    const unsubMySummaries = subscribeSummaries((summaries) => setMySummaries(summaries.filter(s => s.userId === user.uid)), user.uid);
-    const unsubAllSummaries = subscribeSummaries((summaries) => setAllSummaries(summaries));
-    const unsubStaff = subscribeStaff((profiles) => setStaffProfiles(profiles));
-    const unsubCoaching = subscribeCoachingRequests((reqs) => setCoachingRequests(reqs));
-    const unsubMeetings = subscribeMeetings((meetings) => setMeetings(meetings));
-    const unsubFollowUp = subscribeFollowUpTasks((tasks) => setFollowUpTasks(tasks));
-    const unsubSettings = subscribeRequirementSettings((s) => setRequirementSettings(s || {
+    const unsubscribers: Array<() => void> = [];
+
+    // Reviews: always load the current user's rows; admins/leaders additionally load the full table.
+    unsubscribers.push(subscribeReviews((reviews) => setMyReviews(reviews.filter(r => r.userId === user.uid)), user.uid));
+    if (isLeaderOrCoachNow) {
+      unsubscribers.push(subscribeReviews((reviews) => setAllReviews(reviews)));
+    }
+
+    // Summaries: same split.
+    unsubscribers.push(subscribeSummaries((summaries) => setMySummaries(summaries.filter(s => s.userId === user.uid)), user.uid));
+    if (isLeaderOrCoachNow) {
+      unsubscribers.push(subscribeSummaries((summaries) => setAllSummaries(summaries)));
+    }
+
+    unsubscribers.push(subscribeStaff((profiles) => setStaffProfiles(profiles)));
+    unsubscribers.push(subscribeCoachingRequests((reqs) => setCoachingRequests(reqs)));
+    unsubscribers.push(subscribeMeetings((meetings) => setMeetings(meetings)));
+    unsubscribers.push(subscribeFollowUpTasks((tasks) => setFollowUpTasks(tasks)));
+    unsubscribers.push(subscribeRequirementSettings((s) => setRequirementSettings(s || {
       heartRequired: true, personalLifeRequired: true, relationalLifeRequired: true, ministryEffectivenessRequired: true
-    }));
-    const unsubSchedules = subscribeReviewSchedules((schedules) => {
+    })));
+    unsubscribers.push(subscribeReviewSchedules((schedules) => {
       const defaultSchedules: any = {
         "1st": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined },
         "2nd": { startDate: "", dueDate: "", notifyAll: false, notificationMessage: "", quarterlyUnlocked: false, quarterlyUnlockDate: "", quarterlyUnlockTime: "", updatedAt: undefined },
@@ -634,22 +654,10 @@ export default function App() {
       };
       Object.keys(schedules).forEach(k => { defaultSchedules[k] = { ...defaultSchedules[k], ...schedules[k] }; });
       setReviewSchedules(defaultSchedules);
-    });
-    const unsubLogs = subscribeActivityLogs((logs) => setActivityLogs(logs), isLeaderOrCoachNow ? undefined : user.uid);
+    }));
+    unsubscribers.push(subscribeActivityLogs((logs) => setActivityLogs(logs), isLeaderOrCoachNow ? undefined : user.uid));
 
-    return () => {
-      unsubMyReviews();
-      unsubAllReviews();
-      unsubMySummaries();
-      unsubAllSummaries();
-      unsubStaff();
-      unsubCoaching();
-      unsubMeetings();
-      unsubFollowUp();
-      unsubSettings();
-      unsubSchedules();
-      unsubLogs();
-    };
+    return () => { unsubscribers.forEach(u => u()); };
   }, [user]);
 
   // Handle Authentication submit
@@ -668,7 +676,8 @@ export default function App() {
           setUser(profile);
         } else {
           await supabaseSignIn(authEmail, authPassword);
-          // Explicitly load and set the user profile after login
+          // Explicitly load and set the user profile after login. Privileges come
+          // ONLY from the database row (protected by RLS).
           const { data: sessionData } = await supabase!.auth.getSession();
           if (sessionData.session?.user) {
             const profile = await supabaseGetUser(sessionData.session.user.id);
@@ -678,10 +687,10 @@ export default function App() {
               const fallbackProfile: UserProfile = {
                 uid: sessionData.session.user.id,
                 name: sessionData.session.user.user_metadata?.name || "Staff Member",
-                role: sessionData.session.user.email === "lewikb13@gmail.com" ? "Admin" : "Assigned Staff",
+                role: "Assigned Staff",
                 email: sessionData.session.user.email || "",
-                isLeader: sessionData.session.user.email === "lewikb13@gmail.com",
-                isAdmin: sessionData.session.user.email === "lewikb13@gmail.com",
+                isLeader: false,
+                isAdmin: false,
                 createdAt: Date.now()
               };
               try { await supabaseUpsertUser(fallbackProfile); } catch {}
@@ -1494,8 +1503,13 @@ export default function App() {
 
     await dataUpdateCoachingRequest(requestId, { acceptedByCoach: "accepted", coachUid: user.uid });
 
-    await dataUpdateUserProfile(user.uid, { isLeader: true });
-    setUser(prev => prev ? { ...prev, isLeader: true } : null);
+    // Promote to leader safely via SECURITY DEFINER RPC (enforced in the DB).
+    const promoted = await dataPromoteSelfToLeaderIfVerified();
+    if (promoted) {
+      setUser(prev => prev ? { ...prev, isLeader: true } : null);
+    } else {
+      console.warn("Self-promotion to leader was not granted by the server (no verified coaching arrangement).");
+    }
   };
 
   const handleRejectCoachingInvitation = async (requestId: string, reason: string) => {
@@ -2465,7 +2479,10 @@ export default function App() {
             </button>
           </div>
 
-          {/* Development & Testing Bypasses */}
+          {/* Development & Testing Bypasses — ONLY rendered in local/dev builds.
+              In production these are stripped at build time (Vite replaces
+              import.meta.env.DEV with a literal), so no login backdoor ships. */}
+          {import.meta.env.DEV && (
           <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3.5">
             {/* Toggle Switch for Mock Data */}
             <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/40 dark:border-indigo-900/40 rounded-2xl p-4 flex items-center justify-between gap-4">
@@ -2549,6 +2566,7 @@ export default function App() {
               </button>
             </div>
           </div>
+          )}
         </div>
       </div>
     );
@@ -4380,9 +4398,9 @@ export default function App() {
                           onChange={(e) => setSelectedYear(e.target.value)}
                           className="px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500 font-bold"
                         >
-                          <option value="2024-2025">2024/2025</option>
-                          <option value="2025-2026">2025/2026</option>
-                          <option value="2026-2027">2026/2027</option>
+                          <option value="2024/2025">2024/2025</option>
+                          <option value="2025/2026">2025/2026</option>
+                          <option value="2026/2027">2026/2027</option>
                         </select>
                       </div>
                     </div>
@@ -4393,7 +4411,7 @@ export default function App() {
                       allSummaries={allSummaries}
                       coachingRequests={coachingRequests}
                       currentQuarter={selectedQuarter}
-                      currentYear={selectedYear.replace("-", "/")}
+                      currentYear={selectedYear}
                     />
                   </div>
                 )}

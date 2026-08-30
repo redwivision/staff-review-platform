@@ -64,7 +64,8 @@ export async function dataSaveActivityLog(log: ActivityLog) {
 export async function dataDeleteAllActivityLogs() {
   const { supabase } = await import("./supabase");
   if (!supabase) return;
-  await supabase.from("activity_logs").delete().neq("id", "__none__");
+  const { error } = await supabase.from("activity_logs").delete().neq("id", "__none__");
+  if (error) throw error;
 }
 
 // ─── FOLLOW-UP TASKS ─────────────────────────────────────────────────────────
@@ -96,9 +97,18 @@ export async function dataSaveMeeting(meeting: any) {
 export async function dataUpdateUserProfile(uid: string, updates: Partial<{ isLeader: boolean; isAdmin: boolean; role: string }>) {
   const { supabase } = await import("./supabase");
   if (!supabase) return;
-  await supabase.from("users").update({
+  const { error } = await supabase.from("users").update({
     ...(updates.isLeader !== undefined ? { is_leader: updates.isLeader } : {}),
     ...(updates.isAdmin !== undefined ? { is_admin: updates.isAdmin } : {}),
     ...(updates.role !== undefined ? { role: updates.role } : {}),
   }).eq("uid", uid);
+  // A rejected update (e.g. RLS denying it) must be surfaced to the caller, not
+  // silently swallowed, or the UI would claim success when nothing changed.
+  if (error) throw error;
+}
+
+// Safe self-promotion to leader via DB RPC (enforced server-side).
+export async function dataPromoteSelfToLeaderIfVerified(): Promise<boolean> {
+  const { supabasePromoteSelfToLeaderIfVerified } = await import("./supabaseDb");
+  return supabasePromoteSelfToLeaderIfVerified();
 }

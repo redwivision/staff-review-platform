@@ -20,10 +20,15 @@ export async function supabaseSignUp(email: string, password: string, name: stri
   const profile: UserProfile = {
     uid: data.user.id,
     name: name.trim(),
-    role: email === "lewikb13@gmail.com" ? "Admin" : role.trim(),
+    role: role.trim(),
     email: email.trim(),
-    isLeader: email === "lewikb13@gmail.com",
-    isAdmin: email === "lewikb13@gmail.com",
+    // Privilege flags are NOT set from the client. They are granted in the
+    // database (users.is_leader / users.is_admin) by an admin or via the
+    // secure promote_self_to_leader_if_verified() RPC. The client must never
+    // be able to grant itself admin/leader, so a signup always starts as a
+    // plain member regardless of email.
+    isLeader: false,
+    isAdmin: false,
     createdAt: Date.now(),
   };
 
@@ -70,7 +75,7 @@ export async function supabaseGetUser(uid: string): Promise<UserProfile | null> 
 
 export async function supabaseUpsertUser(profile: UserProfile) {
   if (!supabase) return;
-  await supabase.from("users").upsert({
+  const { error } = await supabase.from("users").upsert({
     uid: profile.uid,
     name: profile.name,
     role: profile.role,
@@ -79,6 +84,21 @@ export async function supabaseUpsertUser(profile: UserProfile) {
     is_admin: profile.isAdmin,
     created_at: profile.createdAt,
   });
+  if (error) throw error;
+}
+
+// Safely promote the current authenticated user to leader, but ONLY if they are
+// a verified (approved + accepted) coach for at least one member. Enforcement is
+// done inside a SECURITY DEFINER function on the database, so the client cannot
+// grant itself privileges.
+export async function supabasePromoteSelfToLeaderIfVerified(): Promise<boolean> {
+  if (!supabase) return false;
+  const { error } = await supabase.rpc("promote_self_to_leader_if_verified");
+  if (error) {
+    console.error("promote_self_to_leader_if_verified error:", error);
+    return false;
+  }
+  return true;
 }
 
 // ─── HELPER: Supabase → App type mappers ─────────────────────────────────────
@@ -186,52 +206,58 @@ function mapActivityLog(row: any): ActivityLog {
 
 // ─── DATA READS ──────────────────────────────────────────────────────────────
 
+// NOTE on data integrity: every get*() below THROWS on a database error rather
+// than returning an empty result. Returned-[]-on-error is dangerous: a transient
+// outage would render the UI as "no data", which looks identical to a genuinely
+// empty result and can cause an admin to believe records have been deleted.
+// Callers must catch errors and keep showing the last good data.
+
 export async function getMyReviews(userId: string): Promise<DevelopmentReview[]> {
-  if (!supabase) return [];
+  if (!supabase) throw new Error("Supabase not configured");
   const { data, error } = await supabase
     .from("development_reviews")
     .select("*")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
-  if (error) { console.error("getMyReviews error:", error); return []; }
+  if (error) throw error;
   return (data || []).map(mapReview);
 }
 
 export async function getAllReviews(): Promise<DevelopmentReview[]> {
-  if (!supabase) return [];
+  if (!supabase) throw new Error("Supabase not configured");
   const { data, error } = await supabase
     .from("development_reviews")
     .select("*")
     .order("updated_at", { ascending: false });
-  if (error) { console.error("getAllReviews error:", error); return []; }
+  if (error) throw error;
   return (data || []).map(mapReview);
 }
 
 export async function getMySummaries(userId: string): Promise<QuarterlySummary[]> {
-  if (!supabase) return [];
+  if (!supabase) throw new Error("Supabase not configured");
   const { data, error } = await supabase
     .from("quarterly_summaries")
     .select("*")
     .eq("user_id", userId)
     .order("updated_at", { ascending: false });
-  if (error) { console.error("getMySummaries error:", error); return []; }
+  if (error) throw error;
   return (data || []).map(mapSummary);
 }
 
 export async function getAllSummaries(): Promise<QuarterlySummary[]> {
-  if (!supabase) return [];
+  if (!supabase) throw new Error("Supabase not configured");
   const { data, error } = await supabase
     .from("quarterly_summaries")
     .select("*")
     .order("updated_at", { ascending: false });
-  if (error) { console.error("getAllSummaries error:", error); return []; }
+  if (error) throw error;
   return (data || []).map(mapSummary);
 }
 
 export async function getAllStaff(): Promise<UserProfile[]> {
-  if (!supabase) return [];
+  if (!supabase) throw new Error("Supabase not configured");
   const { data, error } = await supabase.from("users").select("*").order("created_at");
-  if (error) { console.error("getAllStaff error:", error); return []; }
+  if (error) throw error;
   return (data || []).map((r) => ({
     uid: r.uid,
     name: r.name,
@@ -244,16 +270,17 @@ export async function getAllStaff(): Promise<UserProfile[]> {
 }
 
 export async function getFollowUpTasks(): Promise<FollowUpTask[]> {
-  if (!supabase) return [];
+  if (!supabase) throw new Error("Supabase not configured");
   const { data, error } = await supabase.from("follow_up_tasks").select("*");
-  if (error) { console.error("getFollowUpTasks error:", error); return []; }
+  if (error) throw error;
   return (data || []).map(mapFollowUp);
 }
 
 export async function getRequirementSettings(): Promise<ReviewRequirementSettings | null> {
-  if (!supabase) return null;
+  if (!supabase) throw new Error("Supabase not configured");
   const { data, error } = await supabase.from("requirement_settings").select("*").eq("id", "global").single();
-  if (error || !data) return null;
+  if (error) throw error;
+  if (!data) return null;
   return {
     heartRequired: data.heart_required,
     personalLifeRequired: data.personal_life_required,
@@ -263,9 +290,9 @@ export async function getRequirementSettings(): Promise<ReviewRequirementSetting
 }
 
 export async function getReviewSchedules(): Promise<Record<string, any>> {
-  if (!supabase) return {};
+  if (!supabase) throw new Error("Supabase not configured");
   const { data, error } = await supabase.from("review_schedules").select("*");
-  if (error) return {};
+  if (error) throw error;
   const result: Record<string, any> = {};
   (data || []).forEach((r) => {
     result[r.quarter] = { startDate: r.start_date, endDate: r.end_date, isActive: r.is_active };
@@ -274,25 +301,25 @@ export async function getReviewSchedules(): Promise<Record<string, any>> {
 }
 
 export async function getActivityLogs(userId?: string, limit = 100): Promise<ActivityLog[]> {
-  if (!supabase) return [];
+  if (!supabase) throw new Error("Supabase not configured");
   let query = supabase.from("activity_logs").select("*").order("timestamp", { ascending: false }).limit(limit);
   if (userId) query = query.eq("user_id", userId);
   const { data, error } = await query;
-  if (error) return [];
+  if (error) throw error;
   return (data || []).map(mapActivityLog);
 }
 
 export async function getCoachingRequests(): Promise<CoachingRequest[]> {
-  if (!supabase) return [];
+  if (!supabase) throw new Error("Supabase not configured");
   const { data, error } = await supabase.from("coaching_requests").select("*");
-  if (error) return [];
+  if (error) throw error;
   return (data || []).map(mapCoachingRequest);
 }
 
 export async function getMeetings(): Promise<any[]> {
-  if (!supabase) return [];
+  if (!supabase) throw new Error("Supabase not configured");
   const { data, error } = await supabase.from("meetings").select("*");
-  if (error) return [];
+  if (error) throw error;
   return data || [];
 }
 
@@ -432,7 +459,8 @@ export async function saveActivityLog(log: ActivityLog) {
 
 export async function deleteActivityLogsByUser(userId: string) {
   if (!supabase) return;
-  await supabase.from("activity_logs").delete().eq("user_id", userId);
+  const { error } = await supabase.from("activity_logs").delete().eq("user_id", userId);
+  if (error) throw error;
 }
 
 export async function saveCoachingRequest(req: CoachingRequest) {
@@ -468,7 +496,8 @@ export async function updateCoachingRequest(id: string, updates: Partial<Coachin
 
 export async function deleteCoachingRequest(id: string) {
   if (!supabase) return;
-  await supabase.from("coaching_requests").delete().eq("id", id);
+  const { error } = await supabase.from("coaching_requests").delete().eq("id", id);
+  if (error) throw error;
 }
 
 export async function saveMeeting(meeting: any) {
@@ -488,99 +517,152 @@ export async function saveMeeting(meeting: any) {
   if (error) throw error;
 }
 
-// ─── REALTIME SUBSCRIPTIONS (polling-based for reliability) ───────────────────
-// Returns an unsubscribe function. Fetches data immediately then polls every 30s.
+// ─── REALTIME SUBSCRIPTIONS ──────────────────────────────────────────────────
+// Each subscription tries Supabase Realtime (push-based) first. Realtime is far
+// more scalable than polling: changes arrive immediately and the DB is not
+// hammered with full-table queries every 30s per connected user (critical when
+// the platform grows to thousands of users).
+//
+// Realtime requires the "Realtime" beta AND per-table replication to be enabled
+// in the Supabase dashboard (Database → Replication). If that is not configured,
+// the channel reports CHANNEL_ERROR/TIMED_OUT and we transparently fall back to
+// the previous 30s polling so behaviour never silently degrades.
+//
+// Returns an unsubscribe function.
 
 type Unsubscribe = () => void;
 
-function pollTable(intervalMs: number, callback: () => void): Unsubscribe {
-  const id = setInterval(callback, intervalMs);
-  return () => clearInterval(id);
+const POLL_INTERVAL_MS = 30000;
+
+interface RealtimeSubParams<T> {
+  table: string;
+  // Optional Postgres filter, e.g. "user_id=eq.<uuid>". When omitted, all rows.
+  filter?: string;
+  fetchData: () => Promise<T>;
+  applyData: (data: T) => void;
+}
+
+function subscribeRealtimeOrPoll<T>({ table, filter, fetchData, applyData }: RealtimeSubParams<T>): Unsubscribe {
+  if (!supabase) return () => {};
+  let cancelled = false;
+  let pollId: ReturnType<typeof setInterval> | null = null;
+  let channel: ReturnType<typeof supabase.channel> | null = null;
+
+  const refetch = async () => {
+    try {
+      const data = await fetchData();
+      if (!cancelled) applyData(data);
+    } catch (e) {
+      // A DB error must not wipe the last good data shown to the user; log it.
+      console.error(`Realtime refetch failed for ${table}:`, e);
+    }
+  };
+
+  // Initial load (always).
+  refetch();
+
+  const startPolling = () => {
+    if (!pollId && !cancelled) pollId = setInterval(refetch, POLL_INTERVAL_MS);
+  };
+
+  try {
+    channel = supabase.channel(`realtime:${table}:${filter || "all"}`);
+    channel.on("postgres_changes", {
+      event: "*",
+      schema: "public",
+      table,
+      ...(filter ? { filter } : {}),
+    }, () => { refetch(); });
+    channel.subscribe((status) => {
+      // SUBSCRIBED => realtime is live, no polling needed.
+      // CHANNEL_ERROR / TIMED_OUT => realtime unavailable => fall back to polling.
+      if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") startPolling();
+    });
+  } catch (e) {
+    console.error(`Realtime not available for ${table}, falling back to polling:`, e);
+    startPolling();
+  }
+
+  return () => {
+    cancelled = true;
+    if (pollId) clearInterval(pollId);
+    if (channel) {
+      try { supabase?.removeChannel(channel); } catch (_e) { /* ignore */ }
+    }
+  };
 }
 
 export function subscribeReviews(callback: (reviews: DevelopmentReview[]) => void, userId?: string): Unsubscribe {
-  if (!supabase) return () => {};
-  const fetchAndNotify = async () => {
-    try {
-      const reviews = userId ? await getMyReviews(userId) : await getAllReviews();
-      callback(reviews);
-    } catch (e) { console.error("subscribeReviews fetch error:", e); }
-  };
-  fetchAndNotify();
-  return pollTable(30000, fetchAndNotify);
+  return subscribeRealtimeOrPoll<DevelopmentReview[]>({
+    table: "development_reviews",
+    filter: userId ? `user_id=eq.${userId}` : undefined,
+    fetchData: () => (userId ? getMyReviews(userId) : getAllReviews()),
+    applyData: callback,
+  });
 }
 
 export function subscribeSummaries(callback: (summaries: QuarterlySummary[]) => void, userId?: string): Unsubscribe {
-  if (!supabase) return () => {};
-  const fetchAndNotify = async () => {
-    try {
-      const summaries = userId ? await getMySummaries(userId) : await getAllSummaries();
-      callback(summaries);
-    } catch (e) { console.error("subscribeSummaries fetch error:", e); }
-  };
-  fetchAndNotify();
-  return pollTable(30000, fetchAndNotify);
+  return subscribeRealtimeOrPoll<QuarterlySummary[]>({
+    table: "quarterly_summaries",
+    filter: userId ? `user_id=eq.${userId}` : undefined,
+    fetchData: () => (userId ? getMySummaries(userId) : getAllSummaries()),
+    applyData: callback,
+  });
 }
 
 export function subscribeStaff(callback: (profiles: UserProfile[]) => void): Unsubscribe {
-  if (!supabase) return () => {};
-  const fetchAndNotify = async () => {
-    try { callback(await getAllStaff()); } catch (e) { console.error("subscribeStaff error:", e); }
-  };
-  fetchAndNotify();
-  return pollTable(30000, fetchAndNotify);
+  return subscribeRealtimeOrPoll<UserProfile[]>({
+    table: "users",
+    fetchData: getAllStaff,
+    applyData: callback,
+  });
 }
 
 export function subscribeCoachingRequests(callback: (reqs: CoachingRequest[]) => void): Unsubscribe {
-  if (!supabase) return () => {};
-  const fetchAndNotify = async () => {
-    try { callback(await getCoachingRequests()); } catch (e) { console.error("subscribeCoachingRequests error:", e); }
-  };
-  fetchAndNotify();
-  return pollTable(30000, fetchAndNotify);
+  return subscribeRealtimeOrPoll<CoachingRequest[]>({
+    table: "coaching_requests",
+    fetchData: getCoachingRequests,
+    applyData: callback,
+  });
 }
 
 export function subscribeActivityLogs(callback: (logs: ActivityLog[]) => void, userId?: string): Unsubscribe {
-  if (!supabase) return () => {};
-  const fetchAndNotify = async () => {
-    try { callback(await getActivityLogs(userId)); } catch (e) { console.error("subscribeActivityLogs error:", e); }
-  };
-  fetchAndNotify();
-  return pollTable(30000, fetchAndNotify);
+  return subscribeRealtimeOrPoll<ActivityLog[]>({
+    table: "activity_logs",
+    filter: userId ? `user_id=eq.${userId}` : undefined,
+    fetchData: () => getActivityLogs(userId),
+    applyData: callback,
+  });
 }
 
 export function subscribeMeetings(callback: (meetings: any[]) => void): Unsubscribe {
-  if (!supabase) return () => {};
-  const fetchAndNotify = async () => {
-    try { callback(await getMeetings()); } catch (e) { console.error("subscribeMeetings error:", e); }
-  };
-  fetchAndNotify();
-  return pollTable(30000, fetchAndNotify);
+  return subscribeRealtimeOrPoll<any[]>({
+    table: "meetings",
+    fetchData: getMeetings,
+    applyData: callback,
+  });
 }
 
 export function subscribeFollowUpTasks(callback: (tasks: FollowUpTask[]) => void): Unsubscribe {
-  if (!supabase) return () => {};
-  const fetchAndNotify = async () => {
-    try { callback(await getFollowUpTasks()); } catch (e) { console.error("subscribeFollowUpTasks error:", e); }
-  };
-  fetchAndNotify();
-  return pollTable(30000, fetchAndNotify);
+  return subscribeRealtimeOrPoll<FollowUpTask[]>({
+    table: "follow_up_tasks",
+    fetchData: getFollowUpTasks,
+    applyData: callback,
+  });
 }
 
 export function subscribeRequirementSettings(callback: (s: ReviewRequirementSettings | null) => void): Unsubscribe {
-  if (!supabase) return () => {};
-  const fetchAndNotify = async () => {
-    try { callback(await getRequirementSettings()); } catch (e) { console.error("subscribeRequirementSettings error:", e); }
-  };
-  fetchAndNotify();
-  return pollTable(30000, fetchAndNotify);
+  return subscribeRealtimeOrPoll<ReviewRequirementSettings | null>({
+    table: "requirement_settings",
+    fetchData: getRequirementSettings,
+    applyData: callback,
+  });
 }
 
 export function subscribeReviewSchedules(callback: (s: Record<string, any>) => void): Unsubscribe {
-  if (!supabase) return () => {};
-  const fetchAndNotify = async () => {
-    try { callback(await getReviewSchedules()); } catch (e) { console.error("subscribeReviewSchedules error:", e); }
-  };
-  fetchAndNotify();
-  return pollTable(30000, fetchAndNotify);
+  return subscribeRealtimeOrPoll<Record<string, any>>({
+    table: "review_schedules",
+    fetchData: getReviewSchedules,
+    applyData: callback,
+  });
 }

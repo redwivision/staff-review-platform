@@ -16,12 +16,33 @@ export function exportEvaluationToPDF(
   summary?: QuarterlySummary,
   options?: PDFExportOptions
 ) {
+  try {
+    renderEvaluationPDF(member, quarter, summary, options);
+  } catch (err) {
+    // Never let a PDF-rendering failure crash the surrounding UI. Surface it so
+    // the user knows the export did not complete.
+    console.error("PDF export failed:", err);
+    alert("Failed to generate the PDF. Please ensure the summary data is complete and try again.");
+  }
+}
+
+function renderEvaluationPDF(
+  member: UserProfile,
+  quarter: "1st" | "2nd" | "3rd",
+  summary?: QuarterlySummary,
+  options?: PDFExportOptions
+) {
   const opt = options || { isDefaultOnly: true };
   const isDefaultOnly = opt.isDefaultOnly ?? false;
   const includePDP = isDefaultOnly ? false : (opt.includePDP ?? true);
   const includeCMO = isDefaultOnly ? false : (opt.includeCMO ?? true);
   const includeKDA = isDefaultOnly ? false : (opt.includeKDA ?? true);
   const includeSuggestions = isDefaultOnly ? false : (opt.includeSuggestions ?? true);
+
+  // Safety normalization: a summary may be partially filled. Guard every nested
+  // access so rendering can never throw on a missing `evaluation` object.
+  const safeSummary = summary ? { ...summary } : undefined;
+  const ev: Record<string, any> = (safeSummary && safeSummary.evaluation) || {};
 
   const doc = new jsPDF({
     orientation: "portrait",
@@ -130,7 +151,7 @@ export function exportEvaluationToPDF(
     doc.setFontSize(8.5);
     doc.setTextColor(15, 23, 42); // slate-900
     doc.text(summary?.staffName || member.name, marginX + 5, y + 9.5);
-    doc.text(summary?.evaluation?.teamLeaderSignature || summary?.coachName || "Assigned Coach", marginX + colW + 4, y + 9.5);
+    doc.text(ev.teamLeaderSignature || summary?.coachName || "Assigned Coach", marginX + colW + 4, y + 9.5);
 
     // Row 1 Divider
     doc.setDrawColor(241, 245, 249); // slate-100
@@ -211,7 +232,7 @@ export function exportEvaluationToPDF(
     doc.setTextColor(15, 23, 42); // slate-900
     doc.text(summary?.presentPositionSince || "N/A", marginX + 5, y + 34.5);
     doc.text(summary?.supervisedBySince || "N/A", marginX + colW + 4, y + 34.5);
-    doc.text(summary?.evaluation?.teamLeaderSignature || summary?.coachName || "Assigned Coach", marginX + colW * 2 + 4, y + 34.5);
+    doc.text(ev.teamLeaderSignature || summary?.coachName || "Assigned Coach", marginX + colW * 2 + 4, y + 34.5);
 
     // Row 3 Divider
     doc.line(marginX + 4, y + 37.5, marginX + usableWidth - 4, y + 37.5);
@@ -579,7 +600,7 @@ export function exportEvaluationToPDF(
   doc.line(marginX, y + 2, marginX + usableWidth, y + 2);
   y += 5;
 
-  const effectiveness = summary?.evaluation.overallEffectiveness || "";
+  const effectiveness = ev.overallEffectiveness || "";
   if (effectiveness) {
     let effBoxColor = [237, 241, 245]; // Muted grey
     let effTextColor = [100, 116, 139];
@@ -659,7 +680,7 @@ export function exportEvaluationToPDF(
   doc.setTextColor(15, 118, 110); // teal-700
   doc.text("TOP 3 STRENGTHS", marginX + 4, startYColumns + 5);
 
-  const strengths = summary?.evaluation.strengths || [];
+  const strengths = ev.strengths || [];
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(51, 65, 85); // slate-700
@@ -688,7 +709,7 @@ export function exportEvaluationToPDF(
   doc.setTextColor(180, 83, 9); // amber-700
   doc.text("AREAS FOR IMPROVEMENT", pageWidth - marginX - halfWidth + 4, startYColumns + 5);
 
-  const weaknesses = summary?.evaluation.weaknesses || [];
+  const weaknesses = ev.weaknesses || [];
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7.5);
   doc.setTextColor(51, 65, 85); // slate-700
@@ -724,7 +745,7 @@ export function exportEvaluationToPDF(
   doc.setDrawColor(226, 232, 240); // slate-200
   doc.setLineWidth(0.3);
 
-  const lackConfidence = summary?.evaluation.lackConfidence || "None noted by the coach.";
+  const lackConfidence = ev.lackConfidence || "None noted by the coach.";
   const wrappedLack = doc.splitTextToSize(lackConfidence, usableWidth - 8);
   const lackBoxHeight = Math.max(wrappedLack.length * 4 + 8, 16);
 
@@ -751,9 +772,9 @@ export function exportEvaluationToPDF(
   y += 5;
 
   // Greater Responsibility block
-  const readyResp = summary?.evaluation.readyForGreaterResp || "No";
-  const positionDetails = summary?.evaluation.greaterRespDetails?.position || "N/A";
-  const timeframeDetails = summary?.evaluation.greaterRespDetails?.when || "N/A";
+  const readyResp = ev.readyForGreaterResp || "No";
+  const positionDetails = ev.greaterRespDetails?.position || "N/A";
+  const timeframeDetails = ev.greaterRespDetails?.when || "N/A";
 
   doc.setFillColor(248, 250, 252); // slate-50
   doc.rect(marginX, y, usableWidth, readyResp === "Yes" ? 22 : 12, "F");
@@ -785,9 +806,9 @@ export function exportEvaluationToPDF(
 
   // Reassignment block
   y += 4;
-  const recommendReassign = summary?.evaluation.recommendReassignment || "No";
-  const reassignPosition = summary?.evaluation.reassignmentDetails?.positionLocation || "N/A";
-  const reassignWhy = summary?.evaluation.reassignmentDetails?.why || "N/A";
+  const recommendReassign = ev.recommendReassignment || "No";
+  const reassignPosition = ev.reassignmentDetails?.positionLocation || "N/A";
+  const reassignWhy = ev.reassignmentDetails?.why || "N/A";
 
   const wrappedWhy = doc.splitTextToSize(`Reasons: ${reassignWhy}`, usableWidth - 8);
   const reassignHeight = recommendReassign === "Yes" ? Math.max(16 + wrappedWhy.length * 4, 22) : 12;
@@ -851,12 +872,12 @@ export function exportEvaluationToPDF(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(8.5);
   doc.setTextColor(5, 150, 105); // emerald-600
-  doc.text(`SIGNED: ${summary?.evaluation.teamLeaderSignature || "Assigned Coach"}`, marginX + 4, y + 11);
+  doc.text(`SIGNED: ${ev.teamLeaderSignature || "Assigned Coach"}`, marginX + 4, y + 11);
 
   doc.setFont("helvetica", "normal");
   doc.setFontSize(7);
   doc.setTextColor(148, 163, 184); // slate-400
-  doc.text(`Signed Date: ${summary?.evaluation.teamLeaderSignatureDate || "N/A"}`, marginX + 4, y + 16);
+  doc.text(`Signed Date: ${ev.teamLeaderSignatureDate || "N/A"}`, marginX + 4, y + 16);
 
   // Right Column: Admin Sign-Off
   doc.setFillColor(250, 251, 252);
@@ -869,8 +890,8 @@ export function exportEvaluationToPDF(
   doc.setTextColor(100, 116, 139); // slate-500
   doc.text("ADMINISTRATOR REVIEW SIGN-OFF", pageWidth - marginX - sigColW + 4, y + 5);
 
-  const adminName = summary?.evaluation.formReviewedBy;
-  const adminDate = summary?.evaluation.formReviewedByDate;
+  const adminName = ev.formReviewedBy;
+  const adminDate = ev.formReviewedByDate;
 
   if (adminName) {
     doc.setFont("helvetica", "bold");

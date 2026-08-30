@@ -1,5 +1,162 @@
 -- Staff Review Platform - Supabase Schema
 -- Run this in: Supabase Dashboard → SQL Editor
+--
+-- NOTE: This file is IDEMPOTENT. Policies are dropped and recreated so you can
+-- re-run it safely after edits. Run the WHOLE file.
+--
+-- SECURITY MODEL (IMPORTANT)
+-- --------------------------
+-- RLS is enforced via security-definer helper functions that resolve the
+-- requesting user's role from the `users` table. To opt a person into admin or
+-- leader powers you UPDATE their row in `users` (is_admin / is_leader) using a
+-- privileged role — NEVER grant it from the client.
+--
+-- The client reads `users.is_admin` only to decide what UI to show. The actual
+-- authorization decision is re-validated in the database here, so a user cannot
+-- escalate themselves by editing the client or calling the API directly.
+
+-- ============================================================
+-- 1. USE EXTENSIONS
+-- ============================================================
+drop extension if exists pgcrypto; -- (optional) for gen_random_uuid if needed
+
+-- ============================================================
+-- 2. SECURITY-DEFINER HELPER FUNCTIONS
+--    (These bypass RLS internally so they can read the users table safely.)
+-- ============================================================
+
+-- Returns TRUE if the current caller is a registered admin.
+create or replace function public.is_admin_user()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((
+    select u.is_admin
+    from public.users u
+    where u.uid = auth.uid()::text
+  ), false);
+$$;
+
+-- Returns TRUE if the current caller is a registered admin or leader/coach.
+create or replace function public.is_admin_or_leader()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((
+    select (u.is_admin or u.is_leader)
+    from public.users u
+    where u.uid = auth.uid()::text
+  ), false);
+$$;
+
+-- Returns TRUE if the current caller is the designated coach/leader of `member_uid`.
+create or replace function public.is_coach_of(member_uid text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.coaching_requests cr
+    where cr.member_id = member_uid
+      and cr.status = 'approved'
+      and cr.accepted_by_coach = 'accepted'
+      and cr.coach_uid = auth.uid()::text
+  );
+$$;
+
+-- Returns TRUE if the current caller is a coach to ANY member.
+create or replace function public.current_uid()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select auth.uid()::text;
+$$;
+
+-- Returns the caller's stored is_admin flag. Security-definer so it can read
+-- the users table without tripping RLS recursion inside the users policies.
+create or replace function public.__my_is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((select u.is_admin from public.users u where u.uid = auth.uid()::text), false);
+$$;
+
+-- Returns the caller's stored is_leader flag.
+create or replace function public.__my_is_leader()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((select u.is_leader from public.users u where u.uid = auth.uid()::text), false);
+$$;
+
+-- Returns the caller's stored role text.
+create or replace function public.__my_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select (select u.role from public.users u where u.uid = auth.uid()::text);
+$$;
+
+-- Returns the caller's stored email (constant, cannot be changed by self).
+create or replace function public.__my_email()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select (select u.email from public.users u where u.uid = auth.uid()::text);
+$$;
+
+-- SAFE SELF-PROMOTION: A user may become a leader ONLY if there exists a
+-- coaching request where they are the approved+accepted coach (i.e. someone
+-- nominated them and admin approved). This preserves the "accept invitation ->
+-- become leader" feature without letting anyone grant themselves privileges.
+create or replace function public.promote_self_to_leader_if_verified()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.users u
+  set is_leader = true
+  where u.uid = auth.uid()::text
+    and u.is_leader = false
+    and exists (
+      select 1
+      from public.coaching_requests cr
+      where cr.coach_uid = u.uid
+        and cr.status = 'approved'
+        and cr.accepted_by_coach = 'accepted'
+    );
+end;
+$$;
+
+-- ============================================================
+-- 3. TABLES
+-- ============================================================
 
 -- 1. Users table
 CREATE TABLE IF NOT EXISTS users (
@@ -139,18 +296,23 @@ CREATE TABLE IF NOT EXISTS meetings (
   created_at BIGINT NOT NULL DEFAULT (extract(epoch from now()) * 1000)
 );
 
--- Indexes for common queries
+-- ============================================================
+-- 4. INDEXES
+-- ============================================================
 CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON development_reviews(user_id);
 CREATE INDEX IF NOT EXISTS idx_reviews_quarter ON development_reviews(quarter, year);
 CREATE INDEX IF NOT EXISTS idx_summaries_user_id ON quarterly_summaries(user_id);
+CREATE INDEX IF NOT EXISTS idx_summaries_coach_uid ON quarterly_summaries(coach_uid);
 CREATE INDEX IF NOT EXISTS idx_summaries_quarter ON quarterly_summaries(quarter, year);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_activity_logs_timestamp ON activity_logs(timestamp DESC);
 CREATE INDEX IF NOT EXISTS idx_coaching_requests_member_id ON coaching_requests(member_id);
+CREATE INDEX IF NOT EXISTS idx_coaching_requests_coach_uid ON coaching_requests(coach_uid);
 CREATE INDEX IF NOT EXISTS idx_meetings_staff_uid ON meetings(staff_uid);
 
--- Row-Level Security (RLS) — enable per table
--- For now, allow all authenticated operations (tighten later)
+-- ============================================================
+-- 5. ROW LEVEL SECURITY — enable + drop old permissive policies
+-- ============================================================
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE development_reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quarterly_summaries ENABLE ROW LEVEL SECURITY;
@@ -161,18 +323,197 @@ ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE coaching_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE meetings ENABLE ROW LEVEL SECURITY;
 
--- Permissive policies (allow all for now — tighten after auth works)
-CREATE POLICY "Allow all for authenticated" ON users FOR ALL USING (true);
-CREATE POLICY "Allow all for authenticated" ON development_reviews FOR ALL USING (true);
-CREATE POLICY "Allow all for authenticated" ON quarterly_summaries FOR ALL USING (true);
-CREATE POLICY "Allow all for authenticated" ON follow_up_tasks FOR ALL USING (true);
-CREATE POLICY "Allow all for authenticated" ON requirement_settings FOR ALL USING (true);
-CREATE POLICY "Allow all for authenticated" ON review_schedules FOR ALL USING (true);
-CREATE POLICY "Allow all for authenticated" ON activity_logs FOR ALL USING (true);
-CREATE POLICY "Allow all for authenticated" ON coaching_requests FOR ALL USING (true);
-CREATE POLICY "Allow all for authenticated" ON meetings FOR ALL USING (true);
+-- Drop any old "allow all" policies so we start clean.
+DO $$
+DECLARE pol record;
+BEGIN
+  FOR pol IN
+    SELECT tablename, policyname
+    FROM pg_policies
+    WHERE schemaname = 'public'
+      AND tablename IN ('users','development_reviews','quarterly_summaries','follow_up_tasks','requirement_settings','review_schedules','activity_logs','coaching_requests','meetings')
+  LOOP
+    EXECUTE format('DROP POLICY IF EXISTS %I ON %I', pol.policyname, pol.tablename);
+  END LOOP;
+END $$;
 
--- Insert default requirement settings
+-- ============================================================
+-- 6. RLS POLICIES
+-- ============================================================
+
+-- ---- USERS ----
+-- Any authenticated user can read basic profile info (needed to show names/roles
+-- when a coach picks a member, etc.). We expose only non-sensitive fields; email
+-- is part of the profile the app already needs. Roles are the sensitive part and
+-- are guarded on UPDATE below.
+CREATE POLICY "users_select_authenticated"
+  ON users FOR SELECT TO authenticated USING (true);
+
+-- A new user may insert ONLY their own row, with no privileged flags. This
+-- supports the signup flow (app does users.upsert({uid: auth user id, ...})).
+CREATE POLICY "users_insert_self"
+  ON users FOR INSERT TO authenticated
+  WITH CHECK (
+    uid = auth.uid()::text
+    AND is_admin = false
+    AND (is_leader = false OR is_leader IS NULL)
+  );
+
+-- Users can update ONLY their own row, and may NOT change is_admin / is_leader /
+-- role/email/uid. Admin promotion is done by a privileged server role; leadership
+-- is granted only via public.promote_self_to_leader_if_verified().
+CREATE POLICY "users_update_self"
+  ON users FOR UPDATE TO authenticated
+  USING (uid = auth.uid()::text)
+  WITH CHECK (
+    uid = auth.uid()::text
+    AND is_admin = public.__my_is_admin()
+    AND is_leader = public.__my_is_leader()
+    AND coalesce(role, '') = coalesce(public.__my_role(), '')
+    AND email = public.__my_email()
+  );
+
+-- Admins may update any user's row (role management). They still cannot set
+-- themselves — not needed since admin is derived from the row they manage.
+CREATE POLICY "users_admin_update"
+  ON users FOR UPDATE TO authenticated
+  USING (public.is_admin_user())
+  WITH CHECK (public.is_admin_user());
+
+-- ---- DEVELOPMENT REVIEWS ----
+-- Owner can do everything on their own review.
+CREATE POLICY "reviews_owner_all"
+  ON development_reviews FOR ALL TO authenticated
+  USING (user_id = auth.uid()::text)
+  WITH CHECK (user_id = auth.uid()::text);
+
+-- Coaches/admins can SELECT (read) others' reviews; coaches can also UPDATE
+-- (to add leader section comments).
+CREATE POLICY "reviews_coach_or_admin_select"
+  ON development_reviews FOR SELECT TO authenticated
+  USING (public.is_admin_user() OR public.is_coach_of(user_id));
+
+CREATE POLICY "reviews_coach_or_admin_update"
+  ON development_reviews FOR UPDATE TO authenticated
+  USING (public.is_admin_user() OR public.is_coach_of(user_id))
+  WITH CHECK (public.is_admin_user() OR public.is_coach_of(user_id));
+
+-- ---- QUARTERLY SUMMARIES ----
+-- Owner can do everything on their own summary.
+CREATE POLICY "summaries_owner_all"
+  ON quarterly_summaries FOR ALL TO authenticated
+  USING (user_id = auth.uid()::text)
+  WITH CHECK (user_id = auth.uid()::text);
+
+-- Coach (who is the assigned coach_uid) or admin can read + update.
+CREATE POLICY "summaries_coach_or_admin_select"
+  ON quarterly_summaries FOR SELECT TO authenticated
+  USING (public.is_admin_user() OR coach_uid = auth.uid()::text OR public.is_coach_of(user_id));
+
+CREATE POLICY "summaries_coach_or_admin_update"
+  ON quarterly_summaries FOR UPDATE TO authenticated
+  USING (public.is_admin_user() OR coach_uid = auth.uid()::text OR public.is_coach_of(user_id))
+  WITH CHECK (public.is_admin_user() OR coach_uid = auth.uid()::text OR public.is_coach_of(user_id));
+
+-- ---- COACHING REQUESTS ----
+-- The member can manage the requests they made; the named coach or admin can view
+-- and update/respond to their invitations.
+CREATE POLICY "coaching_member_all"
+  ON coaching_requests FOR ALL TO authenticated
+  USING (member_id = auth.uid()::text)
+  WITH CHECK (member_id = auth.uid()::text);
+
+CREATE POLICY "coaching_coach_or_admin_select"
+  ON coaching_requests FOR SELECT TO authenticated
+  USING (public.is_admin_user() OR coach_uid = auth.uid()::text);
+
+CREATE POLICY "coaching_coach_or_admin_update"
+  ON coaching_requests FOR UPDATE TO authenticated
+  USING (public.is_admin_user() OR coach_uid = auth.uid()::text)
+  WITH CHECK (public.is_admin_user() OR coach_uid = auth.uid()::text);
+
+-- ---- ACTIVITY LOGS ----
+-- Owner sees their own logs; coaches/admins see logs for their team / everyone.
+CREATE POLICY "activity_logs_owner_select"
+  ON activity_logs FOR SELECT TO authenticated
+  USING (user_id = auth.uid()::text);
+
+CREATE POLICY "activity_logs_coach_or_admin_select"
+  ON activity_logs FOR SELECT TO authenticated
+  USING (public.is_admin_user());
+
+-- Owner or their coach / admin may insert a log row.
+CREATE POLICY "activity_logs_insert"
+  ON activity_logs FOR INSERT TO authenticated
+  WITH CHECK (user_id = auth.uid()::text OR public.is_admin_user());
+
+-- ---- FOLLOW-UP TASKS ----
+CREATE POLICY "follow_up_owner_all"
+  ON follow_up_tasks FOR ALL TO authenticated
+  USING (user_id = auth.uid()::text OR user_id IS NULL OR public.is_admin_user())
+  WITH CHECK (user_id = auth.uid()::text OR user_id IS NULL OR public.is_admin_user());
+
+-- ---- MEETINGS ----
+CREATE POLICY "meetings_owner_all"
+  ON meetings FOR ALL TO authenticated
+  USING (staff_uid = auth.uid()::text OR public.is_admin_user())
+  WITH CHECK (staff_uid = auth.uid()::text OR public.is_admin_user());
+
+-- ---- REQUIREMENT SETTINGS (global) ----
+-- Everyone may read; only admins may write.
+CREATE POLICY "settings_select_authenticated"
+  ON requirement_settings FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "settings_admin_write"
+  ON requirement_settings FOR ALL TO authenticated
+  USING (public.is_admin_user())
+  WITH CHECK (public.is_admin_user());
+
+-- ---- REVIEW SCHEDULES (global) ----
+CREATE POLICY "schedules_select_authenticated"
+  ON review_schedules FOR SELECT TO authenticated USING (true);
+
+CREATE POLICY "schedules_admin_write"
+  ON review_schedules FOR ALL TO authenticated
+  USING (public.is_admin_user())
+  WITH CHECK (public.is_admin_user());
+
+-- ============================================================
+-- 7. DEFAULT DATA
+-- ============================================================
 INSERT INTO requirement_settings (id, heart_required, personal_life_required, relational_life_required, ministry_effectiveness_required)
 VALUES ('global', true, true, true, true)
 ON CONFLICT (id) DO NOTHING;
+
+-- ============================================================
+-- 8. SECURE BOOTSTRAP OF THE FIRST ADMIN
+-- ============================================================
+-- The FIRST person to register becomes the platform Owner/Admin. This happens
+-- entirely server-side, so no client code can influence it, and it cannot be
+-- replayed (it only fires when the users table is empty).
+--
+-- After bootstrap, additional admins/leaders are granted by an existing admin
+-- (writing the users.is_admin / users.is_leader flags through the users_admin_update
+-- policy) or via the promote_self_to_leader_if_verified() RPC.
+
+create or replace function public.bootstrap_first_admin()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Only the very first user row ever inserted becomes the owner.
+  if not exists (select 1 from public.users) then
+    new.is_admin := true;
+    new.is_leader := true;
+    new.role := 'Admin';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_bootstrap_first_admin on public.users;
+create trigger trg_bootstrap_first_admin
+  before insert on public.users
+  for each row execute function public.bootstrap_first_admin();

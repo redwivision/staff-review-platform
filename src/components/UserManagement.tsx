@@ -29,8 +29,6 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
         }
 
         localUsers.sort((a, b) => {
-          if (a.email === "lewikb13@gmail.com") return -1;
-          if (b.email === "lewikb13@gmail.com") return 1;
           if (a.isAdmin && !b.isAdmin) return -1;
           if (!a.isAdmin && b.isAdmin) return 1;
           if (a.isLeader && !b.isLeader) return -1;
@@ -45,8 +43,6 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
       const userList = await getAllStaff();
       // Sort: Admin first, then leader status, then name
       userList.sort((a, b) => {
-        if (a.email === "lewikb13@gmail.com") return -1;
-        if (b.email === "lewikb13@gmail.com") return 1;
         if (a.isAdmin && !b.isAdmin) return -1;
         if (!a.isAdmin && b.isAdmin) return 1;
         if (a.isLeader && !b.isLeader) return -1;
@@ -66,14 +62,25 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
   }, []);
 
   const updateUserRole = async (targetUser: UserProfile, newIsLeader: boolean, newIsAdmin: boolean) => {
-    const isCurrentAdmin = currentUser.email === "lewikb13@gmail.com" || currentUser.isAdmin === true || currentUser.role?.toLowerCase() === "admin";
-    if (!isCurrentAdmin) {
+    // Only admins (per the DB profile) may change roles.
+    if (!currentUser.isAdmin) {
       alert("Access Denied: Only administrators can update user roles.");
       return;
     }
-    if (targetUser.email === "lewikb13@gmail.com") {
-      alert("Validation Error: The platform owner's role cannot be modified.");
+
+    // Prevent demoting yourself (avoids locking the current admin out).
+    if (targetUser.uid === currentUser.uid) {
+      alert("Validation Error: You cannot change your own role. Ask another administrator to manage it.");
       return;
+    }
+
+    // Prevent removing the last administrator (would lock everyone out).
+    if (targetUser.isAdmin && newIsAdmin === false) {
+      const adminCount = users.filter(u => u.isAdmin).length;
+      if (adminCount <= 1) {
+        alert("Validation Error: Cannot demote the last remaining administrator.");
+        return;
+      }
     }
 
     setUpdatingId(targetUser.uid);
@@ -104,7 +111,16 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
       }
 
       const newRole = newIsAdmin ? "Admin" : (newIsLeader ? "Coach" : "Staff");
-      await dataUpdateUserProfile(targetUser.uid, { isLeader: newIsLeader, isAdmin: newIsAdmin, role: newRole });
+      try {
+        await dataUpdateUserProfile(targetUser.uid, { isLeader: newIsLeader, isAdmin: newIsAdmin, role: newRole });
+      } catch (e) {
+        // The RLS policy (users_admin_update) is the source of truth. If the DB
+        // rejects the write, surface an explicit error instead of silently
+        // pretending it worked.
+        console.error("Role update rejected by database:", e);
+        alert("Permission update was rejected by the database. Only an administrator can change roles, and you cannot modify the platform owner.");
+        return;
+      }
       
       // Update local state
       setUsers(prev =>
@@ -163,11 +179,10 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               {users.map(u => {
-                const isOwner = u.email === "lewikb13@gmail.com";
                 return (
                   <tr key={u.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                      {isOwner && <Star className="w-4 h-4 text-amber-500 fill-amber-500" />}
+                      {u.isAdmin && <Star className="w-4 h-4 text-amber-500 fill-amber-500" />}
                       {u.name}
                     </td>
                     <td className="px-6 py-4 text-slate-500 dark:text-slate-400 font-mono text-xs">
@@ -183,12 +198,7 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      {isOwner ? (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-900">
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          Platform Owner
-                        </span>
-                      ) : u.isAdmin ? (
+                      {u.isAdmin ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-900">
                           <ShieldCheck className="w-3.5 h-3.5" />
                           Administrator
@@ -206,8 +216,8 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
-                      {isOwner ? (
-                        <span className="text-xs text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-md">Root Owner</span>
+                      {u.uid === currentUser.uid ? (
+                        <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold bg-slate-50 dark:bg-slate-950 px-2.5 py-1 rounded-md">You</span>
                       ) : (
                         <div className="flex items-center justify-end">
                           <select

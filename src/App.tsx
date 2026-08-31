@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, hasSupabaseConfig } from "./supabase";
+import { useLanguage } from "./i18n";
 import {
   supabaseSignUp,
   supabaseSignIn,
@@ -97,6 +98,7 @@ async function runExportEvaluationToPDF(
 }
 
 export default function App() {
+  const { t, lang, setLang } = useLanguage();
   // Auth state
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -404,7 +406,7 @@ export default function App() {
 
       // Already submitted to their coach → keep it with the coach.
       if (mySummaries.some(s => s.status === "Submitted" || s.status === "CoachSubmitted")) {
-        return { type: "wait" as const, quarter: null, label: "Great job — it's with your coach", description: "Your quarterly form is submitted to your coach. They'll add their evaluation and send it to Admin.", btn: "View Coach" };
+        return { type: "wait" as const, quarter: null, label: t("Great job — it's with your coach"), description: t("Your quarterly form is submitted to your coach. They'll add their evaluation and send it to Admin."), btn: t("View Coach") };
       }
 
       // As long as a quarter is unlocked, the form is always open to fill &
@@ -413,43 +415,43 @@ export default function App() {
       if (draftOrDeclined || unlockedQ) {
         const quarter = draftOrDeclined ? draftOrDeclined.quarter : (unlockedQ as "1st" | "2nd" | "3rd");
         const coachHint = hasVerifiedCoach
-          ? "Fill it in, then press \"Submit to Coach\"."
-          : "Fill it in and save now — you'll submit to your coach once they're confirmed.";
+          ? t("Fill it in, then press \"Submit to Coach\".")
+          : t("Fill it in and save now — you'll submit to your coach once they're confirmed.");
         return {
           type: "fill-summary" as const,
           quarter,
-          label: draftOrDeclined ? "Continue your quarterly form" : "Start your quarterly form",
+          label: draftOrDeclined ? t("Continue your quarterly form") : t("Start your quarterly form"),
           description: `Open the ${QUARTER_INFO[quarter].name} Quarterly Summary. ${coachHint}`,
-          btn: draftOrDeclined ? "Continue Form" : "Start Form"
+          btn: draftOrDeclined ? t("Continue Form") : t("Start Form")
         };
       }
 
       // No unlocked quarter yet → surface the coach step so it's clear what's next.
       if (memberNominations.length === 0) {
-        return { type: "nominate" as const, quarter: null, label: "Pick your coach", description: "Choose the Team Leader who will guide your review. Your quarterly form will open here as soon as it's unlocked.", btn: "View Coach" };
+        return { type: "nominate" as const, quarter: null, label: t("Pick your coach"), description: t("Choose the Team Leader who will guide your review. Your quarterly form will open here as soon as it's unlocked."), btn: t("View Coach") };
       }
       if (!hasVerifiedCoach) {
-        return { type: "nominate" as const, quarter: null, label: "Awaiting coach confirmation", description: "Admin has your request and your coach needs to accept. Keep an eye on your form — it's yours whenever it's unlocked.", btn: "View Coach" };
+        return { type: "nominate" as const, quarter: null, label: t("Awaiting coach confirmation"), description: t("Admin has your request and your coach needs to accept. Keep an eye on your form — it's yours whenever it's unlocked."), btn: t("View Coach") };
       }
-      return { type: "nominate" as const, quarter: null, label: "Your coach is ready", description: "Your coach is confirmed. Your form will open here once it's unlocked for you to fill in.", btn: "View Coach" };
+      return { type: "nominate" as const, quarter: null, label: t("Your coach is ready"), description: t("Your coach is confirmed. Your form will open here once it's unlocked for you to fill in."), btn: t("View Coach") };
     }
 
     // TEAM REVIEWS — coach/leader evaluates their staff's summaries
     if (currentTab === "team-reviews") {
       if (hasPendingInvitation) {
-        return { type: "invitation" as const, quarter: null, label: "Respond to your coaching request", description: "A staff member wants you as their Team Leader and coach. Accept or decline to keep things moving.", btn: "Respond" };
+        return { type: "invitation" as const, quarter: null, label: t("Respond to your coaching request"), description: t("A staff member wants you as their Team Leader and coach. Accept or decline to keep things moving."), btn: t("Respond") };
       }
-      return { type: "leader" as const, quarter: null, label: "Evaluate your team's summaries", description: "Open a staff member's submitted Quarterly Summary, fill the TL Evaluation, then press \"Submit to Admin\".", btn: "Open Summaries" };
+      return { type: "leader" as const, quarter: null, label: t("Evaluate your team's summaries"), description: t("Open a staff member's submitted Quarterly Summary, fill the TL Evaluation, then press \"Submit to Admin\"."), btn: t("Open Summaries") };
     }
 
     // ADMIN — approve/decline & export
     if (currentTab === "admin") {
-      return { type: "admin" as const, quarter: null, label: "Approve & manage evaluations", description: "Review the summaries coaches have submitted, approve or decline them, and export reports or PDFs.", btn: "Go to Reports" };
+      return { type: "admin" as const, quarter: null, label: t("Approve & manage evaluations"), description: t("Review the summaries coaches have submitted, approve or decline them, and export reports or PDFs."), btn: t("Go to Reports") };
     }
 
     // MEETINGS
     if (currentTab === "meetings") {
-      return { type: "meeting" as const, quarter: null, label: "Schedule a review meeting", description: "Book a meeting to go over a staff member's quarterly review together.", btn: "Schedule" };
+      return { type: "meeting" as const, quarter: null, label: t("Schedule a review meeting"), description: t("Book a meeting to go over a staff member's quarterly review together."), btn: t("Schedule") };
     }
 
     return null;
@@ -704,8 +706,8 @@ export default function App() {
       if (hasSupabaseConfig) {
         // Supabase auth
         if (isSignUp) {
-          if (!authName.trim()) throw new Error("Please fill in your full name.");
-          if (!authRole.trim()) throw new Error("Please fill in your specific organizational role.");
+          if (!authName.trim()) throw new Error(t("Please fill in your full name."));
+          if (!authRole.trim()) throw new Error(t("Please fill in your specific organizational role."));
           const { profile } = await supabaseSignUp(authEmail, authPassword, authName, authRole);
           setUser(profile);
         } else {
@@ -733,10 +735,10 @@ export default function App() {
           }
         }
       } else {
-        setAuthError("No authentication provider configured. Please use the Bypass buttons below.");
+        setAuthError(t("No authentication provider configured. Please use the Bypass buttons below."));
       }
     } catch (err: any) {
-      setAuthError(err.message || "Failed to authenticate.");
+      setAuthError(err.message || t("Failed to authenticate."));
     } finally {
       setLoading(false);
     }
@@ -1426,18 +1428,18 @@ export default function App() {
     if (!trimmed) return;
 
     if (user && trimmed.toLowerCase() === user.name.toLowerCase()) {
-      setModalError("Validation Error: You cannot nominate yourself as your own coach.");
+      setModalError(t("Validation Error: You cannot nominate yourself as your own coach."));
       return;
     }
 
     const userNominations = coachingRequests.filter(req => req.memberId === user?.uid);
     if (userNominations.some(r => r.coachName.toLowerCase() === trimmed.toLowerCase())) {
-      setModalError("Validation Error: You have already nominated this coach.");
+      setModalError(t("Validation Error: You have already nominated this coach."));
       return;
     }
 
     if (userNominations.length >= 1) {
-      setModalError("Validation Error: You can only nominate exactly 1 coach or TL.");
+      setModalError(t("Validation Error: You can only nominate exactly 1 coach or TL."));
       return;
     }
 
@@ -1446,7 +1448,7 @@ export default function App() {
       setModalSearchName("");
       setShowModalSuggestions(false);
     } catch (e: any) {
-      setModalError(e.message || "Failed to submit coaching nomination.");
+      setModalError(e.message || t("Failed to submit coaching nomination."));
     }
   };
 
@@ -1809,7 +1811,7 @@ export default function App() {
 
   // Save changes on active review
   const handleSaveReview = async (updated: DevelopmentReview) => {
-    const action = updated.status === "Submitted" ? "Submitted Final Review" : "Saved Review Progress Draft";
+    const action = updated.status === "Submitted" ? t("Submitted Final Review") : t("Saved Review Progress Draft");
 
     if (user && user.uid.startsWith("bypass_")) {
       const localReviewsStr = localStorage.getItem("staff_review_bypass_reviews") || "[]";
@@ -1846,7 +1848,7 @@ export default function App() {
 
   // Save changes on active summary
   const handleSaveSummary = async (updated: QuarterlySummary) => {
-    const action = "Updated Quarterly Summary Evaluation";
+    const action = t("Updated Quarterly Summary Evaluation");
 
     if (user && user.uid.startsWith("bypass_")) {
       const localSummariesStr = localStorage.getItem("staff_review_bypass_summaries") || "[]";
@@ -1893,7 +1895,7 @@ export default function App() {
       updatedAt: Date.now()
     };
     
-    const action = "Signed off on Compiled Evaluation summary (Admin)";
+    const action = t("Signed off on Compiled Evaluation summary (Admin)");
     
     if (user.uid.startsWith("bypass_")) {
       const localSummariesStr = localStorage.getItem("staff_review_bypass_summaries") || "[]";
@@ -1909,7 +1911,7 @@ export default function App() {
       setMySummaries(localSummaries.filter(s => s.userId === user.uid));
       setAllSummaries(localSummaries);
       await logActivity(updatedSummary.userId, updatedSummary.staffName, "summary", updatedSummary.quarter, updatedSummary.year, action);
-      alert(`Success: Signed off on ${memberName}'s ${updatedSummary.quarter} Quarter evaluation!`);
+      alert(t(`Success: Signed off on ${memberName}'s ${updatedSummary.quarter} Quarter evaluation!`));
       return;
     }
 
@@ -1917,10 +1919,10 @@ export default function App() {
       await dataSaveSummary(updatedSummary);
       setAllSummaries(prev => prev.map(s => s.id === updatedSummary.id ? updatedSummary : s));
       await logActivity(updatedSummary.userId, updatedSummary.staffName, "summary", updatedSummary.quarter, updatedSummary.year, action);
-      alert(`Success: Signed off on ${memberName}'s ${updatedSummary.quarter} Quarter evaluation!`);
+      alert(t(`Success: Signed off on ${memberName}'s ${updatedSummary.quarter} Quarter evaluation!`));
     } catch (e) {
       console.error("Error signing off:", e);
-      alert("Failed to save sign-off.");
+      alert(t("Failed to save sign-off."));
     }
   };
 
@@ -1930,11 +1932,11 @@ export default function App() {
 
     const pending = allSummaries.filter(s => s.status === "CoachSubmitted" && (!s.evaluation || !s.evaluation.formReviewedBy));
     if (pending.length === 0) {
-      alert("There are no pending evaluations awaiting admin sign-off.");
+      alert(t("There are no pending evaluations awaiting admin sign-off."));
       return;
     }
 
-    if (!confirm(`Are you sure you want to sign-off and approve ALL ${pending.length} pending evaluation reports in bulk?`)) {
+    if (!confirm(t(`Are you sure you want to sign-off and approve ALL ${pending.length} pending evaluation reports in bulk?`))) {
       return;
     }
 
@@ -1945,7 +1947,7 @@ export default function App() {
       day: "numeric"
     });
 
-    const action = "Signed off on Compiled Evaluation summary (Bulk Admin Approval)";
+    const action = t("Signed off on Compiled Evaluation summary (Bulk Admin Approval)");
 
     if (user.uid.startsWith("bypass_")) {
       const localSummariesStr = localStorage.getItem("staff_review_bypass_summaries") || "[]";
@@ -1977,7 +1979,7 @@ export default function App() {
         await logActivity(updatedSummary.userId, updatedSummary.staffName, "summary", updatedSummary.quarter, updatedSummary.year, action);
       }
 
-      alert(`Success: Bulk signed off and approved ${pending.length} evaluation reports!`);
+      alert(t(`Success: Bulk signed off and approved ${pending.length} evaluation reports!`));
       return;
     }
 
@@ -2004,10 +2006,10 @@ export default function App() {
         return match ? match : s;
       }));
 
-      alert(`Success: Bulk signed off and approved ${pending.length} evaluation reports!`);
+      alert(t(`Success: Bulk signed off and approved ${pending.length} evaluation reports!`));
     } catch (e: any) {
       console.error("Error bulk signing off:", e);
-      alert(`Failed to save bulk sign-offs: ${e.message}`);
+      alert(t(`Failed to save bulk sign-offs: ${e.message}`));
     }
   };
 
@@ -2015,7 +2017,7 @@ export default function App() {
   const handleBulkAdminDecline = async (declineReason: string) => {
     if (!user || !isAdmin) return;
     if (!declineReason.trim()) {
-      alert("Please provide a reason for declining the selected reports.");
+      alert(t("Please provide a reason for declining the selected reports."));
       return;
     }
 
@@ -2025,7 +2027,7 @@ export default function App() {
     }).filter((s): s is QuarterlySummary => !!s && s.status !== "Declined");
 
     if (eligibleSummariesToDecline.length === 0) {
-      alert("No valid pending evaluation reports were selected to decline.");
+      alert(t("No valid pending evaluation reports were selected to decline."));
       return;
     }
 
@@ -2058,7 +2060,7 @@ export default function App() {
           };
         }
 
-        const action = `Bulk Declined evaluation summary: ${declineReason.trim()}`;
+        const action = t(`Bulk Declined evaluation summary: ${declineReason.trim()}`);
 
         if (user.uid.startsWith("bypass_")) {
           const index = updatedSummariesList.findIndex(s => s.id === updatedSummary.id);
@@ -2092,10 +2094,10 @@ export default function App() {
       setSelectedEvaluations([]);
       setShowBulkDeclineModal(false);
       setBulkDeclineReason("");
-      alert(`Success: Successfully bulk declined ${eligibleSummariesToDecline.length} selected evaluation reports!`);
+      alert(t(`Success: Successfully bulk declined ${eligibleSummariesToDecline.length} selected evaluation reports!`));
     } catch (e: any) {
       console.error("Error bulk declining reports:", e);
-      alert(`Failed to complete bulk decline: ${e.message}`);
+      alert(t(`Failed to complete bulk decline: ${e.message}`));
     } finally {
       setBulkActionProgress({ total: 0, current: 0, type: null });
     }
@@ -2111,14 +2113,14 @@ export default function App() {
     }).filter((item): item is { member: UserProfile; quarter: "1st" | "2nd" | "3rd"; summary: QuarterlySummary } => !!item.member && !!item.summary && !!item.summary.evaluation.overallEffectiveness);
 
     if (itemsToExport.length === 0) {
-      alert("No compiled evaluation reports (with overall effectiveness scores) are currently selected for PDF export.");
+      alert(t("No compiled evaluation reports (with overall effectiveness scores) are currently selected for PDF export."));
       return;
     }
 
     if (isAdmin) {
       openBulkPdfCustomizer(itemsToExport);
     } else {
-      const confirmExport = window.confirm(`Export ${itemsToExport.length} selected evaluation report(s) as individual PDFs?`);
+      const confirmExport = window.confirm(t(`Export ${itemsToExport.length} selected evaluation report(s) as individual PDFs?`));
       if (!confirmExport) return;
 
       try {
@@ -2133,10 +2135,10 @@ export default function App() {
           await new Promise(resolve => setTimeout(resolve, 300));
         }
 
-        alert(`Successfully generated PDF exports for ${itemsToExport.length} reports!`);
+        alert(t(`Successfully generated PDF exports for ${itemsToExport.length} reports!`));
       } catch (e: any) {
         console.error("Error during bulk export:", e);
-        alert(`Failed to complete bulk export: ${e.message}`);
+        alert(t(`Failed to complete bulk export: ${e.message}`));
       } finally {
         setBulkActionProgress({ total: 0, current: 0, type: null });
       }
@@ -2147,7 +2149,7 @@ export default function App() {
   const handleAdminDecline = async (summary: QuarterlySummary, declineReason: string, memberName: string) => {
     if (!user || !isAdmin) return;
     if (!declineReason.trim()) {
-      alert("Please provide a reason for declining the report.");
+      alert(t("Please provide a reason for declining the report."));
       return;
     }
 
@@ -2175,7 +2177,7 @@ export default function App() {
       };
     }
 
-    const action = `Declined evaluation summary: ${declineReason.trim()}`;
+    const action = t(`Declined evaluation summary: ${declineReason.trim()}`);
 
     if (user.uid.startsWith("bypass_")) {
       const localSummariesStr = localStorage.getItem("staff_review_bypass_summaries") || "[]";
@@ -2191,7 +2193,7 @@ export default function App() {
       setMySummaries(localSummaries.filter(s => s.userId === user.uid));
       setAllSummaries(localSummaries);
       await logActivity(updatedSummary.userId, updatedSummary.staffName, "summary", updatedSummary.quarter, updatedSummary.year, action);
-      alert(`Success: Declined ${memberName}'s ${updatedSummary.quarter} Quarter evaluation and requested coach revision.`);
+      alert(t(`Success: Declined ${memberName}'s ${updatedSummary.quarter} Quarter evaluation and requested coach revision.`));
       return;
     }
 
@@ -2199,10 +2201,10 @@ export default function App() {
       await dataSaveSummary(updatedSummary);
       setAllSummaries(prev => prev.map(s => s.id === updatedSummary.id ? updatedSummary : s));
       await logActivity(updatedSummary.userId, updatedSummary.staffName, "summary", updatedSummary.quarter, updatedSummary.year, action);
-      alert(`Success: Declined ${memberName}'s ${updatedSummary.quarter} Quarter evaluation and requested coach revision.`);
+      alert(t(`Success: Declined ${memberName}'s ${updatedSummary.quarter} Quarter evaluation and requested coach revision.`));
     } catch (e) {
       console.error("Error declining evaluation:", e);
-      alert("Failed to save rejection.");
+      alert(t("Failed to save rejection."));
     }
   };
 
@@ -2279,16 +2281,16 @@ export default function App() {
       };
       localStorage.setItem("staff_review_bypass_schedules", JSON.stringify(updatedSchedules));
       setReviewSchedules(updatedSchedules);
-      showToast(`${quarter} Quarter Review schedule saved successfully (Bypass Mode)!`, "success");
+      showToast(t(`${quarter} Quarter Review schedule saved successfully (Bypass Mode)!`), "success");
       return;
     }
 
     try {
       await dataSaveReviewSchedule(quarter, scheduleData);
-      showToast(`${quarter} Quarter Review schedule saved successfully!`, "success");
+      showToast(t(`${quarter} Quarter Review schedule saved successfully!`), "success");
     } catch (e) {
       console.error("Failed to save schedule", e);
-      showToast(`Failed to save schedule. Check console/permissions. Error: ${e instanceof Error ? e.message : String(e)}`, "error");
+      showToast(t(`Failed to save schedule. Check console/permissions. Error: ${e instanceof Error ? e.message : String(e)}`), "error");
     }
   };
 
@@ -2296,7 +2298,7 @@ export default function App() {
   const handleScheduleMeeting = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!scheduleStaffUid || !scheduleDate || !scheduleTime) {
-      alert("Please fill in the date, time, and pick a staff member.");
+      alert(t("Please fill in the date, time, and pick a staff member."));
       return;
     }
 
@@ -2330,7 +2332,7 @@ export default function App() {
       setScheduleDate("");
       setScheduleTime("");
       setScheduleNotes("");
-      alert("Feedback session scheduled and synced with the team member!");
+      alert(t("Feedback session scheduled and synced with the team member!"));
       return;
     }
 
@@ -2339,7 +2341,7 @@ export default function App() {
     setScheduleDate("");
     setScheduleTime("");
     setScheduleNotes("");
-    alert("Feedback session scheduled and synced with the team member!");
+    alert(t("Feedback session scheduled and synced with the team member!"));
   };
 
   // Create Google Calendar render URL helper
@@ -2364,10 +2366,10 @@ export default function App() {
     return (
       <div id="loading-fallback" className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-mono text-xs text-slate-500 gap-3 relative">
         <div className="w-full bg-amber-500 text-slate-950 font-bold text-center py-2 text-xs md:text-sm tracking-wide shadow-sm flex items-center justify-center gap-1.5 px-4 absolute top-0 left-0">
-          <span>⚠️ DEMO MODE: This is a demo and is meant to show the idea not the functionalities</span>
+          <span>{t("⚠️ DEMO MODE: This is a demo and is meant to show the idea not the functionalities")}</span>
         </div>
         <div className="w-8 h-8 border-4 border-slate-300 border-t-slate-800 rounded-full animate-spin"></div>
-        <span>Synchronizing Review Workspace...</span>
+        <span>{t("Synchronizing Review Workspace...")}</span>
       </div>
     );
   }
@@ -2377,14 +2379,22 @@ export default function App() {
     return (
       <div id="auth-page" className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 flex flex-col items-center justify-center p-6 transition-colors duration-200 relative pt-16">
         <div className="w-full bg-amber-500 text-slate-950 font-bold text-center py-2 text-xs md:text-sm tracking-wide shadow-sm flex items-center justify-center gap-1.5 px-4 absolute top-0 left-0 z-50">
-          <span>⚠️ DEMO MODE: This is a demo and is meant to show the idea not the functionalities</span>
+          <span>{t("⚠️ DEMO MODE: This is a demo and is meant to show the idea not the functionalities")}</span>
         </div>
-        <div className="absolute top-4 right-4">
+        <div className="absolute top-4 right-4 flex items-center gap-2">
+          <button
+            id="auth-lang-toggle-btn"
+            onClick={() => setLang(lang === "am" ? "en" : "am")}
+            className="p-2.5 text-slate-500 hover:text-slate-800 dark:hover:text-white rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 transition-colors shadow-sm flex items-center justify-center text-xs font-bold"
+            title={lang === "am" ? "Switch to English" : "ለአማርኛ ይቀይሩ"}
+          >
+            {lang === "am" ? "EN" : "አማ"}
+          </button>
           <button
             id="auth-theme-toggle-btn"
             onClick={toggleTheme}
             className="p-2.5 text-slate-400 hover:text-slate-800 dark:hover:text-white rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 transition-colors shadow-sm flex items-center justify-center"
-            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+            title={t(isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")}
           >
             {isDarkMode ? (
               <Sun className="w-4.5 h-4.5 text-amber-400" />
@@ -2408,7 +2418,7 @@ export default function App() {
               Asseso
             </h1>
             <p className="text-sm text-slate-500 font-medium">
-              Africa Region Staff Development Portal
+              {t("Africa Region Staff Development Portal")}
             </p>
           </div>
 
@@ -2423,7 +2433,7 @@ export default function App() {
             {isSignUp && (
               <>
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Full Name</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">{t("Full Name")}</label>
                   <div className="relative">
                     <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
                     <input
@@ -2432,14 +2442,14 @@ export default function App() {
                       value={authName}
                       onChange={(e) => setAuthName(e.target.value)}
                       className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-base bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-slate-800/20 transition-shadow"
-                      placeholder="John Smith"
+                      placeholder={t("John Smith")}
                     />
                   </div>
-                  <p className="text-[11px] text-slate-400">Your name as you're known at work.</p>
+                  <p className="text-[11px] text-slate-400">{t("Your name as you're known at work.")}</p>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Your Job Title</label>
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">{t("Your Job Title")}</label>
                   <div className="relative">
                     <BookOpen className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
                     <input
@@ -2448,16 +2458,16 @@ export default function App() {
                       value={authRole}
                       onChange={(e) => setAuthRole(e.target.value)}
                       className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-base bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-slate-800/20 transition-shadow"
-                      placeholder="e.g. Staff Care Coordinator"
+                      placeholder={t("e.g. Staff Care Coordinator")}
                     />
                   </div>
-                  <p className="text-[11px] text-slate-400">For example: Teacher, Nurse, Coordinator.</p>
+                  <p className="text-[11px] text-slate-400">{t("For example: Teacher, Nurse, Coordinator.")}</p>
                 </div>
               </>
             )}
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Email Address</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">{t("Email Address")}</label>
               <div className="relative">
                 <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
                 <input
@@ -2466,15 +2476,15 @@ export default function App() {
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-base bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-slate-800/20 transition-shadow"
-                  placeholder="you@example.com"
+                  placeholder={t("you@example.com")}
                   required
                 />
               </div>
-              <p className="text-[11px] text-slate-400">We use this to log you in next time.</p>
+              <p className="text-[11px] text-slate-400">{t("We use this to log you in next time.")}</p>
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">Password</label>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-400 font-mono">{t("Password")}</label>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-slate-400" />
                 <input
@@ -2483,11 +2493,11 @@ export default function App() {
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-base bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-slate-800/20 transition-shadow"
-                  placeholder={isSignUp ? "Create a password" : "Your password"}
+                  placeholder={t(isSignUp ? "Create a password" : "Your password")}
                   required
                 />
               </div>
-              <p className="text-[11px] text-slate-400">{isSignUp ? "Choose a password at least 6 characters long." : "This is the password you chose when you registered."}</p>
+              <p className="text-[11px] text-slate-400">{t(isSignUp ? "Choose a password at least 6 characters long." : "This is the password you chose when you registered.")}</p>
             </div>
 
             <button
@@ -2495,7 +2505,7 @@ export default function App() {
               id="auth-submit-btn"
               className="w-full py-3.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-base font-semibold transition-all shadow-md shadow-slate-900/10 flex items-center justify-center gap-2"
             >
-              {isSignUp ? "Create my account" : "Access Workspace"}
+              {t(isSignUp ? "Create my account" : "Access Workspace")}
               <ArrowRight className="w-4.5 h-4.5" />
             </button>
           </form>
@@ -2509,7 +2519,7 @@ export default function App() {
               }}
               className="text-xs font-semibold text-slate-500 hover:text-slate-800"
             >
-              {isSignUp ? "Already have an account? Sign In" : "New here? Create an account"}
+              {t(isSignUp ? "Already have an account? Sign In" : "New here? Create an account")}
             </button>
           </div>
 
@@ -2520,10 +2530,10 @@ export default function App() {
               <div className="space-y-0.5 text-left">
                 <span className="text-xs font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
                   <Database className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                  Mock Data (fake data for testing)
+                  {t("Mock Data (fake data for testing)")}
                 </span>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
-                  Toggle on to automatically pre-populate the workspace with rich testing data.
+                  {t("Toggle on to automatically pre-populate the workspace with rich testing data.")}
                 </p>
               </div>
               <label className="relative inline-flex items-center cursor-pointer select-none">
@@ -2536,9 +2546,9 @@ export default function App() {
                     setUseMockData(checked);
                     localStorage.setItem("staff_review_use_mock_data", checked ? "true" : "false");
                     if (checked) {
-                      showToast("Mock data enabled! Bypassing will now seed beautiful testing data.", "success");
+                      showToast(t("Mock data enabled! Bypassing will now seed beautiful testing data."), "success");
                     } else {
-                      showToast("Mock data disabled.", "success");
+                      showToast(t("Mock data disabled."), "success");
                     }
                   }}
                   className="sr-only peer"
@@ -2549,10 +2559,10 @@ export default function App() {
 
             <div className="text-center space-y-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 dark:text-indigo-400 dark:bg-indigo-950/40 px-2.5 py-0.5 rounded-full font-mono">
-                Development Bypass
+                {t("Development Bypass")}
               </span>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 max-w-xs mx-auto">
-                No sign-in required! Click below to immediately log in and test each workspace role:
+                {t("No sign-in required! Click below to immediately log in and test each workspace role:")}
               </p>
             </div>
             
@@ -2564,8 +2574,8 @@ export default function App() {
                 className="w-full py-2.5 px-4 bg-slate-50 border border-slate-150 hover:bg-slate-100 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 transition-all flex items-center justify-between shadow-sm group"
               >
                 <div className="text-left">
-                  <span className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">Platform Owner (Lewis KB)</span>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">Admin access • lewikb13@gmail.com</p>
+                  <span className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{t("Platform Owner (Lewis KB)")}</span>
+                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">{t("Admin access • lewikb13@gmail.com")}</p>
                 </div>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
               </button>
@@ -2577,8 +2587,8 @@ export default function App() {
                 className="w-full py-2.5 px-4 bg-slate-50 border border-slate-150 hover:bg-slate-100 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 transition-all flex items-center justify-between shadow-sm group"
               >
                 <div className="text-left">
-                  <span className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">Team Leader (Sarah)</span>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">Evaluate staff & compile summaries</p>
+                  <span className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{t("Team Leader (Sarah)")}</span>
+                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">{t("Evaluate staff & compile summaries")}</p>
                 </div>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
               </button>
@@ -2590,8 +2600,8 @@ export default function App() {
                 className="w-full py-2.5 px-4 bg-slate-50 border border-slate-150 hover:bg-slate-100 hover:border-slate-300 rounded-xl text-xs font-semibold text-slate-700 transition-all flex items-center justify-between shadow-sm group"
               >
                 <div className="text-left">
-                  <span className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">Team Member (John)</span>
-                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">Fill reviews & view scheduled meetings</p>
+                  <span className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{t("Team Member (John)")}</span>
+                  <p className="text-[10px] text-slate-400 font-mono mt-0.5">{t("Fill reviews & view scheduled meetings")}</p>
                 </div>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:translate-x-0.5 transition-transform" />
               </button>
@@ -2605,10 +2615,10 @@ export default function App() {
   return (
     <Suspense fallback={
       <div className="flex-1 flex items-center justify-center min-h-screen text-slate-500 dark:text-slate-300">
-        <span className="flex items-center gap-2 text-sm">
-          <span className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
-          Loading…
-        </span>
+          <span className="flex items-center gap-2 text-sm">
+            <span className="w-4 h-4 border-2 border-slate-400 border-t-transparent rounded-full animate-spin" />
+            {t("Loading…")}
+          </span>
       </div>
     }>
     <div className="min-h-screen bg-slate-50/50 dark:bg-slate-950 dark:text-slate-100 flex flex-col font-sans text-slate-800 transition-colors duration-200">
@@ -2616,7 +2626,7 @@ export default function App() {
 
       {/* DEMO MODE BANNER */}
       <div className="w-full bg-amber-500 text-slate-950 font-bold text-center py-2 text-xs md:text-sm tracking-wide shadow-sm flex items-center justify-center gap-1.5 px-4 z-50">
-        <span>⚠️ DEMO MODE: This is a demo and is meant to show the idea not the functionalities</span>
+        <span>{t("⚠️ DEMO MODE: This is a demo and is meant to show the idea not the functionalities")}</span>
       </div>
 
       {/* GLOBAL NAVBAR */}
@@ -2635,9 +2645,9 @@ export default function App() {
               <div>
                 <h1 className="text-sm font-bold tracking-tight flex items-center gap-1.5">
                   Asseso
-                  <span className="text-[9px] uppercase tracking-wider bg-indigo-900/60 text-indigo-200 px-1.5 py-0.5 rounded font-mono font-medium">Development</span>
+                  <span className="text-[9px] uppercase tracking-wider bg-indigo-900/60 text-indigo-200 px-1.5 py-0.5 rounded font-mono font-medium">{t("Development")}</span>
                 </h1>
-                <p className="text-[10px] text-slate-400 font-mono">Africa Region National Ministries</p>
+                <p className="text-[10px] text-slate-400 font-mono">{t("Africa Region National Ministries")}</p>
               </div>
             </div>
 
@@ -2647,20 +2657,29 @@ export default function App() {
                 <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
                   {user.isLeader ? (
                     <span className="text-indigo-400 font-semibold flex items-center gap-0.5">
-                      <ShieldCheck className="w-3.5 h-3.5" /> Team Leader
+                      <ShieldCheck className="w-3.5 h-3.5" /> {t("Team Leader")}
                     </span>
                   ) : (
-                    <span>Team Member</span>
+                    <span>{t("Team Member")}</span>
                   )}
                   {` • ${user.role}`}
                 </span>
               </div>
 
               <button
+                id="lang-toggle-btn"
+                onClick={() => setLang(lang === "am" ? "en" : "am")}
+                className="p-2 text-xs font-bold text-slate-300 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
+                title={lang === "am" ? "Switch to English" : "ለአማርኛ ይቀይሩ"}
+              >
+                {lang === "am" ? "EN" : "አማ"}
+              </button>
+
+              <button
                 id="theme-toggle-btn"
                 onClick={toggleTheme}
                 className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors flex items-center justify-center"
-                title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                title={t(isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode")}
               >
                 {isDarkMode ? (
                   <Sun className="w-4.5 h-4.5 text-amber-400" />
@@ -2673,7 +2692,7 @@ export default function App() {
                 id="global-logout-btn"
                 onClick={handleLogout}
                 className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors"
-                title="Logout"
+                title={t("Logout")}
               >
                 <LogOut className="w-4.5 h-4.5" />
               </button>
@@ -2692,9 +2711,9 @@ export default function App() {
                 <Users className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h4 className="font-extrabold text-sm">🔔 Pending Coaching Invitations</h4>
+                <h4 className="font-extrabold text-sm">{t("🔔 Pending Coaching Invitations")}</h4>
                 <p className="text-xs text-indigo-100 mt-0.5">
-                  You have {pendingInvitationsCount} member{pendingInvitationsCount > 1 ? "s" : ""} requesting you as their coach. Review and accept them to access their profiles.
+                  {t(`You have ${pendingInvitationsCount} member${pendingInvitationsCount > 1 ? "s" : ""} requesting you as their coach. Review and accept them to access their profiles.`)}
                 </p>
               </div>
             </div>
@@ -2707,7 +2726,7 @@ export default function App() {
               }}
               className="px-4 py-2 bg-white text-indigo-700 hover:bg-slate-50 text-xs font-bold rounded-xl transition-all shadow shrink-0"
             >
-              Go to Coaching Dashboard
+              {t("Go to Coaching Dashboard")}
             </button>
           </div>
         )}
@@ -2757,7 +2776,7 @@ export default function App() {
                       : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900"
                   }`}
                 >
-                  My Reviews
+                  {t("My Reviews")}
                 </button>
 
                 {isLeaderOrCoach && (
@@ -2770,7 +2789,7 @@ export default function App() {
                         : "text-slate-600 dark:text-slate-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20"
                     }`}
                   >
-                    Team Reviews
+                    {t("Team Reviews")}
                   </button>
                 )}
 
@@ -2784,7 +2803,7 @@ export default function App() {
                         : "text-slate-600 dark:text-slate-400 hover:bg-amber-50 dark:hover:bg-amber-950/20"
                     }`}
                   >
-                    Admin Dashboard
+                    {t("Admin Dashboard")}
                   </button>
                 )}
               </div>
@@ -2795,7 +2814,7 @@ export default function App() {
                   id="trigger-scheduler-btn"
                   onClick={() => {
                     if (filteredStaffProfiles.length === 0) {
-                      alert("You need active coached members to schedule meetings.");
+                      alert(t("You need active coached members to schedule meetings."));
                       return;
                     }
                     setScheduleStaffUid(filteredStaffProfiles[0].uid);
@@ -2804,7 +2823,7 @@ export default function App() {
                   className="px-4 py-2 bg-slate-900 dark:bg-slate-100 dark:text-slate-950 hover:bg-slate-800 dark:hover:bg-slate-200 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1.5"
                 >
                   <Calendar className="w-3.5 h-3.5" />
-                  Schedule Review Meeting
+                  {t("Schedule Review Meeting")}
                 </button>
               )}
             </div>
@@ -2829,7 +2848,7 @@ export default function App() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <span className="text-[10px] font-bold uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full">Your next step</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full">{t("Your next step")}</span>
                     <h4 className="text-lg font-sans font-extrabold mt-1.5">{myNextStep.label}</h4>
                     <p className="text-xs text-indigo-100 mt-0.5">{myNextStep.description}</p>
                   </div>
@@ -2870,22 +2889,22 @@ export default function App() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <span className="text-[10px] font-bold uppercase tracking-widest bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 px-2.5 py-0.5 rounded-full">
-                        Coaching request for you
+                        {t("Coaching request for you")}
                       </span>
                       <h4 className="font-sans font-extrabold text-sm text-emerald-950 dark:text-emerald-100 mt-1.5">
                         {pendingInvitations.length === 1
-                          ? `${pendingInvitations[0].memberName} nominated you as their Team Leader and coach.`
-                          : `${pendingInvitations.length} staff members nominated you as their Team Leader and coach.`}
+                          ? t(`${pendingInvitations[0].memberName} nominated you as their Team Leader and coach.`)
+                          : t(`${pendingInvitations.length} staff members nominated you as their Team Leader and coach.`)}
                       </h4>
                       <p className="text-xs text-emerald-800 dark:text-emerald-200/80 mt-1">
-                        Accept, or decline with a reason (sent to the Admin and the person who nominated you). Your coach tab opens once you accept.
+                        {t("Accept, or decline with a reason (sent to the Admin and the person who nominated you). Your coach tab opens once you accept.")}
                       </p>
                     </div>
                     <button
                       onClick={() => setCurrentTab("team-reviews")}
                       className="shrink-0 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-colors shadow"
                     >
-                      Review Invitation
+                      {t("Review Invitation")}
                     </button>
                   </div>
                 )}
@@ -2902,11 +2921,11 @@ export default function App() {
                     const diffTime = due.getTime() - today.getTime();
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     if (diffDays > 0) {
-                      daysLeftText = `(${diffDays} days remaining)`;
+                      daysLeftText = t(`(${diffDays} days remaining)`);
                     } else if (diffDays === 0) {
-                      daysLeftText = `(Due TODAY!)`;
+                      daysLeftText = t("(Due TODAY!)");
                     } else {
-                      daysLeftText = `(Overdue by ${Math.abs(diffDays)} days)`;
+                      daysLeftText = t(`(Overdue by ${Math.abs(diffDays)} days)`);
                     }
                   }
 
@@ -2921,19 +2940,19 @@ export default function App() {
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-bold uppercase tracking-widest bg-indigo-200 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 px-2.5 py-0.5 rounded-full border border-indigo-300 dark:border-indigo-700">
-                            Active review period
+                            {t("Active review period")}
                           </span>
                         </div>
                         <h4 className="font-sans font-extrabold text-sm text-indigo-950 dark:text-indigo-100">
-                          {qKey} Quarter Self-Reflection & Dialogue
+                          {t(`${qKey} Quarter Self-Reflection & Dialogue`)}
                         </h4>
                         <p className="text-xs text-indigo-700 dark:text-indigo-300 leading-relaxed font-medium">
-                          {sched.notificationMessage || `The self-reflection period for the ${qKey} Quarter is officially open. Please fill out and submit your development review form to your Team Leader.`}
+                          {sched.notificationMessage || t(`The self-reflection period for the ${qKey} Quarter is officially open. Please fill out and submit your development review form to your Team Leader.`)}
                         </p>
                         {sched.startDate && sched.dueDate && (
                           <p className="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1 mt-1.5">
                             <Clock className="w-3.5 h-3.5" />
-                            Timeline: {formattedStart} to {formattedDue} <span className="text-indigo-600 dark:text-indigo-400 font-mono text-[11px]">{daysLeftText}</span>
+                            {t("Timeline:")} {formattedStart} to {formattedDue} <span className="text-indigo-600 dark:text-indigo-400 font-mono text-[11px]">{daysLeftText}</span>
                           </p>
                         )}
                       </div>
@@ -2955,22 +2974,22 @@ export default function App() {
                   <div className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-6 space-y-4">
                     <h3 className="font-sans font-bold text-indigo-900 text-base flex items-center gap-2">
                       <Clock className="w-5 h-5 text-indigo-600" />
-                      Upcoming Feedback Meetings
+                      {t("Upcoming Feedback Meetings")}
                     </h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {meetings.filter(m => m.userId === user.uid).map(m => (
                         <div key={m.id} className="bg-white rounded-xl p-5 border border-indigo-200/50 shadow-sm flex flex-col justify-between gap-4">
                           <div>
                             <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100">
-                              {m.quarter} Quarter Review
+                              {m.quarter} {t("Quarter Review")}
                             </span>
-                            <h4 className="font-bold text-slate-800 mt-2 text-sm">Face-to-Face Reflection Session</h4>
-                            <p className="text-xs text-slate-500 mt-1">Scheduled by: {m.scheduledBy}</p>
+                            <h4 className="font-bold text-slate-800 mt-2 text-sm">{t("Face-to-Face Reflection Session")}</h4>
+                            <p className="text-xs text-slate-500 mt-1">{t("Scheduled by:")} {m.scheduledBy}</p>
                             <p className="text-xs text-slate-700 font-semibold mt-3 flex items-center gap-1.5">
                               <Calendar className="w-3.5 h-3.5 text-slate-400" />
                               {m.date} at {m.time}
                             </p>
-                            {m.notes && <p className="text-xs text-slate-500 italic mt-2 bg-slate-50 p-2 rounded border border-slate-100">Notes: {m.notes}</p>}
+                            {m.notes && <p className="text-xs text-slate-500 italic mt-2 bg-slate-50 p-2 rounded border border-slate-100">{t("Notes:")} {m.notes}</p>}
                           </div>
                           <a
                             id={`add-cal-btn-${m.id}`}
@@ -2980,7 +2999,7 @@ export default function App() {
                             className="w-full text-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center justify-center gap-1.5"
                           >
                             <Plus className="w-3.5 h-3.5" />
-                            Add to Google Calendar
+                            {t("Add to Google Calendar")}
                           </a>
                         </div>
                       ))}
@@ -3004,15 +3023,15 @@ export default function App() {
                         <MessageSquare className={`w-5 h-5 shrink-0 mt-0.5 ${isRevisionNeeded ? "text-amber-600 dark:text-amber-400" : "text-indigo-600 dark:text-indigo-400"}`} />
                         <div className="flex-1">
                           <h4 className="font-bold text-sm flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                            <span>{isRevisionNeeded ? "⚠️ Action Required: Revision Requested" : "💬 Team Leader Comments"}</span>
+                            <span>{t(isRevisionNeeded ? "⚠️ Action Required: Revision Requested" : "💬 Team Leader Comments")}</span>
                             <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full font-bold bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border border-slate-200 dark:border-slate-700">
-                              {r.quarter} Quarter Review
+                              {r.quarter} {t("Quarter Review")}
                             </span>
                           </h4>
                           <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 leading-normal">
                             {isRevisionNeeded 
-                              ? `Your Team Leader, ${r.supervisorName || "Supervisor"}, left inline coaching comments and set your form status back to draft (submitted status set to false). Please update the form and re-submit.`
-                              : `Your Team Leader, ${r.supervisorName || "Supervisor"}, has left inline coaching feedback on your submitted review.`}
+                              ? t(`Your Team Leader, ${r.supervisorName || "Supervisor"}, left inline coaching comments and set your form status back to draft (submitted status set to false). Please update the form and re-submit.`)
+                              : t(`Your Team Leader, ${r.supervisorName || "Supervisor"}, has left inline coaching feedback on your submitted review.`)}
                           </p>
                           <div className="pt-2">
                             <button
@@ -3023,7 +3042,7 @@ export default function App() {
                                   : "bg-indigo-600 hover:bg-indigo-700"
                               }`}
                             >
-                              {isRevisionNeeded ? "✏️ Edit and Revise Form" : "👁️ View Comments"}
+                              {isRevisionNeeded ? t("✏️ Edit and Revise Form") : t("👁️ View Comments")}
                             </button>
                           </div>
                         </div>
@@ -3056,7 +3075,7 @@ export default function App() {
                               isDraft ? "bg-amber-50 text-amber-700 border border-amber-100" :
                               "bg-slate-100 text-slate-500"
                             }`}>
-                              {isSubmitted ? "Submitted" : isDraft ? "In Draft" : "Not Started"}
+                              {isSubmitted ? t("Submitted") : isDraft ? t("In Draft") : t("Not Started")}
                             </span>
                           </div>
 
@@ -3064,7 +3083,7 @@ export default function App() {
                           {review && (
                             <div className="mt-4 space-y-1 bg-slate-50 border border-slate-100 rounded-xl p-2.5">
                               <div className="flex justify-between items-center text-[10px] font-mono font-bold text-slate-500">
-                                <span>Completion Progress</span>
+                                <span>{t("Completion Progress")}</span>
                                 <span>{progress.percentage}%</span>
                               </div>
                               <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
@@ -3074,7 +3093,7 @@ export default function App() {
                                 />
                               </div>
                               <p className="text-[9px] text-slate-400 font-sans leading-tight mt-1">
-                                {progress.totalFilled} of 36 fields completed.
+                                {progress.totalFilled} {t("of 36 fields completed.")}
                               </p>
                             </div>
                           )}
@@ -3083,9 +3102,9 @@ export default function App() {
                             {/* Review Form link */}
                             <div className="flex justify-between items-start gap-4 text-sm">
                               <div className="flex flex-col">
-                                <span className="text-slate-800 dark:text-slate-200 font-bold">Monthly Form</span>
+                                <span className="text-slate-800 dark:text-slate-200 font-bold">{t("Monthly Form")}</span>
                                 <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
-                                  This monthly form is done every month between you and your coach
+                                  {t("This monthly form is done every month between you and your coach")}
                                 </span>
                               </div>
                               <button
@@ -3093,7 +3112,7 @@ export default function App() {
                                 onClick={() => handleSelectMyReview(qKey)}
                                 className="text-xs font-bold text-slate-800 hover:text-slate-950 dark:text-slate-200 dark:hover:text-white flex items-center gap-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 px-2.5 py-1.5 rounded-md transition-all shrink-0 mt-0.5"
                               >
-                                {isSubmitted ? "View Form" : "Fill/Edit Form"}
+                                {isSubmitted ? t("View Form") : t("Fill/Edit Form")}
                                 <ChevronRight className="w-3.5 h-3.5" />
                               </button>
                             </div>
@@ -3101,9 +3120,9 @@ export default function App() {
                             {/* Summary Form link */}
                             <div className="flex justify-between items-start gap-4 text-sm border-t border-slate-100 dark:border-slate-800 pt-3">
                               <div className="flex flex-col">
-                                <span className="text-slate-800 dark:text-slate-200 font-bold">Quarterly Form</span>
+                                <span className="text-slate-800 dark:text-slate-200 font-bold">{t("Quarterly Form")}</span>
                                 <span className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
-                                  This form is done quarterly and will be submitted to HR.
+                                  {t("This form is done quarterly and will be submitted to HR.")}
                                 </span>
                               </div>
                               <div className="shrink-0 mt-0.5">
@@ -3117,7 +3136,7 @@ export default function App() {
                                       }}
                                       className="text-xs font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 hover:bg-blue-100 px-2.5 py-1.5 rounded-md transition-all border border-blue-200 cursor-pointer"
                                     >
-                                      Submitted to Coach
+                                      {t("Submitted to Coach")}
                                       <ChevronRight className="w-3.5 h-3.5" />
                                     </button>
                                   ) : (
@@ -3129,13 +3148,13 @@ export default function App() {
                                       }}
                                       className="text-xs font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-md transition-all border border-emerald-200 cursor-pointer"
                                     >
-                                      View Evaluation
+                                      {t("View Evaluation")}
                                       <ChevronRight className="w-3.5 h-3.5" />
                                     </button>
                                   )
                                 ) : !isQuarterlyUnlockedForUser(qKey) ? (
                                   <span className="text-[11px] text-amber-600 dark:text-amber-400 font-mono font-bold flex items-center gap-1">
-                                    🔒 Locked by Admin
+                                    {t("🔒 Locked by Admin")}
                                   </span>
                                 ) : !summary ? (
                                   <button
@@ -3143,7 +3162,7 @@ export default function App() {
                                     onClick={() => handleSelectStaffSummary(user, qKey as "1st" | "2nd" | "3rd")}
                                     className="text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white animate-pulse px-2.5 py-1.5 rounded-md transition-all shadow-sm flex items-center gap-1 cursor-pointer"
                                   >
-                                    Fill Summary (Required)
+                                    {t("Fill Summary (Required)")}
                                     <ChevronRight className="w-3.5 h-3.5" />
                                   </button>
                                 ) : (
@@ -3155,7 +3174,7 @@ export default function App() {
                                     }}
                                     className="text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white animate-pulse px-2.5 py-1.5 rounded-md transition-all shadow-sm flex items-center gap-1 cursor-pointer"
                                   >
-                                    Resume Summary (Required)
+                                    {t("Resume Summary (Required)")}
                                     <ChevronRight className="w-3.5 h-3.5" />
                                   </button>
                                 )}
@@ -3178,10 +3197,10 @@ export default function App() {
                       <MessageSquare className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
                       <div>
                         <h3 className="font-sans font-extrabold text-slate-900 dark:text-slate-100 text-base">
-                          My Feedback
+                          {t("My Feedback")}
                         </h3>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                          At-a-glance list of inline coaching comments left by your leader on your review quadrants.
+                          {t("At-a-glance list of inline coaching comments left by your leader on your review quadrants.")}
                         </p>
                       </div>
                     </div>
@@ -3195,10 +3214,10 @@ export default function App() {
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-3">
                             <div>
                               <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 px-2.5 py-1 rounded-full border border-indigo-100 dark:border-indigo-900">
-                                {r.quarter} Quarter Review
+                                {r.quarter} {t("Quarter Review")}
                               </span>
                               <h4 className="font-extrabold text-sm text-slate-800 dark:text-slate-200 mt-2">
-                                Leader Comments by {r.supervisorName || "Supervisor"}
+                                {t("Leader Comments by")} {r.supervisorName || t("Supervisor")}
                               </h4>
                             </div>
                             <div className="flex items-center gap-2 self-start sm:self-center">
@@ -3207,23 +3226,23 @@ export default function App() {
                                   ? "bg-amber-100 dark:bg-amber-950/50 text-amber-800 dark:text-amber-400 border border-amber-200 dark:border-amber-800" 
                                   : "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800"
                               }`}>
-                                {r.status === "Draft" ? "🔓 Open for Revision" : "🔒 Locked / Submitted"}
+                                {r.status === "Draft" ? t("🔓 Open for Revision") : t("🔒 Locked / Submitted")}
                               </span>
                               <button
                                 onClick={() => handleSelectMyReview(r.quarter)}
                                 className="text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/40 hover:bg-indigo-100 dark:hover:bg-indigo-900 border border-indigo-150/30 dark:border-indigo-800 px-3 py-1.5 rounded-lg transition-all"
                               >
-                                View / Edit Form
+                                {t("View / Edit Form")}
                               </button>
                             </div>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             {[
-                              { key: "heart", label: "❤️ Walk with God" },
-                              { key: "personalLife", label: "🌱 Personal Life" },
-                              { key: "relationalLife", label: "🤝 Relational Life" },
-                              { key: "ministryEffectiveness", label: "⚡ Ministry Impact" }
+                              { key: "heart", label: t("❤️ Walk with God") },
+                              { key: "personalLife", label: t("🌱 Personal Life") },
+                              { key: "relationalLife", label: t("🤝 Relational Life") },
+                              { key: "ministryEffectiveness", label: t("⚡ Ministry Impact") }
                             ].map(sec => {
                               const comment = r.leaderSectionComments?.[sec.key];
                               if (!comment || comment.trim() === "") return null;
@@ -3272,12 +3291,12 @@ export default function App() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
                   <div>
                     <h3 className="text-lg font-sans font-bold text-slate-800 dark:text-slate-100">
-                      Registered Staff Evaluation Center
+                      {t("Registered Staff Evaluation Center")}
                     </h3>
                     <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       {evaluationCenterSubTab === "overview"
-                        ? "View comprehensive quarterly TL evaluations compiled by approved coaches for every staff member."
-                        : "Select any team member to view their development forms, schedule feedback sessions, or compile their quarterly evaluation summaries."}
+                        ? t("View comprehensive quarterly TL evaluations compiled by approved coaches for every staff member.")
+                        : t("Select any team member to view their development forms, schedule feedback sessions, or compile their quarterly evaluation summaries.")}
                     </p>
                   </div>
 
@@ -3292,7 +3311,7 @@ export default function App() {
                           : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                       }`}
                     >
-                      All Coach Evaluations
+                      {t("All Coach Evaluations")}
                     </button>
                     <button
                       id="subtab-manage-btn"
@@ -3303,7 +3322,7 @@ export default function App() {
                           : "text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
                       }`}
                     >
-                      Folder Directory
+                      {t("Folder Directory")}
                     </button>
                   </div>
                 </div>
@@ -3317,7 +3336,7 @@ export default function App() {
                         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                         <input
                           type="text"
-                          placeholder="Search by staff member or coach..."
+                          placeholder={t("Search by staff member or coach...")}
                           value={overviewSearch}
                           onChange={(e) => setOverviewSearch(e.target.value)}
                           className="w-full pl-10 pr-4 py-2 text-sm bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
@@ -3325,44 +3344,44 @@ export default function App() {
                       </div>
                       <div className="flex flex-wrap items-center gap-4">
                         <div className="flex items-center gap-2">
-                          <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Quarter:</label>
+                          <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">{t("Quarter:")}</label>
                           <select
                             value={overviewQuarter}
                             onChange={(e) => setOverviewQuarter(e.target.value as any)}
                             className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl text-xs font-semibold px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                           >
-                            <option value="All">All Quarters</option>
-                            <option value="1st">1st Quarter (Jan - Mar)</option>
-                            <option value="2nd">2nd Quarter (Apr - Jun)</option>
-                            <option value="3rd">3rd Quarter (Jul - Sep)</option>
+                            <option value="All">{t("All Quarters")}</option>
+                            <option value="1st">{t("1st Quarter (Jan - Mar)")}</option>
+                            <option value="2nd">{t("2nd Quarter (Apr - Jun)")}</option>
+                            <option value="3rd">{t("3rd Quarter (Jul - Sep)")}</option>
                           </select>
                         </div>
                         <div className="flex items-center gap-2">
-                          <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Rating:</label>
+                          <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">{t("Rating:")}</label>
                           <select
                             value={overviewEffectiveness}
                             onChange={(e) => setOverviewEffectiveness(e.target.value as any)}
                             className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl text-xs font-semibold px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                           >
-                            <option value="All">All Ratings</option>
-                            <option value="One of the best">One of the best</option>
-                            <option value="Satisfactory">Satisfactory</option>
-                            <option value="Ineffective">Ineffective</option>
-                            <option value="Pending">Pending Evaluation</option>
+                            <option value="All">{t("All Ratings")}</option>
+                            <option value="One of the best">{t("One of the best")}</option>
+                            <option value="Satisfactory">{t("Satisfactory")}</option>
+                            <option value="Ineffective">{t("Ineffective")}</option>
+                            <option value="Pending">{t("Pending Evaluation")}</option>
                           </select>
                         </div>
                         {isAdmin && (
                           <div className="flex items-center gap-2">
-                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">Sort By:</label>
+                            <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 shrink-0">{t("Sort By:")}</label>
                             <select
                               id="overview-sort-by-select"
                               value={overviewSortBy}
                               onChange={(e) => { setOverviewSortBy(e.target.value as any); setOverviewPage(1); }}
                               className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-800 dark:text-slate-100 rounded-xl text-xs font-semibold px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer"
                             >
-                              <option value="name">Staff Name</option>
-                              <option value="rating">Rating</option>
-                              <option value="date">Completion Date</option>
+                              <option value="name">{t("Staff Name")}</option>
+                              <option value="rating">{t("Rating")}</option>
+                              <option value="date">{t("Completion Date")}</option>
                             </select>
                           </div>
                         )}
@@ -3382,7 +3401,7 @@ export default function App() {
                             }`}
                           >
                             <FileText className="w-3.5 h-3.5" />
-                            <span>Detailed Evaluation Feed</span>
+                            <span>{t("Detailed Evaluation Feed")}</span>
                           </button>
                           <button
                             type="button"
@@ -3394,14 +3413,14 @@ export default function App() {
                             }`}
                           >
                             <Layers className="w-3.5 h-3.5" />
-                            <span>Staff Progress Matrix</span>
+                            <span>{t("Staff Progress Matrix")}</span>
                           </button>
                         </div>
 
                         <div className="text-[11px] font-medium text-slate-400 dark:text-slate-500">
                           {overviewViewMode === "evaluations" 
-                            ? "Singled-out individual reports & growth logs" 
-                            : "High-scale compliance & quarters completed"}
+                            ? t("Singled-out individual reports & growth logs") 
+                            : t("High-scale compliance & quarters completed")}
                         </div>
                       </div>
                     )}
@@ -3553,7 +3572,7 @@ export default function App() {
                                     }`}
                                   >
                                     <Download className="w-3.5 h-3.5" />
-                                    <span>Export PDFs ({
+                                    <span>{t("Export PDFs")} ({
                                       selectedEvaluations.filter(k => {
                                         const [uid, q] = k.split("_");
                                         const ev = allEvaluations.find(e => e.member.uid === uid && e.quarter === q);
@@ -3573,7 +3592,7 @@ export default function App() {
                                     }`}
                                   >
                                     <ShieldAlert className="w-3.5 h-3.5" />
-                                    <span>Decline Selected ({
+                                    <span>{t("Decline Selected")} ({
                                       selectedEvaluations.filter(k => {
                                         const [uid, q] = k.split("_");
                                         const ev = allEvaluations.find(e => e.member.uid === uid && e.quarter === q);
@@ -3593,10 +3612,10 @@ export default function App() {
                                   </div>
                                   <div>
                                     <h4 className="text-xs font-bold font-sans text-slate-800 dark:text-slate-200">
-                                      Bulk Sign-off / Approvals Available
+                                      {t("Bulk Sign-off / Approvals Available")}
                                     </h4>
                                     <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                                      There are <strong>{allSummaries.filter(s => s.status === "CoachSubmitted" && (!s.evaluation || !s.evaluation.formReviewedBy)).length}</strong> finalized coaching evaluations waiting for your official Admin sign-off.
+                                      {t("There are")} <strong>{allSummaries.filter(s => s.status === "CoachSubmitted" && (!s.evaluation || !s.evaluation.formReviewedBy)).length}</strong> {t("finalized coaching evaluations waiting for your official Admin sign-off.")}
                                     </p>
                                   </div>
                                 </div>
@@ -3607,7 +3626,7 @@ export default function App() {
                                   className="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-md flex items-center justify-center gap-1.5 cursor-pointer shrink-0"
                                 >
                                   <ShieldCheck className="w-4 h-4" />
-                                  <span>Sign-off All Reports</span>
+                                  <span>{t("Sign-off All Reports")}</span>
                                 </button>
                               </div>
                             )}
@@ -3659,12 +3678,12 @@ export default function App() {
                                         
                                         <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-indigo-50/50 dark:bg-indigo-950/20 text-indigo-700 dark:text-indigo-400 border border-indigo-100/30 dark:border-indigo-900/30 text-[11px] font-bold">
                                           <Calendar className="w-3.5 h-3.5" />
-                                          <span>{quarter} Quarter</span>
+                                          <span>{quarter} {t("Quarter")}</span>
                                         </div>
                                       </div>
 
                                       <div className="mt-4 pt-3 border-t border-slate-150 dark:border-slate-800 space-y-2">
-                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500">Effectiveness Rating</div>
+                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500">{t("Effectiveness Rating")}</div>
                                         {isCompiled ? (
                                           <div className={`inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl text-xs font-bold border ${
                                             rating === "One of the best"
@@ -3673,11 +3692,11 @@ export default function App() {
                                                 ? "bg-indigo-50 text-indigo-700 border-indigo-150 dark:bg-indigo-950/20 dark:text-indigo-400"
                                                 : "bg-rose-50 text-rose-700 border-rose-150 dark:bg-rose-950/20 dark:text-rose-400"
                                           }`}>
-                                            {rating === "One of the best" ? "Outstanding" : rating}
+                                            {rating === "One of the best" ? t("Outstanding") : rating}
                                           </div>
                                         ) : (
                                           <div className="inline-flex items-center gap-1.5 py-1.5 px-3 rounded-xl text-xs font-bold border bg-amber-50 text-amber-700 border-amber-150 animate-pulse">
-                                            Pending Coach
+                                            {t("Pending Coach")}
                                           </div>
                                         )}
                                       </div>
@@ -3691,7 +3710,7 @@ export default function App() {
                                           <div className="space-y-1.5">
                                             <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-600 dark:text-emerald-400 flex items-center gap-1 font-mono">
                                               <TrendingUp className="w-3 h-3" />
-                                              <span>Top Strengths / Achievements</span>
+                                              <span>{t("Top Strengths / Achievements")}</span>
                                             </div>
                                             <ul className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
                                               {strengths.filter(Boolean).length > 0 ? (
@@ -3702,7 +3721,7 @@ export default function App() {
                                                   </li>
                                                 ))
                                               ) : (
-                                                <li className="text-slate-400 italic">No strengths highlighted</li>
+                                                <li className="text-slate-400 italic">{t("No strengths highlighted")}</li>
                                               )}
                                             </ul>
                                           </div>
@@ -3711,7 +3730,7 @@ export default function App() {
                                           <div className="space-y-1.5">
                                             <div className="text-[10px] font-bold uppercase tracking-wider text-rose-500 flex items-center gap-1 font-mono">
                                               <TrendingDown className="w-3 h-3" />
-                                              <span>Areas for Growth / Support</span>
+                                              <span>{t("Areas for Growth / Support")}</span>
                                             </div>
                                             <ul className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
                                               {weaknesses.filter(Boolean).length > 0 ? (
@@ -3722,7 +3741,7 @@ export default function App() {
                                                   </li>
                                                 ))
                                               ) : (
-                                                <li className="text-slate-400 italic">No growth areas noted</li>
+                                                <li className="text-slate-400 italic">{t("No growth areas noted")}</li>
                                               )}
                                             </ul>
                                           </div>
@@ -3730,9 +3749,9 @@ export default function App() {
                                       ) : (
                                         <div className="bg-amber-50/50 dark:bg-amber-950/10 border border-amber-100/50 dark:border-amber-900/30 rounded-xl p-4 flex flex-col justify-center items-center text-center h-full">
                                           <Clock className="w-8 h-8 text-amber-500 animate-spin mb-2" style={{ animationDuration: "3s" }} />
-                                          <h5 className="text-xs font-bold text-amber-800 dark:text-amber-400">Evaluation Pending Coach Action</h5>
+                                          <h5 className="text-xs font-bold text-amber-800 dark:text-amber-400">{t("Evaluation Pending Coach Action")}</h5>
                                           <p className="text-[10px] text-slate-500 max-w-sm mt-1">
-                                            The staff member has submitted their self-review form, but the designated coach has not compiled and finalized the official TL evaluation summary yet.
+                                            {t("The staff member has submitted their self-review form, but the designated coach has not compiled and finalized the official TL evaluation summary yet.")}
                                           </p>
                                         </div>
                                       )}
@@ -3745,16 +3764,16 @@ export default function App() {
                                               ? "bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100/50" 
                                               : "bg-slate-50 dark:bg-slate-900 text-slate-500 border border-slate-200/50 dark:border-slate-800"
                                           }`}>
-                                            Greater Responsibility: {readyForGreater === "Yes" ? "READY" : "NO"}
+                                            {t("Greater Responsibility:")} {readyForGreater === "Yes" ? t("READY") : t("NO")}
                                           </div>
                                           {reassignment === "Yes" && (
                                             <div className="bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border border-rose-100/50 px-2 py-0.5 rounded">
-                                              Reassignment Suggested
+                                              {t("Reassignment Suggested")}
                                             </div>
                                           )}
                                           <div className="text-slate-400 dark:text-slate-500 flex items-center gap-1 ml-auto font-sans font-medium text-[11px]">
                                             <User className="w-3 h-3 text-slate-300" />
-                                            <span>Coach: <strong className="text-slate-600 dark:text-slate-300">{coachNames}</strong></span>
+                                            <span>{t("Coach:")} <strong className="text-slate-600 dark:text-slate-300">{coachNames}</strong></span>
                                           </div>
                                         </div>
                                       )}
@@ -3763,35 +3782,35 @@ export default function App() {
                                     {/* Right Panel: Admin Sign-Off Status & Actions */}
                                     <div className="w-full md:w-[170px] flex flex-col justify-between border-t md:border-t-0 md:border-l border-slate-100 dark:border-slate-800 pt-4 md:pt-0 md:pl-5 shrink-0">
                                       <div className="space-y-2">
-                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Admin Sign-Off</div>
+                                        <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{t("Admin Sign-Off")}</div>
                                         {isCompiled ? (
                                           summary && summary.status === "Declined" ? (
                                             <div className="space-y-1">
                                               <div className="flex items-center gap-1.5 text-xs text-rose-500 font-bold font-sans">
                                                 <ShieldAlert className="w-4 h-4 text-rose-500 animate-pulse" />
-                                                <span>Changes Requested</span>
+                                                <span>{t("Changes Requested")}</span>
                                               </div>
-                                              <p className="text-[9px] text-slate-400 leading-normal">Declined by admin. Awaiting coach revision.</p>
+                                              <p className="text-[9px] text-slate-400 leading-normal">{t("Declined by admin. Awaiting coach revision.")}</p>
                                             </div>
                                           ) : formReviewedBy ? (
                                             <div className="space-y-1">
                                               <div className="flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold font-sans">
                                                 <ShieldCheck className="w-4 h-4" />
-                                                <span>Reviewed & Approved</span>
+                                                <span>{t("Reviewed & Approved")}</span>
                                               </div>
-                                              <p className="text-[10px] text-slate-400 font-mono">By {formReviewedBy} on {formReviewedByDate}</p>
+                                              <p className="text-[10px] text-slate-400 font-mono">{t("By")} {formReviewedBy} {t("on")} {formReviewedByDate}</p>
                                             </div>
                                           ) : (
                                             <div className="space-y-1">
                                               <div className="flex items-center gap-1.5 text-xs text-amber-500 font-bold font-sans">
                                                 <Clock className="w-4 h-4" />
-                                                <span>Pending Sign-Off</span>
+                                                <span>{t("Pending Sign-Off")}</span>
                                               </div>
-                                              <p className="text-[9px] text-slate-400 leading-normal">Needs evaluation center sign-off and approval.</p>
+                                              <p className="text-[9px] text-slate-400 leading-normal">{t("Needs evaluation center sign-off and approval.")}</p>
                                             </div>
                                           )
                                         ) : (
-                                          <div className="text-[10px] text-slate-400 italic">N/A - Review pending</div>
+                                          <div className="text-[10px] text-slate-400 italic">{t("N/A - Review pending")}</div>
                                         )}
                                       </div>
 
@@ -3804,7 +3823,7 @@ export default function App() {
                                               className="w-full inline-flex items-center justify-center gap-1 px-3 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all cursor-pointer border border-slate-200/50 dark:border-slate-700 shadow-sm"
                                             >
                                               <BookOpen className="w-3.5 h-3.5" />
-                                              <span>View Report</span>
+                                              <span>{t("View Report")}</span>
                                             </button>
                                             
                                             {isAdmin && !formReviewedBy && summary && summary.status === "CoachSubmitted" && (
@@ -3815,7 +3834,7 @@ export default function App() {
                                                   className="w-full inline-flex items-center justify-center gap-1 px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
                                                 >
                                                   <ShieldCheck className="w-3.5 h-3.5" />
-                                                  <span>Sign-off & Approve</span>
+                                                  <span>{t("Sign-off & Approve")}</span>
                                                 </button>
                                                 <button
                                                   type="button"
@@ -3823,7 +3842,7 @@ export default function App() {
                                                   className="w-full inline-flex items-center justify-center gap-1 px-3 py-2 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/25 dark:hover:bg-rose-900/30 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-bold transition-all cursor-pointer border border-rose-200 dark:border-rose-900/40 shadow-sm"
                                                 >
                                                   <ShieldAlert className="w-3.5 h-3.5 text-rose-500" />
-                                                  <span>Decline Report</span>
+                                                  <span>{t("Decline Report")}</span>
                                                 </button>
                                               </div>
                                             )}
@@ -3836,7 +3855,7 @@ export default function App() {
                                               className="w-full inline-flex items-center justify-center gap-1 px-3 py-2 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
                                             >
                                               <FileCheck className="w-3.5 h-3.5" />
-                                              <span>Compile Summary</span>
+                                              <span>{t("Compile Summary")}</span>
                                             </button>
                                           ) : (
                                             <button
@@ -3845,7 +3864,7 @@ export default function App() {
                                               className="w-full inline-flex items-center justify-center gap-1 px-3 py-2 bg-slate-50 text-slate-300 dark:bg-slate-900 dark:text-slate-750 rounded-xl text-xs font-bold cursor-not-allowed border border-slate-100 dark:border-slate-850"
                                             >
                                               <Clock className="w-3.5 h-3.5" />
-                                              <span>Staff View</span>
+                                              <span>{t("Staff View")}</span>
                                             </button>
                                           )
                                         )}
@@ -3875,7 +3894,7 @@ export default function App() {
                                         : "bg-white border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer"
                                     }`}
                                   >
-                                    Prev
+                                    {t("Prev")}
                                   </button>
                                   <span className="px-3 font-bold text-slate-700 dark:text-slate-300">
                                     {overviewPage} / {totalEvalPages}
@@ -3890,7 +3909,7 @@ export default function App() {
                                         : "bg-white border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer"
                                     }`}
                                   >
-                                    Next
+                                    {t("Next")}
                                   </button>
                                 </div>
                               </div>
@@ -3958,9 +3977,9 @@ export default function App() {
                           return (
                             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 p-12 text-center text-slate-400 dark:text-slate-500 transition-colors">
                               <HelpCircle className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto mb-3" />
-                              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No staff members found matching criteria.</p>
+                              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("No staff members found matching criteria.")}</p>
                               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-                                Try adjusting your search filters or check if staff profiles have pending reviews.
+                                {t("Try adjusting your search filters or check if staff profiles have pending reviews.")}
                               </p>
                             </div>
                           );
@@ -3985,25 +4004,25 @@ export default function App() {
                                 <thead>
                                   <tr className="border-b border-slate-150 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40">
                                     <th className="p-4 text-xs font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 w-[240px]">
-                                      Staff Member
+                                      {t("Staff Member")}
                                     </th>
                                     <th className="p-4 text-xs font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 w-[180px]">
-                                      Assigned Coach
+                                      {t("Assigned Coach")}
                                     </th>
                                     <th className="p-4 text-xs font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 w-[120px] text-center">
-                                      Q1 (Jan-Mar)
+                                      {t("Q1 (Jan-Mar)")}
                                     </th>
                                     <th className="p-4 text-xs font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 w-[120px] text-center">
-                                      Q2 (Apr-Jun)
+                                      {t("Q2 (Apr-Jun)")}
                                     </th>
                                     <th className="p-4 text-xs font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 w-[120px] text-center">
-                                      Q3 (Jul-Sep)
+                                      {t("Q3 (Jul-Sep)")}
                                     </th>
                                     <th className="p-4 text-xs font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 w-[110px] text-center">
-                                      Completion
+                                      {t("Completion")}
                                     </th>
                                     <th className="p-4 text-xs font-bold uppercase tracking-wider text-slate-450 dark:text-slate-500 text-right w-[110px]">
-                                      Quick Action
+                                      {t("Quick Action")}
                                     </th>
                                   </tr>
                                 </thead>
@@ -4028,7 +4047,7 @@ export default function App() {
                                         } else if (isLeaderOrCoach) {
                                           handleSelectStaffSummary(member, quarter);
                                         } else {
-                                          alert(`Evaluation for ${member.name} (${quarter} Quarter) is ${status === "pending_coach" ? "pending coach review" : "not started yet"}.`);
+                                          alert(t(`Evaluation for ${member.name} (${quarter} Quarter) is ${status === "pending_coach" ? "pending coach review" : "not started yet"}.`));
                                         }
                                       };
 
@@ -4039,30 +4058,30 @@ export default function App() {
                                       if (status === "compiled") {
                                         if (rating === "One of the best") {
                                           badgeClass = "bg-emerald-50 hover:bg-emerald-100/80 text-emerald-700 border-emerald-150 dark:bg-emerald-950/20 dark:text-emerald-400 dark:border-emerald-900/50";
-                                          label = "Outstanding";
+                                          label = t("Outstanding");
                                           icon = <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />;
                                         } else if (rating === "Satisfactory") {
                                           badgeClass = "bg-indigo-50 hover:bg-indigo-100/80 text-indigo-700 border-indigo-150 dark:bg-indigo-950/20 dark:text-indigo-400 dark:border-indigo-900/50";
-                                          label = "Satisfactory";
+                                          label = t("Satisfactory");
                                           icon = <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />;
                                         } else {
                                           badgeClass = "bg-rose-50 hover:bg-rose-100/80 text-rose-700 border-rose-150 dark:bg-rose-950/20 dark:text-rose-400 dark:border-rose-900/50";
-                                          label = "Ineffective";
+                                          label = t("Ineffective");
                                           icon = <AlertCircle className="w-3.5 h-3.5 shrink-0" />;
                                         }
                                       } else if (status === "pending_coach") {
                                         badgeClass = "bg-amber-50 hover:bg-amber-100/80 text-amber-700 border-amber-150 dark:bg-amber-950/20 dark:text-amber-400 dark:border-amber-900/50 animate-pulse";
-                                        label = "Pending Coach";
+                                        label = t("Pending Coach");
                                         icon = <Clock className="w-3.5 h-3.5 shrink-0" />;
                                       } else {
                                         const isUnlocked = isQuarterlyUnlockedForUser(quarter);
                                         if (isUnlocked) {
                                           badgeClass = "bg-slate-50 hover:bg-slate-100/80 text-slate-400 border-slate-100 dark:bg-slate-900 dark:text-slate-500 dark:border-slate-800";
-                                          label = "Not Started";
+                                          label = t("Not Started");
                                           icon = <HelpCircle className="w-3.5 h-3.5 shrink-0" />;
                                         } else {
                                           badgeClass = "bg-amber-50/50 hover:bg-amber-100/40 text-amber-600 dark:bg-amber-950/10 dark:text-amber-400 border-amber-100/35 dark:border-amber-900/30";
-                                          label = "🔒 Locked";
+                                          label = t("🔒 Locked");
                                           icon = <Lock className="w-3 h-3 shrink-0 text-amber-500" />;
                                         }
                                       }
@@ -4071,7 +4090,7 @@ export default function App() {
                                         <button
                                           type="button"
                                           onClick={handleBadgeClick}
-                                          title={`${quarter} Quarter evaluation: ${label}. Click to ${status === "compiled" ? "view report" : "compile summary"}`}
+                                          title={t(`${quarter} Quarter evaluation: ${label}. Click to ${status === "compiled" ? "view report" : "compile summary"}`)}
                                           className={`w-full inline-flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-[10px] font-bold border transition-all cursor-pointer shadow-sm ${badgeClass}`}
                                         >
                                           {icon}
@@ -4111,7 +4130,7 @@ export default function App() {
                                         <td className="p-4 text-center">
                                           <div className="flex flex-col items-center gap-1">
                                             <div className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                                              {compiledCount}/3 <span className="text-[10px] text-slate-400 font-normal">Qtrs</span>
+                                              {compiledCount}/3 <span className="text-[10px] text-slate-400 font-normal">{t("Qtrs")}</span>
                                             </div>
                                             <div className="w-16 bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full overflow-hidden border border-slate-200/50 dark:border-slate-750">
                                               <div 
@@ -4141,7 +4160,7 @@ export default function App() {
                                               className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-800 dark:hover:bg-slate-700 rounded-xl text-xs font-semibold transition-all shadow-sm cursor-pointer"
                                             >
                                               <FileCheck className="w-3.5 h-3.5" />
-                                              <span>Compile</span>
+                                              <span>{t("Compile")}</span>
                                             </button>
                                           ) : (
                                             <button
@@ -4149,7 +4168,7 @@ export default function App() {
                                               className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-600 rounded-lg text-xs font-semibold cursor-not-allowed"
                                             >
                                               <Clock className="w-3.5 h-3.5" />
-                                              <span>Staff View</span>
+                                              <span>{t("Staff View")}</span>
                                             </button>
                                           )}
                                         </td>
@@ -4179,10 +4198,10 @@ export default function App() {
                                         : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:bg-slate-50 text-slate-700 dark:text-slate-300"
                                     }`}
                                   >
-                                    Previous
+                                    {t("Previous")}
                                   </button>
                                   <span className="px-2 font-semibold">
-                                    Page {overviewPage} of {totalPages}
+                                    {t("Page")} {overviewPage} {t("of")} {totalPages}
                                   </span>
                                   <button
                                     id="btn-pagination-next"
@@ -4194,7 +4213,7 @@ export default function App() {
                                         : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 hover:bg-slate-50 text-slate-700 dark:text-slate-300"
                                     }`}
                                   >
-                                    Next
+                                    {t("Next")}
                                   </button>
                                 </div>
                               </div>
@@ -4211,9 +4230,9 @@ export default function App() {
                   filteredStaffProfiles.length === 0 ? (
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 p-12 text-center text-slate-400 dark:text-slate-500 transition-colors duration-200">
                       <UserX className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto mb-3 animate-pulse" />
-                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No active coachees assigned to you.</p>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("No active coachees assigned to you.")}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-                        Once you accept an incoming coaching invitation from a staff member, they will appear in this center so you can review their quadrants and compile evaluations.
+                        {t("Once you accept an incoming coaching invitation from a staff member, they will appear in this center so you can review their quadrants and compile evaluations.")}
                       </p>
                     </div>
                   ) : (
@@ -4221,7 +4240,7 @@ export default function App() {
                       {/* List */}
                       <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 p-4 space-y-2 h-fit transition-colors">
                         <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 py-1 border-b border-slate-100 dark:border-slate-800 mb-2">
-                          Staff Members
+                          {t("Staff Members")}
                         </h4>
                         {filteredStaffProfiles.map(s => {
                           const isSelected = selectedStaffUid === s.uid;
@@ -4263,11 +4282,11 @@ export default function App() {
                                 <div className="bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-100 dark:border-emerald-900 rounded-xl p-4 space-y-2 text-emerald-800 dark:text-emerald-400 transition-colors">
                                   <h5 className="font-bold text-xs uppercase tracking-wider flex items-center gap-1">
                                     <Clock className="w-3.5 h-3.5" />
-                                    Scheduled Review Meeting
+                                    {t("Scheduled Review Meeting")}
                                   </h5>
                                   {meetings.filter(m => m.userId === member.uid).map(m => (
                                     <p key={m.id} className="text-xs">
-                                      {m.quarter} Quarter feedback scheduled for <strong className="font-bold">{m.date}</strong> at <strong className="font-bold">{m.time}</strong>.
+                                      {m.quarter} {t("Quarter feedback scheduled for")} <strong className="font-bold">{m.date}</strong> {t("at")} <strong className="font-bold">{m.time}</strong>.
                                     </p>
                                   ))}
                                 </div>
@@ -4275,7 +4294,7 @@ export default function App() {
 
                               {/* Quarters list */}
                               <div className="space-y-4">
-                                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">Quarterly Reviews</h5>
+                                <h5 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500">{t("Quarterly Reviews")}</h5>
                                 {(["1st", "2nd", "3rd"] as const).map(qKey => {
                                   const mReview = allReviews.find(r => r.userId === member.uid && r.quarter === qKey);
                                   const mSummary = allSummaries.find(s => s.userId === member.uid && s.quarter === qKey);
@@ -4287,14 +4306,14 @@ export default function App() {
                                     <div key={qKey} className="bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-800/80 rounded-xl p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 transition-colors">
                                       <div>
                                         <div className="flex items-center gap-2 mb-1.5">
-                                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{QUARTER_INFO[qKey].name} Review</span>
+                                          <span className="text-xs font-bold text-slate-800 dark:text-slate-200">{QUARTER_INFO[qKey].name} {t("Review")}</span>
                                           {!isQuarterlyUnlockedForUser(qKey) ? (
                                             <span className="text-[10px] font-mono font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/25 px-1.5 py-0.5 rounded border border-amber-200/20 flex items-center gap-0.5">
-                                              🔒 Locked by Admin
+                                              {t("🔒 Locked by Admin")}
                                             </span>
                                           ) : (
                                             <span className="text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/25 px-1.5 py-0.5 rounded border border-emerald-200/20 flex items-center gap-0.5">
-                                              🔓 Unlocked
+                                              {t("🔓 Unlocked")}
                                             </span>
                                           )}
                                         </div>
@@ -4317,12 +4336,12 @@ export default function App() {
                                           <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
                                             isFormSubmitted ? "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-400 border border-emerald-200/20" : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
                                           }`}>
-                                            Form: {isFormSubmitted ? "Submitted" : "Not Submitted"}
+                                            Form: {isFormSubmitted ? t("Submitted") : t("Not Submitted")}
                                           </span>
                                           <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${
                                             isSummaryCompiled ? "bg-indigo-100 dark:bg-indigo-950/40 text-indigo-800 dark:text-indigo-400 border border-indigo-200/20" : "bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
                                           }`}>
-                                            Summary: {isSummaryCompiled ? "Compiled" : "Pending"}
+                                            {t("Summary:")} {isSummaryCompiled ? t("Compiled") : t("Pending")}
                                           </span>
                                         </div>
                                       </div>
@@ -4333,14 +4352,14 @@ export default function App() {
                                           onClick={() => handleSelectStaffReview(member, qKey)}
                                           className="text-xs font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-lg transition-all"
                                         >
-                                          Edit/View Form
+                                          {t("Edit/View Form")}
                                         </button>
                                         <button
                                           id={`lead-edit-summary-${member.uid}-${qKey}`}
                                           onClick={() => handleSelectStaffSummary(member, qKey)}
                                           className="text-xs font-semibold text-white bg-indigo-600 dark:bg-indigo-500 hover:bg-indigo-700 dark:hover:bg-indigo-600 px-3 py-2 rounded-lg transition-all shadow shadow-indigo-900/10"
                                         >
-                                          {isSummaryCompiled ? "Edit Summary" : "Compile Summary"}
+                                          {isSummaryCompiled ? t("Edit Summary") : t("Compile Summary")}
                                         </button>
                                       </div>
                                     </div>
@@ -4352,7 +4371,7 @@ export default function App() {
                         })() : (
                           <div className="bg-white rounded-2xl border border-slate-150 p-12 text-center text-slate-400 flex flex-col items-center justify-center gap-3">
                             <HelpCircle className="w-10 h-10 text-slate-300" />
-                            <p className="text-sm">Select a staff member from the list to manage their reviews.</p>
+                            <p className="text-sm">{t("Select a staff member from the list to manage their reviews.")}</p>
                           </div>
                         )}
                       </div>
@@ -4388,7 +4407,7 @@ export default function App() {
                         : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                     }`}
                   >
-                    Reports & Reviews
+                    {t("Reports & Reviews")}
                   </button>
                   <button
                     id="admin-subtab-control"
@@ -4399,7 +4418,7 @@ export default function App() {
                         : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                     }`}
                   >
-                    Settings
+                    {t("Settings")}
                   </button>
                   <button
                     id="admin-subtab-users"
@@ -4410,7 +4429,7 @@ export default function App() {
                         : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
                     }`}
                   >
-                    Team Members
+                    {t("Team Members")}
                   </button>
                 </div>
 
@@ -4419,8 +4438,8 @@ export default function App() {
                     {/* Quarter & Year Selector */}
                     <div className="flex flex-wrap items-center justify-between gap-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 p-4 rounded-xl shadow-sm">
                       <div>
-                        <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">Oversight & Compliance Filters</h3>
-                        <p className="text-xs text-slate-400">Select reporting boundary for analysis & exports</p>
+                        <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">{t("Oversight & Compliance Filters")}</h3>
+                        <p className="text-xs text-slate-400">{t("Select reporting boundary for analysis & exports")}</p>
                       </div>
                       <div className="flex gap-3">
                         <select
@@ -4428,9 +4447,9 @@ export default function App() {
                           onChange={(e) => setSelectedQuarter(e.target.value as any)}
                           className="px-3 py-1.5 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-1 focus:ring-amber-500 font-bold"
                         >
-                          <option value="1st">1st Quarter</option>
-                          <option value="2nd">2nd Quarter</option>
-                          <option value="3rd">3rd Quarter</option>
+                          <option value="1st">{t("1st Quarter")}</option>
+                          <option value="2nd">{t("2nd Quarter")}</option>
+                          <option value="3rd">{t("3rd Quarter")}</option>
                         </select>
                         <select
                           value={selectedYear}
@@ -4461,10 +4480,10 @@ export default function App() {
                     <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-3 transition-colors duration-200">
                   <div className="flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                    <h4 className="font-sans text-sm text-slate-800 dark:text-slate-200 font-bold">Evaluation Submission Requirements & Rules</h4>
+                    <h4 className="font-sans text-sm text-slate-800 dark:text-slate-200 font-bold">{t("Evaluation Submission Requirements & Rules")}</h4>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Control which review quadrants must be fully completed (all 3 Strengths, Needs Improvement, and Action Points filled out) before a staff member is allowed to submit their form.
+                    {t("Control which review quadrants must be fully completed (all 3 Strengths, Needs Improvement, and Action Points filled out) before a staff member is allowed to submit their form.")}
                   </p>
                   <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
                     <label className="flex items-center gap-2.5 cursor-pointer bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all shadow-sm text-slate-800 dark:text-slate-200">
@@ -4477,7 +4496,7 @@ export default function App() {
                         })}
                         className="rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 w-4 h-4"
                       />
-                      <span className="text-xs font-semibold">Walk with God (Required)</span>
+                      <span className="text-xs font-semibold">{t("Walk with God (Required)")}</span>
                     </label>
 
                     <label className="flex items-center gap-2.5 cursor-pointer bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all shadow-sm text-slate-800 dark:text-slate-200">
@@ -4490,7 +4509,7 @@ export default function App() {
                         })}
                         className="rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 w-4 h-4"
                       />
-                      <span className="text-xs font-semibold">Personal Life (Required)</span>
+                      <span className="text-xs font-semibold">{t("Personal Life (Required)")}</span>
                     </label>
 
                     <label className="flex items-center gap-2.5 cursor-pointer bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all shadow-sm text-slate-800 dark:text-slate-200">
@@ -4503,7 +4522,7 @@ export default function App() {
                         })}
                         className="rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 w-4 h-4"
                       />
-                      <span className="text-xs font-semibold">Relational Life (Required)</span>
+                      <span className="text-xs font-semibold">{t("Relational Life (Required)")}</span>
                     </label>
 
                     <label className="flex items-center gap-2.5 cursor-pointer bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl p-3 hover:bg-slate-50 dark:hover:bg-slate-900 hover:border-indigo-200 dark:hover:border-indigo-800 transition-all shadow-sm text-slate-800 dark:text-slate-200">
@@ -4516,7 +4535,7 @@ export default function App() {
                         })}
                         className="rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 w-4 h-4"
                       />
-                      <span className="text-xs font-semibold">Ministry (Required)</span>
+                      <span className="text-xs font-semibold">{t("Ministry (Required)")}</span>
                     </label>
                   </div>
                 </div>
@@ -4525,10 +4544,10 @@ export default function App() {
                 <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-sm space-y-4 transition-colors duration-200">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-                    <h4 className="font-sans text-sm text-slate-800 dark:text-slate-200 font-bold">Quarterly Review Dates & Deadlines</h4>
+                    <h4 className="font-sans text-sm text-slate-800 dark:text-slate-200 font-bold">{t("Quarterly Review Dates & Deadlines")}</h4>
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Set the specific dates for quarterly reviews. When "Notify Staff" is enabled, staff members will see a prominent announcement banner on their dashboards.
+                    {t("Set the specific dates for quarterly reviews. When \"Notify Staff\" is enabled, staff members will see a prominent announcement banner on their dashboards.")}
                   </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-1">
@@ -4539,12 +4558,12 @@ export default function App() {
                           <div className="space-y-3">
                             <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2">
                               <span className="font-bold text-xs text-indigo-600 dark:text-indigo-400 uppercase tracking-wider">
-                                {qKey} Quarter
+                                {qKey} {t("Quarter")}
                               </span>
                             </div>
 
                             <div>
-                              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Start Date</label>
+                              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{t("Start Date")}</label>
                               <input 
                                 type="date"
                                 value={sched.startDate || ""}
@@ -4559,7 +4578,7 @@ export default function App() {
                             </div>
 
                             <div>
-                              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Due Date (Deadline)</label>
+                              <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{t("Due Date (Deadline)")}</label>
                               <input 
                                 type="date"
                                 value={sched.dueDate || ""}
@@ -4585,15 +4604,15 @@ export default function App() {
                                 }}
                                 className="rounded text-indigo-600 border-slate-300 focus:ring-indigo-500 w-3.5 h-3.5"
                               />
-                              <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">Notify Staff Members</span>
+                              <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300">{t("Notify Staff Members")}</span>
                             </label>
 
                             {sched.notifyAll && (
                               <div>
-                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Custom Message</label>
+                                <label className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">{t("Custom Message")}</label>
                                 <input 
                                   type="text"
-                                  placeholder="Review period is active..."
+                                  placeholder={t("Review period is active...")}
                                   value={sched.notificationMessage || ""}
                                   onChange={(e) => {
                                     setReviewSchedules(prev => ({
@@ -4609,7 +4628,7 @@ export default function App() {
                             {/* Unlock Quarterly Form Control */}
                             <div className="border-t border-slate-100 dark:border-slate-800/60 pt-3 mt-1.5 space-y-2.5">
                               <span className="block text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
-                                Quarterly Form Lock/Unlock
+                                {t("Quarterly Form Lock/Unlock")}
                               </span>
                               
                               <label className="flex items-center gap-2 cursor-pointer select-none">
@@ -4625,13 +4644,13 @@ export default function App() {
                                   className="rounded text-amber-600 focus:ring-amber-500 w-3.5 h-3.5 border-slate-300 dark:border-slate-800"
                                 />
                                 <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                                  🔓 Unlock Instantly
+                                  {t("🔓 Unlock Instantly")}
                                 </span>
                               </label>
 
                               <div className="space-y-1">
                                 <label className="block text-[9px] font-semibold text-slate-400 dark:text-slate-500">
-                                  Scheduled Unlock Date
+                                  {t("Scheduled Unlock Date")}
                                 </label>
                                 <input 
                                   type="date"
@@ -4648,7 +4667,7 @@ export default function App() {
 
                               <div className="space-y-1">
                                 <label className="block text-[9px] font-semibold text-slate-400 dark:text-slate-500">
-                                  Scheduled Unlock Time
+                                  {t("Scheduled Unlock Time")}
                                 </label>
                                 <input 
                                   type="time"
@@ -4679,13 +4698,13 @@ export default function App() {
                             )}
                             className="w-full py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs rounded-lg transition-colors shadow-sm cursor-pointer mt-3"
                           >
-                            Save {qKey} Schedule
+                            {t("Save")} {qKey} {t("Schedule")}
                           </button>
 
                           {sched.updatedAt && (
                             <div className="mt-2 flex items-center justify-center gap-1 px-2 py-1 bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200/50 dark:border-emerald-900/50 rounded-lg text-[10px] font-mono font-bold text-emerald-600 dark:text-emerald-400">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                              <span>Saved: {new Date(sched.updatedAt).toLocaleTimeString()}</span>
+                              <span>{t("Saved:")} {new Date(sched.updatedAt).toLocaleTimeString()}</span>
                             </div>
                           )}
                         </div>

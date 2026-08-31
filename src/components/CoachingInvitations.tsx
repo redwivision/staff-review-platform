@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { CoachingRequest, UserProfile } from "../types";
 import { Check, X, ShieldAlert, HeartHandshake, ChevronDown, ChevronUp, MessageCircle, AlertCircle } from "lucide-react";
+import { useLanguage } from "../i18n";
 
 interface CoachingInvitationsProps {
   currentUser: UserProfile;
@@ -15,6 +16,7 @@ export default function CoachingInvitations({
   onAcceptInvitation,
   onRejectInvitation
 }: CoachingInvitationsProps) {
+  const { t } = useLanguage();
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -37,7 +39,7 @@ export default function CoachingInvitations({
     try {
       await onAcceptInvitation(id);
     } catch (err: any) {
-      setError(err.message || "Failed to accept coaching request.");
+      setError(err.message || t("Failed to accept coaching request."));
     } finally {
       setLoadingId(null);
     }
@@ -46,7 +48,7 @@ export default function CoachingInvitations({
   const handleRejectSubmit = async (e: React.FormEvent, id: string) => {
     e.preventDefault();
     if (!rejectReason.trim()) {
-      setError("Please provide a reason for declining the coaching request.");
+      setError(t("Please provide a reason for declining the coaching request."));
       return;
     }
     setError("");
@@ -56,7 +58,7 @@ export default function CoachingInvitations({
       setRejectingId(null);
       setRejectReason("");
     } catch (err: any) {
-      setError(err.message || "Failed to decline coaching request.");
+      setError(err.message || t("Failed to decline coaching request."));
     } finally {
       setLoadingId(null);
     }
@@ -82,10 +84,10 @@ export default function CoachingInvitations({
             <HeartHandshake className="w-6 h-6 text-indigo-600 dark:text-indigo-400 shrink-0" />
             <div>
               <h3 className="font-sans font-extrabold text-indigo-950 dark:text-indigo-200 text-base">
-                Pending Coaching Invitations
+                {t("Pending Coaching Invitations")}
               </h3>
               <p className="text-xs text-indigo-700/80 dark:text-indigo-300/80">
-                The following members have nominated you to be their team leader and coach. Approve to start reviewing their quadrants!
+                {t("The following members have nominated you to be their team leader and coach. Approve to start reviewing their quadrants!")}
               </p>
             </div>
           </div>
@@ -98,7 +100,7 @@ export default function CoachingInvitations({
               >
                 <div>
                   <span className="text-[9px] font-bold font-mono tracking-wider uppercase text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-950/50 px-2 py-0.5 rounded-full border border-indigo-100/40">
-                    Invitation
+                    {t("Invitation")}
                   </span>
                   <h4 className="font-extrabold text-sm text-slate-900 dark:text-slate-100 mt-2">
                     {req.memberName}
@@ -111,13 +113,13 @@ export default function CoachingInvitations({
                 {rejectingId === req.id ? (
                   <form onSubmit={(e) => handleRejectSubmit(e, req.id)} className="space-y-3 pt-2 border-t border-slate-100 dark:border-slate-800">
                     <label className="block text-[11px] font-bold font-mono text-slate-600 dark:text-slate-300 uppercase">
-                      Reason for Declining (Sent to Admin):
+                      {t("Reason for Declining (Sent to Admin):")}
                     </label>
                     <textarea
                       rows={2}
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
-                      placeholder="e.g. At maximum coaching capacity..."
+                      placeholder={t("e.g. At maximum coaching capacity...")}
                       className="w-full text-xs rounded-lg dark:bg-slate-950"
                       disabled={loadingId !== null}
                     />
@@ -131,7 +133,7 @@ export default function CoachingInvitations({
                         className="px-2.5 py-1.5 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 text-xs font-bold font-mono rounded-lg transition-colors"
                         disabled={loadingId !== null}
                       >
-                        Cancel
+                        {t("Cancel")}
                       </button>
                       <button
                         type="submit"
@@ -139,7 +141,7 @@ export default function CoachingInvitations({
                         disabled={loadingId !== null}
                       >
                         <X className="w-3.5 h-3.5" />
-                        Decline & Inform Admin
+                        {t("Decline & Inform Admin")}
                       </button>
                     </div>
                   </form>
@@ -151,14 +153,14 @@ export default function CoachingInvitations({
                       className="flex-1 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1 shadow"
                     >
                       <Check className="w-4 h-4" />
-                      Accept Invitation
+                      {t("Accept Invitation")}
                     </button>
                     <button
                       onClick={() => setRejectingId(req.id)}
                       disabled={loadingId !== null}
                       className="py-2 px-3.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-xl transition-colors flex items-center justify-center gap-1"
                     >
-                      Decline
+                      {t("Decline")}
                     </button>
                   </div>
                 )}
@@ -178,7 +180,7 @@ export default function CoachingInvitations({
             <div className="flex items-center gap-2">
               <Check className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span className="text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wide">
-                My Active Coached Members ({acceptedInvitations.length})
+                {t("My Active Coached Members") + ` (${acceptedInvitations.length})`}
               </span>
             </div>
             {showActiveCoaches ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
@@ -191,7 +193,7 @@ export default function CoachingInvitations({
                   <h5 className="font-bold text-xs text-slate-800 dark:text-slate-200">{req.memberName}</h5>
                   <p className="text-[10px] text-slate-400 font-mono">{req.memberEmail}</p>
                   <span className="inline-block text-[9px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded-full border border-emerald-100 dark:border-emerald-900 mt-2">
-                    Active Relationship
+                    {t("Active Relationship")}
                   </span>
                 </div>
               ))}

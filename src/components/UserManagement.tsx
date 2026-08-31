@@ -3,12 +3,14 @@ import { getAllStaff } from "../supabaseDb";
 import { dataUpdateUserProfile } from "../dataLayer";
 import { UserProfile } from "../types";
 import { Users, UserX, Shield, ShieldCheck, Mail, Briefcase, RefreshCw, Star } from "lucide-react";
+import { useLanguage } from "../i18n";
 
 interface UserManagementProps {
   currentUser: UserProfile;
 }
 
 export default function UserManagement({ currentUser }: UserManagementProps) {
+  const { t } = useLanguage();
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -64,13 +66,13 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
   const updateUserRole = async (targetUser: UserProfile, newIsLeader: boolean, newIsAdmin: boolean) => {
     // Only admins (per the DB profile) may change roles.
     if (!currentUser.isAdmin) {
-      alert("Access Denied: Only administrators can update user roles.");
+      alert(t("Access Denied: Only administrators can update user roles."));
       return;
     }
 
     // Prevent demoting yourself (avoids locking the current admin out).
     if (targetUser.uid === currentUser.uid) {
-      alert("Validation Error: You cannot change your own role. Ask another administrator to manage it.");
+      alert(t("Validation Error: You cannot change your own role. Ask another administrator to manage it."));
       return;
     }
 
@@ -78,7 +80,7 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
     if (targetUser.isAdmin && newIsAdmin === false) {
       const adminCount = users.filter(u => u.isAdmin).length;
       if (adminCount <= 1) {
-        alert("Validation Error: Cannot demote the last remaining administrator.");
+        alert(t("Validation Error: Cannot demote the last remaining administrator."));
         return;
       }
     }
@@ -118,7 +120,7 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
         // rejects the write, surface an explicit error instead of silently
         // pretending it worked.
         console.error("Role update rejected by database:", e);
-        alert("Permission update was rejected by the database. Only an administrator can change roles, and you cannot modify the platform owner.");
+        alert(t("Permission update was rejected by the database. Only an administrator can change roles, and you cannot modify the platform owner."));
         return;
       }
       
@@ -128,7 +130,7 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
       );
     } catch (err) {
       console.error("Failed to update user role:", err);
-      alert("Error updating user permission. Please verify database access.");
+      alert(t("Error updating user permission. Please verify database access."));
     } finally {
       setUpdatingId(null);
     }
@@ -140,10 +142,10 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
         <div>
           <h3 className="text-lg font-sans font-bold text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-            User Access Control Directory
+            {t("User Access Control Directory")}
           </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-            Assign and modify access levels of staff members between Team Member, Coach, and Administrator.
+            {t("Assign and modify access levels of staff members between Team Member, Coach, and Administrator.")}
           </p>
         </div>
         <button
@@ -152,29 +154,29 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
           className="px-3 py-1.5 border border-slate-200 dark:border-slate-800 hover:bg-white dark:hover:bg-slate-800 text-xs font-semibold rounded-lg text-slate-600 dark:text-slate-300 transition-colors flex items-center gap-1.5"
         >
           <RefreshCw className="w-3.5 h-3.5" />
-          Sync Users
+          {t("Sync Users")}
         </button>
       </div>
 
       <div className="overflow-x-auto">
         {loading ? (
           <div className="p-10 text-center text-slate-500 dark:text-slate-400 font-mono text-xs">
-            Retrieving authenticated users...
+            {t("Retrieving authenticated users...")}
           </div>
         ) : users.length === 0 ? (
           <div className="p-10 text-center text-slate-500 dark:text-slate-400 flex flex-col items-center gap-2">
             <UserX className="w-10 h-10 text-slate-300" />
-            <p className="text-sm">No registered staff profiles discovered.</p>
+            <p className="text-sm">{t("No registered staff profiles discovered.")}</p>
           </div>
         ) : (
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-150 dark:border-slate-800 text-slate-400 dark:text-slate-500 text-[11px] font-bold uppercase tracking-wider font-mono">
-                <th className="px-6 py-3.5">Full Name</th>
-                <th className="px-6 py-3.5">Email Address</th>
-                <th className="px-6 py-3.5">Assigned Title/Role</th>
-                <th className="px-6 py-3.5">Access Level</th>
-                <th className="px-6 py-3.5 text-right">Actions</th>
+                <th className="px-6 py-3.5">{t("Full Name")}</th>
+                <th className="px-6 py-3.5">{t("Email Address")}</th>
+                <th className="px-6 py-3.5">{t("Assigned Title/Role")}</th>
+                <th className="px-6 py-3.5">{t("Access Level")}</th>
+                <th className="px-6 py-3.5 text-right">{t("Actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
@@ -201,23 +203,23 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
                       {u.isAdmin ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-950/40 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-900">
                           <ShieldCheck className="w-3.5 h-3.5" />
-                          Administrator
+                          {t("Administrator")}
                         </span>
                       ) : u.isLeader ? (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900">
                           <ShieldCheck className="w-3.5 h-3.5" />
-                          Coach / Leader
+                          {t("Coach / Leader")}
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-50 dark:bg-slate-950 text-slate-600 dark:text-slate-400 border border-slate-100 dark:border-slate-800">
                           <Shield className="w-3.5 h-3.5 text-slate-400" />
-                          Team Member
+                          {t("Team Member")}
                         </span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-right">
                       {u.uid === currentUser.uid ? (
-                        <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold bg-slate-50 dark:bg-slate-950 px-2.5 py-1 rounded-md">You</span>
+                        <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold bg-slate-50 dark:bg-slate-950 px-2.5 py-1 rounded-md">{t("You")}</span>
                       ) : (
                         <div className="flex items-center justify-end">
                           <select
@@ -236,9 +238,9 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
                             }}
                             className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg py-1.5 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
                           >
-                            <option value="member">Team Member</option>
-                            <option value="coach">Coach</option>
-                            <option value="admin">Admin</option>
+                            <option value="member">{t("Team Member")}</option>
+                            <option value="coach">{t("Coach")}</option>
+                            <option value="admin">{t("Admin")}</option>
                           </select>
                         </div>
                       )}

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { CoachingRequest, UserProfile } from "../types";
 import { Check, X, Shield, AlertTriangle, ListFilter, Users, RefreshCw, BarChart2, Info, MessageSquare } from "lucide-react";
+import { useLanguage } from "../i18n";
 
 interface AdminCoachingPanelProps {
   coachingRequests: CoachingRequest[];
@@ -15,6 +16,7 @@ export default function AdminCoachingPanel({
   onApproveNomination,
   onRejectNomination
 }: AdminCoachingPanelProps) {
+  const { t } = useLanguage();
   const [rejectingId, setRejectingId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState("");
   const [loadingId, setLoadingId] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export default function AdminCoachingPanel({
     try {
       await onApproveNomination(id);
     } catch (err: any) {
-      setError(err.message || "Failed to approve nomination.");
+      setError(err.message || t("Failed to approve nomination."));
     } finally {
       setLoadingId(null);
     }
@@ -67,7 +69,7 @@ export default function AdminCoachingPanel({
   const handleRejectSubmit = async (e: React.FormEvent, id: string) => {
     e.preventDefault();
     if (!rejectReason.trim()) {
-      setError("Please specify a reason for rejecting the nomination.");
+      setError(t("Please specify a reason for rejecting the nomination."));
       return;
     }
     setError("");
@@ -77,7 +79,7 @@ export default function AdminCoachingPanel({
       setRejectingId(null);
       setRejectReason("");
     } catch (err: any) {
-      setError(err.message || "Failed to reject nomination.");
+      setError(err.message || t("Failed to reject nomination."));
     } finally {
       setLoadingId(null);
     }
@@ -87,7 +89,7 @@ export default function AdminCoachingPanel({
     setError("");
     const pending = pendingRequests;
     if (pending.length === 0) {
-      setError("No pending nominations to approve.");
+      setError(t("No pending nominations to approve."));
       return;
     }
 
@@ -105,7 +107,7 @@ export default function AdminCoachingPanel({
 
     const toApprove: CoachingRequest[] = [...pending];
 
-    const confirmMsg = `Are you sure you want to approve all ${toApprove.length} pending nominations in bulk?`;
+    const confirmMsg = `${t("Are you sure you want to approve all ")}${toApprove.length}${t(" pending nominations in bulk?")}`;
 
     if (!confirm(confirmMsg)) {
       return;
@@ -118,9 +120,9 @@ export default function AdminCoachingPanel({
         await onApproveNomination(req.id);
         successCount++;
       }
-      alert(`Successfully approved ${successCount} coach nominations!`);
+      alert(`${t("Successfully approved ")}${successCount}${t(" coach nominations!")}`);
     } catch (err: any) {
-      setError(err.message || "An error occurred during bulk approval.");
+      setError(err.message || t("An error occurred during bulk approval."));
     } finally {
       setBulkApproving(false);
     }
@@ -141,7 +143,7 @@ export default function AdminCoachingPanel({
           <div className="flex items-center gap-2 text-rose-800 dark:text-rose-400">
             <AlertTriangle className="w-5 h-5" />
             <h3 className="font-extrabold text-sm uppercase font-mono tracking-wider">
-              Coach Decline Alerts ({coachDeclinedRequests.length})
+              {t("Coach Decline Alerts")} ({coachDeclinedRequests.length})
             </h3>
           </div>
           <div className="divide-y divide-rose-100/50 dark:divide-rose-900/40">
@@ -149,14 +151,14 @@ export default function AdminCoachingPanel({
               <div key={req.id} className="py-3 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
                 <div>
                   <p className="font-bold text-slate-800 dark:text-slate-200">
-                    <span className="text-rose-600 dark:text-rose-400">{req.coachName}</span> declined coaching offer for <span className="text-indigo-600 dark:text-indigo-400">{req.memberName}</span>
+                    <span className="text-rose-600 dark:text-rose-400">{req.coachName}</span>{t(" declined coaching offer for ")}<span className="text-indigo-600 dark:text-indigo-400">{req.memberName}</span>
                   </p>
                   <p className="text-slate-500 dark:text-slate-400 mt-1 font-sans italic">
-                    Reason: "{req.coachRejectReason || "No reason specified"}"
+                    {t("Reason: ")}"{req.coachRejectReason || t("No reason specified")}"
                   </p>
                 </div>
                 <span className="font-mono text-[10px] text-slate-400 shrink-0 bg-white dark:bg-slate-900 border border-rose-100/60 px-2 py-0.5 rounded-full">
-                  Logged {new Date(req.updatedAt).toLocaleDateString()}
+                  {t("Logged ")}{new Date(req.updatedAt).toLocaleDateString()}
                 </span>
               </div>
             ))}
@@ -171,16 +173,16 @@ export default function AdminCoachingPanel({
             <BarChart2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             <div>
               <h3 className="font-sans font-extrabold text-slate-900 dark:text-slate-100 text-sm uppercase">
-                Coach Load & Balance
+                {t("Coach Load & Balance")}
               </h3>
               <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                Monitor coach assignments and workload distributions.
+                {t("Monitor coach assignments and workload distributions.")}
               </p>
             </div>
           </div>
 
           {Object.keys(coachWorkloads).length === 0 ? (
-            <p className="text-xs text-slate-400 font-mono italic text-center py-6">No nomination statistics available</p>
+            <p className="text-xs text-slate-400 font-mono italic text-center py-6">{t("No nomination statistics available")}</p>
           ) : (
             <div className="space-y-3.5 max-h-96 overflow-y-auto pr-1">
               {Object.entries(coachWorkloads)
@@ -198,27 +200,27 @@ export default function AdminCoachingPanel({
                           {coach}
                         </span>
                         {!isRegistered && (
-                          <span className="text-[9px] font-mono font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 px-2 py-0.5 rounded-full border border-rose-100/40" title="This person has not registered an account yet.">
-                            Unregistered
+                          <span className="text-[9px] font-mono font-bold text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-950/30 px-2 py-0.5 rounded-full border border-rose-100/40" title={t("This person has not registered an account yet.")}>
+                            {t("Unregistered")}
                           </span>
                         )}
                       </div>
 
                       <div className="grid grid-cols-4 gap-1 text-[10px] text-slate-500 font-mono mt-2 pt-2 border-t border-slate-200/50 dark:border-slate-800/40">
                         <div className="text-center">
-                          <p className="text-slate-400">Pend</p>
+                          <p className="text-slate-400">{t("Pend")}</p>
                           <p className="font-bold text-slate-700 dark:text-slate-300">{load.pendingAdmin}</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-indigo-400">Offer</p>
+                          <p className="text-indigo-400">{t("Offer")}</p>
                           <p className="font-bold text-indigo-700 dark:text-indigo-400">{load.pendingCoach}</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-emerald-400">Active</p>
+                          <p className="text-emerald-400">{t("Active")}</p>
                           <p className="font-bold text-emerald-700 dark:text-emerald-400">{load.active}</p>
                         </div>
                         <div className="text-center">
-                          <p className="text-rose-400">Decl</p>
+                          <p className="text-rose-400">{t("Decl")}</p>
                           <p className="font-bold text-rose-700 dark:text-rose-400">{load.declined}</p>
                         </div>
                       </div>
@@ -236,10 +238,10 @@ export default function AdminCoachingPanel({
               <Shield className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               <div>
                 <h3 className="font-sans font-extrabold text-slate-900 dark:text-slate-100 text-sm uppercase">
-                  Pending Approvals ({pendingRequests.length})
+                  {t("Pending Approvals")} ({pendingRequests.length})
                 </h3>
                 <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">
-                  Review, approve, or reject user coach nominations.
+                  {t("Review, approve, or reject user coach nominations.")}
                 </p>
               </div>
             </div>
@@ -256,7 +258,7 @@ export default function AdminCoachingPanel({
                 ) : (
                   <Check className="w-3.5 h-3.5" />
                 )}
-                <span>Approve All Safe</span>
+                <span>{t("Approve All Safe")}</span>
               </button>
             )}
           </div>
@@ -264,7 +266,7 @@ export default function AdminCoachingPanel({
           {pendingRequests.length === 0 ? (
             <div className="text-center py-12 bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
               <Check className="w-8 h-8 text-emerald-500 mx-auto mb-2" />
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">All coach nominations verified!</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-mono">{t("All coach nominations verified!")}</p>
             </div>
           ) : (
             <div className="space-y-4 max-h-[450px] overflow-y-auto pr-1">
@@ -275,15 +277,15 @@ export default function AdminCoachingPanel({
                 >
                   <div className="flex flex-col sm:flex-row justify-between gap-3">
                     <div>
-                      <p className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Nomination Offer</p>
+                      <p className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">{t("Nomination Offer")}</p>
                       <h4 className="font-extrabold text-xs text-slate-900 dark:text-slate-100 mt-1">
-                        Member: <span className="text-slate-950 dark:text-white">{req.memberName}</span>
+                        {t("Member: ")}<span className="text-slate-950 dark:text-white">{req.memberName}</span>
                       </h4>
                       <p className="text-xs text-slate-500 mt-0.5 font-mono">{req.memberEmail}</p>
                     </div>
 
                     <div className="sm:text-right">
-                      <p className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">Nominated Coach</p>
+                      <p className="text-[11px] font-mono text-slate-400 uppercase tracking-wider">{t("Nominated Coach")}</p>
                       <p className="font-extrabold text-sm text-indigo-600 dark:text-indigo-400 mt-1">{req.coachName}</p>
                     </div>
                   </div>
@@ -291,13 +293,13 @@ export default function AdminCoachingPanel({
                   {rejectingId === req.id ? (
                     <form onSubmit={(e) => handleRejectSubmit(e, req.id)} className="space-y-3 pt-3 border-t border-slate-200/60 dark:border-slate-800/60 animate-fade-in">
                       <label className="block text-[10px] font-bold font-mono text-slate-600 dark:text-slate-300 uppercase">
-                        Reason for Rejection (Visible to Member):
+                        {t("Reason for Rejection (Visible to Member):")}
                       </label>
                       <input
                         type="text"
                         value={rejectReason}
                         onChange={(e) => setRejectReason(e.target.value)}
-                        placeholder="e.g. Please choose another coach as this coach is full..."
+                        placeholder={t("e.g. Please choose another coach as this coach is full...")}
                         className="w-full text-xs rounded-lg dark:bg-slate-900"
                         disabled={loadingId !== null}
                       />
@@ -311,7 +313,7 @@ export default function AdminCoachingPanel({
                           className="px-2.5 py-1 text-slate-500 hover:text-slate-700 text-xs font-bold font-mono"
                           disabled={loadingId !== null}
                         >
-                          Cancel
+                          {t("Cancel")}
                         </button>
                         <button
                           type="submit"
@@ -319,7 +321,7 @@ export default function AdminCoachingPanel({
                           disabled={loadingId !== null}
                         >
                           <X className="w-3.5 h-3.5" />
-                          Confirm Reject
+                          {t("Confirm Reject")}
                         </button>
                       </div>
                     </form>
@@ -331,14 +333,14 @@ export default function AdminCoachingPanel({
                         className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-colors flex items-center gap-1 shadow"
                       >
                         <Check className="w-3.5 h-3.5" />
-                        Approve
+                        {t("Approve")}
                       </button>
                       <button
                         onClick={() => setRejectingId(req.id)}
                         disabled={loadingId !== null}
                         className="px-4 py-1.5 bg-slate-200 hover:bg-slate-350 dark:bg-slate-800 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 text-xs font-bold rounded-lg transition-colors flex items-center gap-1"
                       >
-                        Reject
+                        {t("Reject")}
                       </button>
                     </div>
                   )}

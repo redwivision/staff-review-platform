@@ -3,6 +3,7 @@ import { DevelopmentReview, ReviewSectionData, ReviewRequirementSettings } from 
 import { DEVELOPMENT_REVIEW_SECTIONS, QUARTER_INFO } from "../constants";
 import { Heart, User, Clipboard, Users, ShieldAlert, Award, AlertCircle, Save, CheckCircle2, Check, MessageSquare, ListChecks } from "lucide-react";
 import GuidedReviewForm from "./GuidedReviewForm";
+import { useLanguage } from "../i18n";
 
 interface ReviewFormEditorProps {
   review: DevelopmentReview;
@@ -25,6 +26,7 @@ export default function ReviewFormEditor({
   isAdmin = false,
   isOwner = false
 }: ReviewFormEditorProps) {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState<DevelopmentReview>({ ...review });
   const canEdit = isOwner || isLeaderView || isAdmin;
   const isReadOnly = !canEdit;
@@ -47,16 +49,16 @@ export default function ReviewFormEditor({
     const errors: string[] = [];
     
     if (settings.heartRequired && !isSectionComplete("heart")) {
-      errors.push("Walk with God Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
+      errors.push(t("Walk with God Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points."));
     }
     if (settings.personalLifeRequired && !isSectionComplete("personal")) {
-      errors.push("Personal Life Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
+      errors.push(t("Personal Life Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points."));
     }
     if (settings.relationalLifeRequired && !isSectionComplete("relational")) {
-      errors.push("Relational Life Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
+      errors.push(t("Relational Life Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points."));
     }
     if (settings.ministryEffectivenessRequired && !isSectionComplete("ministry")) {
-      errors.push("Ministry Impact Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
+      errors.push(t("Ministry Impact Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points."));
     }
 
     if (errors.length > 0) {
@@ -166,16 +168,16 @@ export default function ReviewFormEditor({
         const errors: string[] = [];
         
         if (settings.heartRequired && !isSectionComplete("heart")) {
-          errors.push("Walk with God Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
+          errors.push(t("Walk with God Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points."));
         }
         if (settings.personalLifeRequired && !isSectionComplete("personal")) {
-          errors.push("Personal Life Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
+          errors.push(t("Personal Life Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points."));
         }
         if (settings.relationalLifeRequired && !isSectionComplete("relational")) {
-          errors.push("Relational Life Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
+          errors.push(t("Relational Life Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points."));
         }
         if (settings.ministryEffectivenessRequired && !isSectionComplete("ministry")) {
-          errors.push("Ministry Impact Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points.");
+          errors.push(t("Ministry Impact Quadrant: Please fill out all 3 points of Strengths, Needs Improvement, and Suggested Action Points."));
         }
 
         if (errors.length > 0) {
@@ -208,11 +210,11 @@ export default function ReviewFormEditor({
 
   // Sections definitions for mapping tabs
   const tabs = [
-    { id: "header" as const, label: "Getting Started", icon: Clipboard },
-    { id: "heart" as const, label: "Walk with God", icon: Heart },
-    { id: "personal" as const, label: "Personal Life", icon: User },
-    { id: "relational" as const, label: "Relational Life", icon: Users },
-    { id: "ministry" as const, label: "Ministry Impact", icon: Award }
+    { id: "header" as const, label: t("Getting Started"), icon: Clipboard },
+    { id: "heart" as const, label: t("Walk with God"), icon: Heart },
+    { id: "personal" as const, label: t("Personal Life"), icon: User },
+    { id: "relational" as const, label: t("Relational Life"), icon: Users },
+    { id: "ministry" as const, label: t("Ministry Impact"), icon: Award }
   ];
 
   const currentSectionKey = getSectionKey(activeTab);
@@ -241,14 +243,14 @@ export default function ReviewFormEditor({
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <span className="text-xs font-semibold uppercase tracking-widest text-emerald-400 bg-emerald-950/50 px-3 py-1 rounded-full border border-emerald-500/30">
-              {QUARTER_INFO[review.quarter].name} Review Form
+              {QUARTER_INFO[review.quarter].name} {t("Review Form")}
             </span>
             <h2 className="text-2xl font-sans font-bold tracking-tight mt-2 text-white">
-              {isLeaderView ? `Review for ${staffName || review.staffMemberName}` : "My Development Review"}
+              {isLeaderView ? `${t("Review for")} ${staffName || review.staffMemberName}` : t("My Development Review")}
             </h2>
             <p className="text-xs text-slate-300 font-mono mt-1">
-              Status: <span className={review.status === "Submitted" ? "text-emerald-400" : "text-amber-400 font-semibold"}>{formData.status}</span>
-              {isLeaderView && " • Editing as Team Leader"}
+              {t("Status:")} <span className={review.status === "Submitted" ? "text-emerald-400" : "text-amber-400 font-semibold"}>{formData.status}</span>
+              {isLeaderView && t(" • Editing as Team Leader")}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -258,7 +260,7 @@ export default function ReviewFormEditor({
               className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-medium rounded-lg transition-colors border border-white/20 flex items-center gap-1.5 cursor-pointer"
             >
               <ListChecks className="w-4 h-4" />
-              Easy mode
+              {t("Easy mode")}
             </button>
             {canEdit && isLeaderView ? (
               <button
@@ -268,7 +270,7 @@ export default function ReviewFormEditor({
                 className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 shadow-md shadow-indigo-900/10 text-white"
               >
                 <Save className="w-4 h-4" />
-                {saving ? "Saving Changes..." : "Save Feedback & Actions"}
+                {saving ? t("Saving Changes...") : t("Save Feedback & Actions")}
               </button>
             ) : (
               canEdit && (
@@ -280,7 +282,7 @@ export default function ReviewFormEditor({
                   className="px-4 py-2 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 border border-slate-600"
                 >
                   <Save className="w-4 h-4" />
-                  {saving ? "Saving..." : "Save Draft"}
+                  {saving ? t("Saving...") : t("Save Draft")}
                 </button>
                 <button
                   id="submit-review-btn"
@@ -289,7 +291,7 @@ export default function ReviewFormEditor({
                   className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 text-sm font-medium rounded-lg transition-colors flex items-center gap-1.5 shadow-md shadow-emerald-900/10 text-white"
                 >
                   <CheckCircle2 className="w-4 h-4" />
-                  {saving ? "Submitting..." : "Submit to Leader"}
+                  {saving ? t("Submitting...") : t("Submit to Leader")}
                 </button>
               </>
               )
@@ -299,7 +301,7 @@ export default function ReviewFormEditor({
               onClick={onClose}
               className="px-4 py-2 text-sm font-medium hover:bg-slate-800 rounded-lg transition-colors text-slate-300"
             >
-              Cancel
+              {t("Cancel")}
             </button>
           </div>
         </div>
@@ -307,7 +309,7 @@ export default function ReviewFormEditor({
         {saveSuccess && (
           <div className="mt-4 bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 rounded-lg p-3 text-sm flex items-center gap-2 animate-fade-in">
             <CheckCircle2 className="w-4 h-4" />
-            Your review form changes have been successfully saved to the cloud.
+            {t("Your review form changes have been successfully saved to the cloud.")}
           </div>
         )}
       </div>
@@ -334,16 +336,16 @@ export default function ReviewFormEditor({
               <span>{tab.label}</span>
               
               {required && (
-                <span className="text-rose-500 font-extrabold text-xs" title="Required section">
+                <span className="text-rose-500 font-extrabold text-xs" title={t("Required section")}>
                   *
                 </span>
               )}
 
               {tab.id !== "header" && (
                 complete ? (
-                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" title="Fully Completed" />
+                  <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" title={t("Fully Completed")} />
                 ) : required ? (
-                  <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" title="Incomplete required quadrant" />
+                  <span className="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse" title={t("Incomplete required quadrant")} />
                 ) : null
               )}
             </button>
@@ -356,7 +358,7 @@ export default function ReviewFormEditor({
         {!canEdit && (
           <div className="mb-6 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl p-4 text-sm flex items-start gap-2">
             <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
-            <span>You are viewing this review in read-only mode. Only the staff member, their Team Leader, or an Admin can make changes.</span>
+            <span>{t("You are viewing this review in read-only mode. Only the staff member, their Team Leader, or an Admin can make changes.")}</span>
           </div>
         )}
         {/* Dynamic Validation Errors Banner */}
@@ -365,9 +367,9 @@ export default function ReviewFormEditor({
             <div className="flex items-start gap-3">
               <ShieldAlert className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
               <div className="space-y-1.5">
-                <h4 className="font-extrabold text-sm text-rose-950">Submission Blocked: Missing Mandatory Information</h4>
+                <h4 className="font-extrabold text-sm text-rose-950">{t("Submission Blocked: Missing Mandatory Information")}</h4>
                 <p className="text-xs text-rose-700">
-                  Your supervisor has set completion requirements. You cannot submit this review until you provide all three bullet points for Strengths, Needs Improvement, and Suggested Action Points in each required section:
+                  {t("Your supervisor has set completion requirements. You cannot submit this review until you provide all three bullet points for Strengths, Needs Improvement, and Suggested Action Points in each required section:")}
                 </p>
                 <ul className="list-disc pl-5 text-xs text-rose-800 space-y-1.5 font-semibold">
                   {validationErrors.map((err, i) => (
@@ -384,17 +386,17 @@ export default function ReviewFormEditor({
             <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-5 text-sm text-blue-800 flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
               <div>
-                <h4 className="font-semibold text-blue-900 mb-1">Development Review Instructions</h4>
+                <h4 className="font-semibold text-blue-900 mb-1">{t("Development Review Instructions")}</h4>
                 <p className="leading-relaxed">
-                  Development review is designed for National Ministries in the Africa Region based on the Leadership Development Framework.
-                  Fill in your general assignment details here before proceeding to assess the core quadrants.
+                  {t("Development review is designed for National Ministries in the Africa Region based on the Leadership Development Framework.")}
+                  {t("Fill in your general assignment details here before proceeding to assess the core quadrants.")}
                 </p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Staff Member Name</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t("Staff Member Name")}</label>
                 <input
                   type="text"
                   name="staffMemberName"
@@ -403,12 +405,12 @@ export default function ReviewFormEditor({
                   onChange={handleHeaderChange}
                   disabled={isReadOnly}
                   className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-800/20 focus:border-slate-800 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-400"
-                  placeholder="e.g. Bayush Tilahun"
+                  placeholder={t("e.g. Bayush Tilahun")}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Ministry Assignment</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t("Ministry Assignment")}</label>
                 <input
                   type="text"
                   name="ministryAssignment"
@@ -417,12 +419,12 @@ export default function ReviewFormEditor({
                   onChange={handleHeaderChange}
                   disabled={isReadOnly}
                   className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-800/20 focus:border-slate-800 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-400"
-                  placeholder="e.g. National Headquarters"
+                  placeholder={t("e.g. National Headquarters")}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Supervisor / Team Leader Name</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t("Supervisor / Team Leader Name")}</label>
                 <input
                   type="text"
                   name="supervisorName"
@@ -431,12 +433,12 @@ export default function ReviewFormEditor({
                   onChange={handleHeaderChange}
                   disabled={isReadOnly}
                   className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-800/20 focus:border-slate-800 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-400"
-                  placeholder="e.g. Roza Wesenu"
+                  placeholder={t("e.g. Roza Wesenu")}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1.5">Months Covered</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1.5">{t("Months Covered")}</label>
                 <input
                   type="text"
                   name="monthsCovered"
@@ -445,7 +447,7 @@ export default function ReviewFormEditor({
                   onChange={handleHeaderChange}
                   disabled={isReadOnly}
                   className="w-full border border-slate-200 rounded-lg px-3.5 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-800/20 focus:border-slate-800 bg-slate-50/50 disabled:bg-slate-100 disabled:text-slate-400"
-                  placeholder="e.g. July - October 2025"
+                  placeholder={t("e.g. July - October 2025")}
                 />
               </div>
             </div>
@@ -457,7 +459,7 @@ export default function ReviewFormEditor({
                 onClick={() => setActiveTab("heart")}
                 className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                Continue to Walk with God
+                {t("Continue to Walk with God")}
               </button>
             </div>
           </div>
@@ -487,7 +489,7 @@ export default function ReviewFormEditor({
                 <div className="lg:col-span-7 bg-white rounded-lg p-4 border border-slate-200 shadow-sm space-y-3">
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1">
                     <AlertCircle className="w-3.5 h-3.5 text-slate-400" />
-                    Self-Reflection Guide Questions
+                    {t("Self-Reflection Guide Questions")}
                   </h4>
                   <div className="space-y-2.5 text-sm text-slate-700">
                     {currentSectionData.questions.map((q, i) => (
@@ -505,14 +507,14 @@ export default function ReviewFormEditor({
                 <div className="bg-emerald-50/20 border border-emerald-100/55 rounded-xl p-5 space-y-4">
                   <div className="border-b border-emerald-100 pb-2">
                     <h4 className="font-sans font-semibold text-emerald-800 text-sm uppercase tracking-wider">
-                      Strengths
+                      {t("Strengths")}
                     </h4>
-                    <p className="text-xs text-emerald-600 mt-0.5">Where do you demonstrate strengths?</p>
+                    <p className="text-xs text-emerald-600 mt-0.5">{t("Where do you demonstrate strengths?")}</p>
                   </div>
                   <div className="space-y-3">
                     {[0, 1, 2].map(index => (
                       <div key={index}>
-                        <label className="block text-xs font-medium text-emerald-700 mb-1">Point {index + 1}</label>
+                        <label className="block text-xs font-medium text-emerald-700 mb-1">{t("Point")} {index + 1}</label>
                         <textarea
                           id={`textarea-strength-${currentSectionKey}-${index}`}
                           value={formData[currentSectionKey as "heart" | "personalLife" | "relationalLife" | "ministryEffectiveness"].strengths[index] || ""}
@@ -525,7 +527,7 @@ export default function ReviewFormEditor({
                           rows={2}
                           disabled={isReadOnly}
                           className="w-full border border-emerald-200/60 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 bg-white animate-fade-in disabled:bg-slate-100 disabled:text-slate-400"
-                          placeholder="Describe your strength..."
+                          placeholder={t("Describe your strength...")}
                         />
                       </div>
                     ))}
@@ -536,14 +538,14 @@ export default function ReviewFormEditor({
                 <div className="bg-amber-50/20 border border-amber-100/55 rounded-xl p-5 space-y-4">
                   <div className="border-b border-amber-100 pb-2">
                     <h4 className="font-sans font-semibold text-amber-800 text-sm uppercase tracking-wider">
-                      Needs Improvement
+                      {t("Needs Improvement")}
                     </h4>
-                    <p className="text-xs text-amber-600 mt-0.5">Which areas require growth?</p>
+                    <p className="text-xs text-amber-600 mt-0.5">{t("Which areas require growth?")}</p>
                   </div>
                   <div className="space-y-3">
                     {[0, 1, 2].map(index => (
                       <div key={index}>
-                        <label className="block text-xs font-medium text-amber-700 mb-1">Point {index + 1}</label>
+                        <label className="block text-xs font-medium text-amber-700 mb-1">{t("Point")} {index + 1}</label>
                         <textarea
                           id={`textarea-improve-${currentSectionKey}-${index}`}
                           value={formData[currentSectionKey as "heart" | "personalLife" | "relationalLife" | "ministryEffectiveness"].needsImprovement[index] || ""}
@@ -556,7 +558,7 @@ export default function ReviewFormEditor({
                           rows={2}
                           disabled={isReadOnly}
                           className="w-full border border-amber-200/60 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white animate-fade-in disabled:bg-slate-100 disabled:text-slate-400"
-                          placeholder="Describe what needs improvement..."
+                          placeholder={t("Describe what needs improvement...")}
                         />
                       </div>
                     ))}
@@ -567,14 +569,14 @@ export default function ReviewFormEditor({
                 <div className="bg-slate-50 border border-slate-200 rounded-xl p-5 space-y-4">
                   <div className="border-b border-slate-200 pb-2">
                     <h4 className="font-sans font-semibold text-slate-800 text-sm uppercase tracking-wider">
-                      Suggested Action Points
+                      {t("Suggested Action Points")}
                     </h4>
-                    <p className="text-xs text-slate-500 mt-0.5">Suggested points to discuss with supervisor</p>
+                    <p className="text-xs text-slate-500 mt-0.5">{t("Suggested points to discuss with supervisor")}</p>
                   </div>
                   <div className="space-y-3">
                     {[0, 1, 2].map(index => (
                       <div key={index}>
-                        <label className="block text-xs font-medium text-slate-600 mb-1">Point {index + 1}</label>
+                        <label className="block text-xs font-medium text-slate-600 mb-1">{t("Point")} {index + 1}</label>
                         <textarea
                           id={`textarea-actions-${currentSectionKey}-${index}`}
                           value={formData[currentSectionKey as "heart" | "personalLife" | "relationalLife" | "ministryEffectiveness"].suggestedActionPoints[index] || ""}
@@ -587,7 +589,7 @@ export default function ReviewFormEditor({
                           rows={2}
                           disabled={isReadOnly}
                           className="w-full border border-slate-200 rounded-lg px-3 py-2 text-slate-800 text-sm focus:outline-none focus:ring-2 focus:ring-slate-800/20 focus:border-slate-800 bg-white animate-fade-in disabled:bg-slate-100 disabled:text-slate-400"
-                          placeholder="Agreed actionable outcome..."
+                          placeholder={t("Agreed actionable outcome...")}
                         />
                       </div>
                     ))}
@@ -608,7 +610,7 @@ export default function ReviewFormEditor({
                   }}
                   className="px-5 py-2.5 border border-slate-200 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-50 transition-colors"
                 >
-                  Previous Section
+                  {t("Previous Section")}
                 </button>
 
                 <button
@@ -624,7 +626,7 @@ export default function ReviewFormEditor({
                   }}
                   className="px-5 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition-colors"
                 >
-                  {activeTab === "ministry" ? "Save Progress Draft" : "Next Section"}
+                  {activeTab === "ministry" ? t("Save Progress Draft") : t("Next Section")}
                 </button>
               </div>
             </div>
@@ -635,20 +637,20 @@ export default function ReviewFormEditor({
                 <MessageSquare className="w-5 h-5 text-indigo-600" />
                 <div>
                   <h4 className="font-sans font-bold text-slate-900 text-sm">
-                    Leader Section Comments
+                    {t("Leader Section Comments")}
                   </h4>
                   <p className="text-[10px] text-slate-500 mt-0.5">
-                    Specific, inline feedback on individual sections
+                    {t("Specific, inline feedback on individual sections")}
                   </p>
                 </div>
               </div>               {isLeaderView ? (
                 <div className="space-y-4">
                   <p className="text-slate-600 text-xs leading-relaxed">
-                    As a Team Leader, leave specific inline comments and coaching points on the staff member's self-reflection in this specific section.
+                    {t("As a Team Leader, leave specific inline comments and coaching points on the staff member's self-reflection in this specific section.")}
                   </p>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                      Feedback for {currentSectionData.title}
+                      {t("Feedback for")} {currentSectionData.title}
                     </label>
                     <textarea
                       id={`leader-comment-${currentSectionKey}`}
@@ -656,15 +658,15 @@ export default function ReviewFormEditor({
                       onChange={(e) => handleCommentChange(currentSectionKey, e.target.value)}
                       rows={6}
                       className="w-full border border-slate-250 rounded-xl p-3 text-slate-800 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-white placeholder-slate-400 font-medium"
-                      placeholder={`Provide constructive suggestions or feedback for ${currentSectionData.title} quadrant...`}
+                      placeholder={t(`Provide constructive suggestions or feedback for ${currentSectionData.title} quadrant...`)}
                     />
                   </div>
 
                   {/* Form Submission Control / Leader Actions */}
                   <div className="border-t border-slate-200 pt-4 mt-2 space-y-3">
-                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">Form Status Action</label>
+                    <label className="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">{t("Form Status Action")}</label>
                     <p className="text-[10px] text-slate-500 leading-relaxed">
-                      Choose if this review should remain locked or be unlocked for user edits based on your feedback:
+                      {t("Choose if this review should remain locked or be unlocked for user edits based on your feedback:")}
                     </p>
                     <div className="grid grid-cols-1 gap-2">
                       <label className={`flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer transition-all ${
@@ -680,8 +682,8 @@ export default function ReviewFormEditor({
                           className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
                         />
                         <div className="text-[11px]">
-                          <span className="font-bold text-slate-800 block">🔒 Finalize & Keep Locked</span>
-                          <span className="text-[9px] text-slate-500 mt-0.5 block leading-normal">Keep form status as Submitted. The member can view your comments but cannot edit their self-reflection.</span>
+                          <span className="font-bold text-slate-800 block">{t("🔒 Finalize & Keep Locked")}</span>
+                          <span className="text-[9px] text-slate-500 mt-0.5 block leading-normal">{t("Keep form status as Submitted. The member can view your comments but cannot edit their self-reflection.")}</span>
                         </div>
                       </label>
 
@@ -698,25 +700,25 @@ export default function ReviewFormEditor({
                           className="mt-0.5 text-indigo-600 focus:ring-indigo-500"
                         />
                         <div className="text-[11px]">
-                          <span className="font-bold text-amber-700 block">🔓 Request Revision</span>
-                          <span className="text-[9px] text-slate-500 mt-0.5 block leading-normal">Sets form status back to Draft (submitted check set to false). Unlocks the form so the team member can edit and re-submit it.</span>
+                          <span className="font-bold text-amber-700 block">{t("🔓 Request Revision")}</span>
+                          <span className="text-[9px] text-slate-500 mt-0.5 block leading-normal">{t("Sets form status back to Draft (submitted check set to false). Unlocks the form so the team member can edit and re-submit it.")}</span>
                         </div>
                       </label>
                     </div>
                   </div>
 
                   <div className="text-[10px] font-semibold text-slate-400 bg-slate-100 rounded-lg p-2.5 border border-slate-200/60 leading-normal">
-                    💡 Inline comments and status actions are saved to the cloud when you click "Save Feedback & Actions" in the top bar.
+                    {t("💡 Inline comments and status actions are saved to the cloud when you click \"Save Feedback & Actions\" in the top bar.")}
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
                   <p className="text-slate-600 text-xs leading-relaxed">
-                    View specific feedback or guidance left by your team leader specifically for this section.
+                    {t("View specific feedback or guidance left by your team leader specifically for this section.")}
                   </p>
                   {formData.leaderSectionComments?.[currentSectionKey] ? (
                     <div className="bg-indigo-50/40 border border-indigo-100/85 rounded-xl p-4 space-y-2.5">
-                      <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-600 block">Feedback from Team Leader</span>
+                      <span className="text-[10px] uppercase font-bold tracking-wider text-indigo-600 block">{t("Feedback from Team Leader")}</span>
                       <p className="text-xs text-slate-700 leading-relaxed font-medium whitespace-pre-wrap">
                         {formData.leaderSectionComments[currentSectionKey]}
                       </p>
@@ -724,8 +726,8 @@ export default function ReviewFormEditor({
                   ) : (
                     <div className="text-center py-8 px-4 bg-white border border-dashed border-slate-200 rounded-xl">
                       <MessageSquare className="w-6 h-6 text-slate-300 mx-auto mb-2 stroke-[1.5]" />
-                      <p className="text-[11px] font-bold text-slate-500">No Comments yet</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">Your team leader has not written any inline feedback for this quadrant yet.</p>
+                      <p className="text-[11px] font-bold text-slate-500">{t("No Comments yet")}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{t("Your team leader has not written any inline feedback for this quadrant yet.")}</p>
                     </div>
                   )}
                 </div>
@@ -745,10 +747,10 @@ export default function ReviewFormEditor({
               </div>
               <div>
                 <h3 className="font-sans font-bold text-slate-900 text-lg">
-                  {isLeaderView ? "Finalize Development Review?" : "Submit Development Review?"}
+                  {isLeaderView ? t("Finalize Development Review?") : t("Submit Development Review?")}
                 </h3>
                 <p className="text-slate-500 text-sm mt-1">
-                  Please review the status of each section below before completing your submission.
+                  {t("Please review the status of each section below before completing your submission.")}
                 </p>
               </div>
             </div>
@@ -756,14 +758,14 @@ export default function ReviewFormEditor({
             {/* Sections Summary */}
             <div className="bg-slate-50 border border-slate-200/60 rounded-xl p-4 space-y-3.5">
               <h4 className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                Quadrant Completion Status
+                {t("Quadrant Completion Status")}
               </h4>
               <div className="grid grid-cols-1 gap-2.5">
                 {[
-                  { id: "heart", label: "1. Walk with God", required: settings.heartRequired },
-                  { id: "personal", label: "2. Personal Life", required: settings.personalLifeRequired },
-                  { id: "relational", label: "3. Relational Life", required: settings.relationalLifeRequired },
-                  { id: "ministry", label: "4. Ministry Impact", required: settings.ministryEffectivenessRequired },
+                  { id: "heart", label: t("1. Walk with God"), required: settings.heartRequired },
+                  { id: "personal", label: t("2. Personal Life"), required: settings.personalLifeRequired },
+                  { id: "relational", label: t("3. Relational Life"), required: settings.relationalLifeRequired },
+                  { id: "ministry", label: t("4. Ministry Impact"), required: settings.ministryEffectivenessRequired },
                 ].map((sec) => {
                   const complete = isSectionComplete(sec.id);
                   return (
@@ -771,8 +773,8 @@ export default function ReviewFormEditor({
                       <div className="flex items-center gap-2">
                         <span className="text-xs font-semibold text-slate-800">{sec.label}</span>
                         {sec.required && (
-                          <span className="text-[9px] font-bold uppercase tracking-wider bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded border border-rose-100" title="Required quadrant">
-                            Required
+                          <span className="text-[9px] font-bold uppercase tracking-wider bg-rose-50 text-rose-600 px-1.5 py-0.5 rounded border border-rose-100" title={t("Required quadrant")}>
+                            {t("Required")}
                           </span>
                         )}
                       </div>
@@ -780,12 +782,12 @@ export default function ReviewFormEditor({
                         {complete ? (
                           <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600">
                             <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                            Complete
+                            {t("Complete")}
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-600">
                             <span className="w-1.5 h-1.5 bg-amber-500 rounded-full animate-pulse" />
-                            Incomplete
+                            {t("Incomplete")}
                           </span>
                         )}
                       </div>
@@ -797,14 +799,14 @@ export default function ReviewFormEditor({
 
             {/* Warning Message */}
             <div className="bg-rose-50/50 border border-rose-100 rounded-xl p-4 text-xs text-rose-900 leading-relaxed">
-              <span className="font-extrabold text-rose-950 uppercase block mb-1">⚠️ Important Warning</span>
+              <span className="font-extrabold text-rose-950 uppercase block mb-1">{t("⚠️ Important Warning")}</span>
               {isLeaderView ? (
                 <span>
-                  Finalizing this review is <strong>final</strong> and locks the form entries. It will automatically compile/update the dynamic coordinator follow-up grid and make this feedback available to the staff member.
+                  {t("Finalizing this review is")} <strong>{t("final")}</strong> {t("and locks the form entries. It will automatically compile/update the dynamic coordinator follow-up grid and make this feedback available to the staff member.")}
                 </span>
               ) : (
                 <span>
-                  This submission is <strong>final</strong> and cannot be edited. Once submitted, your Team Leader/Supervisor will be notified to review your assessment and proceed to the dialogue stage.
+                  {t("This submission is")} <strong>{t("final")}</strong> {t("and cannot be edited. Once submitted, your Team Leader/Supervisor will be notified to review your assessment and proceed to the dialogue stage.")}
                 </span>
               )}
             </div>
@@ -817,7 +819,7 @@ export default function ReviewFormEditor({
                 onClick={() => setShowSubmitConfirm(false)}
                 className="px-4 py-2 border border-slate-200 text-slate-600 font-semibold rounded-xl text-xs hover:bg-slate-50 transition-colors"
               >
-                Go Back & Edit
+                {t("Go Back & Edit")}
               </button>
               <button
                 type="button"
@@ -826,7 +828,7 @@ export default function ReviewFormEditor({
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition-colors shadow-md shadow-emerald-900/10 flex items-center gap-1.5"
               >
                 <Check className="w-3.5 h-3.5" />
-                <span>Confirm & Submit</span>
+                <span>{t("Confirm & Submit")}</span>
               </button>
             </div>
           </div>

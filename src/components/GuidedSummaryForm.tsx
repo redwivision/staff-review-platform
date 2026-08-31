@@ -6,6 +6,7 @@ import {
 import {
   Save, Check, ChevronLeft, ChevronRight, ClipboardCheck, AlertCircle, Send
 } from "lucide-react";
+import { useLanguage } from "../i18n";
 
 interface GuidedSummaryFormProps {
   summary: QuarterlySummary;
@@ -70,6 +71,7 @@ export default function GuidedSummaryForm({
   isAdmin = false,
   onSwitchStandard
 }: GuidedSummaryFormProps) {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState<QuarterlySummary>(() => {
     const s = summary;
     const emptyPDP: PDPQuarterItem = { goal: "", desiredResult: "" };
@@ -98,39 +100,39 @@ export default function GuidedSummaryForm({
   // Build ordered steps
   const steps = useMemo<Step[]>(() => {
     const list: Step[] = [
-      { id: "header0", heading: "Your name", helper: "The name of the staff member being reviewed." },
-      { id: "header1", heading: "Your Team Leader", helper: "The person who supervises you." },
-      { id: "header2", heading: "Your role", helper: "Your current position or job title." },
-      { id: "header3", heading: "When did you join staff?", helper: "Month and year, e.g. September 2018." },
-      { id: "header4", heading: "In your current position since", helper: "When did you start your current role? Month and year." }
+      { id: "header0", heading: t("Your name"), helper: t("The name of the staff member being reviewed.") },
+      { id: "header1", heading: t("Your Team Leader"), helper: t("The person who supervises you.") },
+      { id: "header2", heading: t("Your role"), helper: t("Your current position or job title.") },
+      { id: "header3", heading: t("When did you join staff?"), helper: t("Month and year, e.g. September 2018.") },
+      { id: "header4", heading: t("In your current position since"), helper: t("When did you start your current role? Month and year.") }
     ];
 
     CATEGORIES.forEach(cat => {
       list.push({
         id: `pdp-${cat.key}`,
-        heading: `PDP · ${cat.label}`,
-        helper: getPDPHelper(quarter)
+        heading: `${t("PDP")} · ${t(cat.label)}`,
+        helper: t(getPDPHelper(quarter))
       });
     });
 
     for (let i = 0; i < 3; i++) {
-      list.push({ id: `cmo-g${i}`, heading: `Goal ${i + 1} of 3 · What is the goal?` });
-      list.push({ id: `cmo-r${i}`, heading: `Goal ${i + 1} of 3 · What does success look like?`, helper: "Describe the result you expect when you complete it." });
+      list.push({ id: `cmo-g${i}`, heading: `${t("Goal")} ${i + 1} ${t("of 3")} · ${t("What is the goal?")}` });
+      list.push({ id: `cmo-r${i}`, heading: `${t("Goal")} ${i + 1} ${t("of 3")} · ${t("What does success look like?")}`, helper: t("Describe the result you expect when you complete it.") });
     }
 
     for (let i = 0; i < 2; i++) {
-      list.push({ id: `kda-a${i}`, heading: `Task ${i + 1} of 2 · Assignment details`, helper: "A task assigned for your leadership development." });
+      list.push({ id: `kda-a${i}`, heading: `${t("Task")} ${i + 1} ${t("of 2")} · ${t("Assignment details")}`, helper: t("A task assigned for your leadership development.") });
     }
 
-    list.push({ id: "sugg0", heading: "A suggestion for your team", helper: "How could your team or department improve?" });
-    list.push({ id: "sugg1", heading: "Another suggestion (optional)", helper: "You can leave this blank if you have nothing else to add." });
+    list.push({ id: "sugg0", heading: t("A suggestion for your team"), helper: t("How could your team or department improve?") });
+    list.push({ id: "sugg1", heading: t("Another suggestion (optional)"), helper: t("You can leave this blank if you have nothing else to add.") });
 
     if (quarter === "3rd") {
-      list.push({ id: "comments", heading: "Final comments (optional)", helper: "Any closing thoughts for this year." });
+      list.push({ id: "comments", heading: t("Final comments (optional)"), helper: t("Any closing thoughts for this year.") });
     }
 
     return list;
-  }, [quarter]);
+  }, [quarter, t]);
 
   const totalSteps = steps.length;
   const isLast = stepIndex === totalSteps - 1;
@@ -238,7 +240,7 @@ export default function GuidedSummaryForm({
   const handleSubmitToCoach = async () => {
     if (!canSubmitToCoach) return;
     if (!formData.presentPositionSince || !formData.teamLeaderName) {
-      setSubmitError("Please fill in your Team Leader's name and the 'In present position since' date before submitting. You can go back and add these in the 'About you' steps.");
+      setSubmitError(t("Please fill in your Team Leader's name and the 'In present position since' date before submitting. You can go back and add these in the 'About you' steps."));
       return;
     }
     submittingRef.current = true;
@@ -248,7 +250,7 @@ export default function GuidedSummaryForm({
       await onSave({ ...formData, status: "Submitted", updatedAt: Date.now() });
       onClose();
     } catch (e: any) {
-      setSubmitError(e?.message || "Failed to submit. Please try again.");
+      setSubmitError(e?.message || t("Failed to submit. Please try again."));
       submittingRef.current = false;
     } finally {
       setSaving(false);
@@ -257,12 +259,12 @@ export default function GuidedSummaryForm({
 
   // Progress: section grouping for the top bar
   const sectionOf = (step: Step): string => {
-    if (step.id.startsWith("header")) return "About you";
-    if (step.id.startsWith("pdp")) return "Personal Development Plan (PDP)";
-    if (step.id.startsWith("cmo")) return "Key Goals (CMO)";
-    if (step.id.startsWith("kda")) return "Main Tasks (KDA)";
-    if (step.id.startsWith("sugg")) return "Suggestions";
-    return "Final comments";
+    if (step.id.startsWith("header")) return t("About you");
+    if (step.id.startsWith("pdp")) return t("Personal Development Plan (PDP)");
+    if (step.id.startsWith("cmo")) return t("Key Goals (CMO)");
+    if (step.id.startsWith("kda")) return t("Main Tasks (KDA)");
+    if (step.id.startsWith("sugg")) return t("Suggestions");
+    return t("Final comments");
   };
 
   const currentSection = sectionOf(current);
@@ -306,7 +308,7 @@ export default function GuidedSummaryForm({
       <span className={`w-7 h-7 rounded-full border-2 flex items-center justify-center ${active ? "border-indigo-600 bg-indigo-600 text-white" : "border-slate-300 text-transparent"}`}>
         <Check className="w-4 h-4" strokeWidth={3} />
       </span>
-      {id}
+      {t(id)}
     </button>
   );
 
@@ -339,7 +341,7 @@ export default function GuidedSummaryForm({
         return (
           <div className="space-y-5">
             <div>
-              <p className="text-sm text-slate-500 mb-3">How is this area going?</p>
+              <p className="text-sm text-slate-500 mb-3">{t("How is this area going?")}</p>
               <div className="space-y-3">
                 <ChoiceButtons id="Outstanding" active={rating === "o"} onPick={() => setPDPRating(cat.key, "o")} />
                 <ChoiceButtons id="Satisfactory" active={rating === "s"} onPick={() => setPDPRating(cat.key, "s")} />
@@ -347,13 +349,13 @@ export default function GuidedSummaryForm({
               </div>
             </div>
             <div>
-              <p className="text-sm text-slate-500 mb-3">What will you do next?</p>
-              <BigTextarea value={pdp.nextStep || ""} onChange={(v) => updatePDP(cat.key, v)} placeholder="Write your next step" rows={2} />
+              <p className="text-sm text-slate-500 mb-3">{t("What will you do next?")}</p>
+              <BigTextarea value={pdp.nextStep || ""} onChange={(v) => updatePDP(cat.key, v)} placeholder={t("Write your next step")} rows={2} />
             </div>
           </div>
         );
       }
-      return <BigTextarea value={pdp[getPDPField(quarter)] || ""} onChange={(v) => updatePDP(cat.key, v)} placeholder="Write here" />;
+      return <BigTextarea value={pdp[getPDPField(quarter)] || ""} onChange={(v) => updatePDP(cat.key, v)} placeholder={t("Write here")} />;
     }
 
     // CMO
@@ -362,30 +364,30 @@ export default function GuidedSummaryForm({
       return (
         <div className="space-y-1">
           <div className="mb-3 bg-slate-50 rounded-2xl p-4 text-sm text-slate-600">{DEVELOPMENT_REVIEW_SECTIONS.ministryEffectiveness.bullets[0]}</div>
-          <BigTextarea value={formData.cmo[i]?.objective || ""} onChange={(v) => updateCMO(i, "objective", v)} placeholder="Write your goal" />
+          <BigTextarea value={formData.cmo[i]?.objective || ""} onChange={(v) => updateCMO(i, "objective", v)} placeholder={t("Write your goal")} />
         </div>
       );
     }
     if (step && step.id.startsWith("cmo-r")) {
       const i = cmoIdx(step)!;
-      return <BigTextarea value={formData.cmo[i]?.desiredResult || ""} onChange={(v) => updateCMO(i, "desiredResult", v)} placeholder="Describe the expected result" />;
+      return <BigTextarea value={formData.cmo[i]?.desiredResult || ""} onChange={(v) => updateCMO(i, "desiredResult", v)} placeholder={t("Describe the expected result")} />;
     }
 
     // KDA
     if (step && step.id.startsWith("kda-a")) {
       const i = kdaIdx(step)!;
-      return <BigText value={formData.kda[i]?.assignment || ""} onChange={(v) => updateKDA(i, "assignment", v)} placeholder="e.g. Lead a monthly discipleship group" />;
+      return <BigText value={formData.kda[i]?.assignment || ""} onChange={(v) => updateKDA(i, "assignment", v)} placeholder={t("e.g. Lead a monthly discipleship group")} />;
     }
 
     // Suggestions
     if (step && step.id.startsWith("sugg")) {
       const i = suggIdx(step)!;
-      return <BigTextarea value={formData.suggestions[i] || ""} onChange={(v) => updateSugg(i, v)} placeholder={i === 1 ? "Optional — type here or leave blank" : "Type your suggestion"} rows={2} />;
+      return <BigTextarea value={formData.suggestions[i] || ""} onChange={(v) => updateSugg(i, v)} placeholder={i === 1 ? t("Optional — type here or leave blank") : t("Type your suggestion")} rows={2} />;
     }
 
     // Comments
     if (step && step.id === "comments") {
-      return <BigTextarea value={formData.additionalComments || ""} onChange={(v) => updateHeader("additionalComments", v)} placeholder="Optional — type here or leave blank" />;
+      return <BigTextarea value={formData.additionalComments || ""} onChange={(v) => updateHeader("additionalComments", v)} placeholder={t("Optional — type here or leave blank")} />;
     }
 
     return null;
@@ -398,17 +400,17 @@ export default function GuidedSummaryForm({
         <div className="flex items-center justify-between gap-4">
           <div>
             <span className="text-[11px] font-semibold uppercase tracking-widest text-indigo-300 bg-indigo-950/70 px-3 py-1 rounded-full border border-indigo-500/30">
-              Easy mode · Step by step
+              {t("Easy mode · Step by step")}
             </span>
             <h2 className="text-xl font-sans font-bold mt-2">
-              {QUARTER_INFO[quarter].name} Summary
+              {QUARTER_INFO[quarter].name} {t("Summary")}
             </h2>
           </div>
           <button
             onClick={handleClose}
             className="text-xs text-indigo-200 hover:text-white bg-indigo-950/60 hover:bg-indigo-900 px-3 py-2 rounded-lg transition-colors"
           >
-            Save &amp; Close
+            {t("Save & Close")}
           </button>
         </div>
       </div>
@@ -420,7 +422,7 @@ export default function GuidedSummaryForm({
             <ClipboardCheck className="w-3.5 h-3.5 text-indigo-500" />
             {currentSection}
           </span>
-          <span>{stepIndex + 1} of {totalSteps}</span>
+          <span>{stepIndex + 1} {t("of")} {totalSteps}</span>
         </div>
         <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
           <div
@@ -434,7 +436,7 @@ export default function GuidedSummaryForm({
       <div className="px-6 py-6 max-w-2xl mx-auto">
         {locked && (
           <div className="mb-4 text-sm text-slate-500 bg-slate-50 rounded-xl px-4 py-3">
-            This summary is read-only. You can view each question but not change the answers.
+            {t("This summary is read-only. You can view each question but not change the answers.")}
           </div>
         )}
         {submitError && (
@@ -457,13 +459,13 @@ export default function GuidedSummaryForm({
             disabled={stepIndex === 0}
             className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" /> Back
+            <ChevronLeft className="w-4 h-4" /> {t("Back")}
           </button>
 
           <div className="flex items-center gap-2">
             {justSaved && (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 animate-fade-in">
-                <Check className="w-3.5 h-3.5" strokeWidth={3} /> Saved
+                <Check className="w-3.5 h-3.5" strokeWidth={3} /> {t("Saved")}
               </span>
             )}
             {isLast ? (
@@ -475,7 +477,7 @@ export default function GuidedSummaryForm({
                     disabled={saving}
                     className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-emerald-600 hover:bg-emerald-500 transition-colors"
                   >
-                    <Send className="w-4 h-4" strokeWidth={3} /> {saving ? "Submitting..." : "Submit to Coach"}
+                    <Send className="w-4 h-4" strokeWidth={3} /> {saving ? t("Submitting...") : t("Submit to Coach")}
                   </button>
                 )}
                 <button
@@ -483,7 +485,7 @@ export default function GuidedSummaryForm({
                   onClick={handleClose}
                   className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors"
                 >
-                  <Check className="w-4 h-4" strokeWidth={3} /> Finish
+                  <Check className="w-4 h-4" strokeWidth={3} /> {t("Finish")}
                 </button>
               </div>
             ) : (
@@ -492,21 +494,21 @@ export default function GuidedSummaryForm({
                 onClick={handleNext}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors"
               >
-                Next <ChevronRight className="w-4 h-4" />
+                {t("Next")} <ChevronRight className="w-4 h-4" />
               </button>
             )}
           </div>
         </div>
 
         <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
-          <span className="text-xs text-slate-400">Your answers are saved as you move between questions.</span>
+          <span className="text-xs text-slate-400">{t("Your answers are saved as you move between questions.")}</span>
           {onSwitchStandard && canEdit && (
             <button
               type="button"
               onClick={() => { autosave(); onSwitchStandard(); }}
               className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
             >
-              Switch to full form
+              {t("Switch to full form")}
             </button>
           )}
         </div>

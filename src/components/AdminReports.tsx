@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { DEVELOPMENT_REVIEW_SECTIONS } from "../constants";
+import { useLanguage } from "../i18n";
 
 interface AdminReportsProps {
   registeredUsers: UserProfile[];
@@ -45,6 +46,7 @@ export default function AdminReports({
   currentYear,
   onViewStaffFollowUp
 }: AdminReportsProps) {
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState<"staff" | "coaches">("staff");
   const [reportQuarter, setReportQuarter] = useState<"1st" | "2nd" | "3rd">(currentQuarter);
   const [reportYear, setReportYear] = useState<string>(currentYear);
@@ -178,10 +180,10 @@ export default function AdminReports({
             <FileCheck2 className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[11px] font-bold font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider">PDP Compliance Rate</p>
+            <p className="text-[11px] font-bold font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t("PDP Compliance Rate")}</p>
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="text-2xl font-black text-slate-900 dark:text-white">{stats.complianceRate}%</span>
-              <span className="text-[10px] text-slate-500">({stats.totalStaff - stats.draftCount - stats.submittedCount - stats.coachSubmittedCount - stats.approvedCount} not started)</span>
+              <span className="text-[10px] text-slate-500">({stats.totalStaff - stats.draftCount - stats.submittedCount - stats.coachSubmittedCount - stats.approvedCount} {t("not started")})</span>
             </div>
             <div className="w-24 bg-slate-100 dark:bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
               <div className="bg-indigo-600 dark:bg-indigo-400 h-full rounded-full" style={{ width: `${stats.complianceRate}%` }}></div>
@@ -195,12 +197,12 @@ export default function AdminReports({
             <Clock className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[11px] font-bold font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider">Pending Approvals</p>
+            <p className="text-[11px] font-bold font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t("Pending Approvals")}</p>
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="text-2xl font-black text-slate-900 dark:text-white">{stats.coachSubmittedCount}</span>
-              <span className="text-[10px] text-slate-500">awaiting admin</span>
+              <span className="text-[10px] text-slate-500">{t("awaiting admin")}</span>
             </div>
-            <p className="text-[10px] text-slate-500 mt-1 font-medium">Ready for review & sign-off</p>
+            <p className="text-[10px] text-slate-500 mt-1 font-medium">{t("Ready for review & sign-off")}</p>
           </div>
         </div>
 
@@ -210,12 +212,12 @@ export default function AdminReports({
             <TrendingUp className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[11px] font-bold font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider">In Progress Drafts</p>
+            <p className="text-[11px] font-bold font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t("In Progress Drafts")}</p>
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="text-2xl font-black text-slate-900 dark:text-white">{stats.draftCount + stats.submittedCount}</span>
-              <span className="text-[10px] text-slate-500">member/coach drafts</span>
+              <span className="text-[10px] text-slate-500">{t("member/coach drafts")}</span>
             </div>
-            <p className="text-[10px] text-slate-500 mt-1 font-medium">In compilation pipeline</p>
+            <p className="text-[10px] text-slate-500 mt-1 font-medium">{t("In compilation pipeline")}</p>
           </div>
         </div>
 
@@ -225,12 +227,12 @@ export default function AdminReports({
             <Users className="w-6 h-6" />
           </div>
           <div>
-            <p className="text-[11px] font-bold font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider">Approved Summaries</p>
+            <p className="text-[11px] font-bold font-mono text-slate-400 dark:text-slate-500 uppercase tracking-wider">{t("Approved Summaries")}</p>
             <div className="flex items-baseline gap-1.5 mt-0.5">
               <span className="text-2xl font-black text-slate-900 dark:text-white">{stats.approvedCount}</span>
-              <span className="text-[10px] text-slate-500">fully completed</span>
+              <span className="text-[10px] text-slate-500">{t("fully completed")}</span>
             </div>
-            <p className="text-[10px] text-slate-500 mt-1 font-medium">Archived and signed off</p>
+            <p className="text-[10px] text-slate-500 mt-1 font-medium">{t("Archived and signed off")}</p>
           </div>
         </div>
       </div>
@@ -244,10 +246,10 @@ export default function AdminReports({
               <BarChart2 className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
               <div>
                 <h3 className="font-sans font-extrabold text-slate-900 dark:text-slate-100 text-sm uppercase tracking-wide">
-                  Admin Oversight Reports
+                  {t("Admin Oversight Reports")}
                 </h3>
                 <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono mt-0.5">
-                  Quarterly Review Summary Compliance Board
+                  {t("Quarterly Review Summary Compliance Board")}
                 </p>
               </div>
             </div>
@@ -255,21 +257,21 @@ export default function AdminReports({
             {/* Interactive Selectors */}
             <div className="flex flex-wrap gap-2 items-center">
               <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1 rounded-xl text-xs font-bold shadow-sm">
-                <span className="text-slate-400 font-mono text-[9px] uppercase">Quarter:</span>
+                <span className="text-slate-400 font-mono text-[9px] uppercase">{t("Quarter:")}</span>
                 <select
                   id="report-quarter-select"
                   value={reportQuarter}
                   onChange={(e) => setReportQuarter(e.target.value as "1st" | "2nd" | "3rd")}
                   className="bg-transparent border-none py-0 focus:outline-none cursor-pointer text-slate-800 dark:text-slate-200 text-xs font-bold"
                 >
-                  <option value="1st">1st Quarter</option>
-                  <option value="2nd">2nd Quarter</option>
-                  <option value="3rd">3rd Quarter</option>
+                  <option value="1st">{t("1st Quarter")}</option>
+                  <option value="2nd">{t("2nd Quarter")}</option>
+                  <option value="3rd">{t("3rd Quarter")}</option>
                 </select>
               </div>
 
               <div className="flex items-center gap-1.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 py-1 rounded-xl text-xs font-bold shadow-sm">
-                <span className="text-slate-400 font-mono text-[9px] uppercase">Year:</span>
+                <span className="text-slate-400 font-mono text-[9px] uppercase">{t("Year:")}</span>
                 <select
                   id="report-year-select"
                   value={reportYear}
@@ -292,7 +294,7 @@ export default function AdminReports({
               <input
                 id="staff-search-input"
                 type="text"
-                placeholder="Search staff members, emails, roles..."
+                placeholder={t("Search staff members, emails, roles...")}
                 value={staffSearch}
                 onChange={(e) => setStaffSearch(e.target.value)}
                 className="w-full pl-9 pr-4 py-2 rounded-xl text-xs bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-850 focus:bg-white dark:focus:bg-slate-900 transition-colors"
@@ -308,12 +310,12 @@ export default function AdminReports({
                   onChange={(e) => setStatusFilter(e.target.value)}
                   className="bg-transparent text-xs font-bold text-slate-600 dark:text-slate-300 focus:outline-none border-none py-0 cursor-pointer"
                 >
-                  <option value="all">All Form Statuses</option>
-                  <option value="approved">Approved & Signed Off</option>
-                  <option value="coach_submitted">Compiled by Coach</option>
-                  <option value="submitted">Submitted to Coach</option>
-                  <option value="draft">Drafts Only</option>
-                  <option value="not_started">Not Started Only</option>
+                  <option value="all">{t("All Form Statuses")}</option>
+                  <option value="approved">{t("Approved & Signed Off")}</option>
+                  <option value="coach_submitted">{t("Compiled by Coach")}</option>
+                  <option value="submitted">{t("Submitted to Coach")}</option>
+                  <option value="draft">{t("Drafts Only")}</option>
+                  <option value="not_started">{t("Not Started Only")}</option>
                 </select>
               </div>
             </div>
@@ -324,17 +326,17 @@ export default function AdminReports({
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-150 dark:border-slate-850 text-[10px] font-bold font-mono text-slate-400 uppercase tracking-wider">
-                  <th className="px-6 py-4">Staff Member</th>
-                  <th className="px-6 py-4">Current Coach</th>
-                  <th className="px-6 py-4">Summary Form Status</th>
-                  <th className="px-6 py-4 text-right">Details</th>
+                  <th className="px-6 py-4">{t("Staff Member")}</th>
+                  <th className="px-6 py-4">{t("Current Coach")}</th>
+                  <th className="px-6 py-4">{t("Summary Form Status")}</th>
+                  <th className="px-6 py-4 text-right">{t("Details")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150 dark:divide-slate-850 text-xs">
                 {filteredStaff.length === 0 ? (
                   <tr>
                     <td colSpan={4} className="px-6 py-12 text-center text-slate-400 italic font-mono bg-slate-50/50 dark:bg-slate-950/20">
-                      No staff matching the selected criteria
+                      {t("No staff matching the selected criteria")}
                     </td>
                   </tr>
                 ) : (
@@ -354,7 +356,7 @@ export default function AdminReports({
                                 ? "bg-slate-50 dark:bg-slate-950 text-slate-400 border border-slate-100 dark:border-slate-850"
                                 : "bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 border border-indigo-100/50"
                             }`}>
-                              {item.coachName}
+                              {item.coachName === "No coach assigned" ? t("No coach assigned") : item.coachName}
                             </span>
                           </td>
                           <td className="px-6 py-4">
@@ -369,10 +371,10 @@ export default function AdminReports({
                                 ? "bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-100"
                                 : "bg-slate-50 dark:bg-slate-950 text-slate-400 border-slate-200 dark:border-slate-850"
                             }`}>
-                              {item.status === "Approved" ? "Approved / Signed Off" :
-                               item.status === "CoachSubmitted" ? "Reviewed by Coach" :
-                               item.status === "Submitted" ? "Submitted to Coach" :
-                               item.status === "Draft" ? "In Draft" : "Not Started"}
+                              {item.status === "Approved" ? t("Approved / Signed Off") :
+                               item.status === "CoachSubmitted" ? t("Reviewed by Coach") :
+                               item.status === "Submitted" ? t("Submitted to Coach") :
+                               item.status === "Draft" ? t("In Draft") : t("Not Started")}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
@@ -382,9 +384,9 @@ export default function AdminReports({
                                   id={`row-go-followup-${item.uid}`}
                                   onClick={() => onViewStaffFollowUp(item.uid)}
                                   className="px-2.5 py-1 text-indigo-600 hover:text-white dark:text-indigo-400 dark:hover:text-white hover:bg-indigo-600 dark:hover:bg-indigo-600 border border-indigo-150 dark:border-slate-850 rounded-lg transition-all flex items-center gap-1.5 shadow-sm cursor-pointer"
-                                  title="Go to Follow-Up Grid"
+                                  title={t("Go to Follow-Up Grid")}
                                 >
-                                  <span className="text-[10px] font-bold tracking-wide">Follow-Up</span>
+                                  <span className="text-[10px] font-bold tracking-wide">{t("Follow-Up")}</span>
                                   <ChevronRight className="w-3 h-3" />
                                 </button>
                               )}
@@ -405,41 +407,41 @@ export default function AdminReports({
                             <td colSpan={4} className="px-6 py-5 border-t border-slate-150 dark:border-slate-850">
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in text-xs">
                                 <div className="space-y-2">
-                                  <h5 className="font-extrabold text-[11px] font-mono uppercase text-slate-400">Quarterly Action Plan & Comments</h5>
+                                  <h5 className="font-extrabold text-[11px] font-mono uppercase text-slate-400">{t("Quarterly Action Plan & Comments")}</h5>
                                   <div className="space-y-2 text-slate-700 dark:text-slate-300">
                                     <div className="flex items-center gap-2">
                                       <div className={`w-2 h-2 rounded-full ${item.coachName === "No coach assigned" ? "bg-rose-500" : "bg-emerald-500"}`}></div>
-                                      <span>Coaching: <strong className="text-slate-900 dark:text-white">{item.coachName}</strong></span>
+                                      <span>{t("Coaching:")} <strong className="text-slate-900 dark:text-white">{item.coachName === "No coach assigned" ? t("No coach assigned") : item.coachName}</strong></span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <div className={`w-2 h-2 rounded-full ${item.hasSummary ? "bg-emerald-500" : "bg-slate-300"}`}></div>
-                                      <span>Quarterly Summary draft: <strong className="text-slate-900 dark:text-white">{item.hasSummary ? "Created" : "Not Started"}</strong></span>
+                                      <span>{t("Quarterly Summary draft:")} <strong className="text-slate-900 dark:text-white">{item.hasSummary ? t("Created") : t("Not Started")}</strong></span>
                                     </div>
                                     <div className="flex items-center gap-2">
                                       <div className={`w-2 h-2 rounded-full ${item.status === "Approved" ? "bg-emerald-500" : item.status === "CoachSubmitted" ? "bg-teal-500" : "bg-amber-500"}`}></div>
-                                      <span>Current Status: <strong className="text-slate-900 dark:text-white">{item.status}</strong></span>
+                                      <span>{t("Current Status:")} <strong className="text-slate-900 dark:text-white">{item.status}</strong></span>
                                     </div>
                                   </div>
 
                                   <div className="pt-2">
-                                    <span className="text-[10px] font-bold font-mono text-slate-400 uppercase tracking-wide">Audit Timestamp</span>
+                                    <span className="text-[10px] font-bold font-mono text-slate-400 uppercase tracking-wide">{t("Audit Timestamp")}</span>
                                     <p className="text-slate-500 leading-relaxed font-mono text-[10px] mt-0.5">
-                                      Last activity: {new Date(item.updatedAt).toLocaleString()}
+                                      {t("Last activity:")} {new Date(item.updatedAt).toLocaleString()}
                                     </p>
                                   </div>
                                 </div>
 
                                 <div className="space-y-2">
-                                  <h5 className="font-extrabold text-[11px] font-mono uppercase text-slate-400">Admin Recommendation & Reports</h5>
+                                  <h5 className="font-extrabold text-[11px] font-mono uppercase text-slate-400">{t("Admin Recommendation & Reports")}</h5>
                                   <div>
                                     <p className="text-[11px] text-slate-500 italic">
                                       {item.status === "Approved" 
-                                        ? "✓ This quarterly evaluation is approved and signed off by Admin." 
+                                        ? t("✓ This quarterly evaluation is approved and signed off by Admin.") 
                                         : item.status === "CoachSubmitted" 
-                                        ? "✓ Compiled by Coach. Awaiting final Admin review and sign-off." 
+                                        ? t("✓ Compiled by Coach. Awaiting final Admin review and sign-off.") 
                                         : item.status === "Submitted" 
-                                        ? "⚠ Submitted by member. Coach is compiling evaluations." 
-                                        : "✗ Draft status. Encourage member to complete their PDP summary."}
+                                        ? t("⚠ Submitted by member. Coach is compiling evaluations.") 
+                                        : t("✗ Draft status. Encourage member to complete their PDP summary.")}
                                     </p>
                                   </div>
 
@@ -449,7 +451,7 @@ export default function AdminReports({
                                       onClick={() => onViewStaffFollowUp(item.uid)}
                                       className="w-full mt-1.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
                                     >
-                                      <span>Manage Follow-Up Accountability Grid</span>
+                                      <span>{t("Manage Follow-Up Accountability Grid")}</span>
                                       <ChevronRight className="w-3.5 h-3.5" />
                                     </button>
                                   )}
@@ -464,10 +466,10 @@ export default function AdminReports({
                                       </div>
                                       <div>
                                         <h5 className="font-extrabold text-[12px] uppercase text-slate-700 dark:text-slate-300">
-                                          🎓 Coaches' Feedback
+                                          {t("🎓 Coaches' Feedback")}
                                         </h5>
                                         <p className="text-[10px] text-slate-500 font-medium">
-                                          Access all Coach/TL evaluations completed for {item.name} in {reportQuarter} Quarter.
+                                          {t("Access all Coach/TL evaluations completed for")} {item.name} {t("in")} {reportQuarter} {t("Quarter.")}
                                         </p>
                                       </div>
                                     </div>
@@ -490,7 +492,7 @@ export default function AdminReports({
                                       className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
                                     >
                                       <FileSpreadsheet className="w-3.5 h-3.5" />
-                                      <span>Consolidated 1-Page Report</span>
+                                      <span>{t("Consolidated 1-Page Report")}</span>
                                     </button>
                                   </div>
 
@@ -505,8 +507,8 @@ export default function AdminReports({
                                       return (
                                         <div className="bg-slate-50 dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-xl p-6 text-center text-slate-500">
                                           <AlertCircle className="w-5 h-5 mx-auto text-slate-400 mb-1.5" />
-                                          <p className="text-xs font-medium">No coach evaluations have been submitted for this staff member yet.</p>
-                                          <p className="text-[10px] text-slate-400 mt-0.5">Approved coaches will submit their evaluations here once the staff member completes their summary draft.</p>
+                                          <p className="text-xs font-medium">{t("No coach evaluations have been submitted for this staff member yet.")}</p>
+                                          <p className="text-[10px] text-slate-400 mt-0.5">{t("Approved coaches will submit their evaluations here once the staff member completes their summary draft.")}</p>
                                         </div>
                                       );
                                     }
@@ -519,10 +521,10 @@ export default function AdminReports({
                                               <div className="flex justify-between items-start border-b border-slate-100 dark:border-slate-800 pb-2 mb-2.5">
                                                 <div>
                                                   <span className="font-extrabold text-slate-800 dark:text-slate-200 text-xs">
-                                                    {s.coachName || "Coach Evaluation"}
+                                                    {s.coachName || t("Coach Evaluation")}
                                                   </span>
                                                   <div className="text-[9px] text-slate-400 font-mono mt-0.5">
-                                                    Last Updated: {new Date(s.updatedAt).toLocaleDateString()}
+                                                    {t("Last Updated:")} {new Date(s.updatedAt).toLocaleDateString()}
                                                   </div>
                                                 </div>
                                                 <span className={`inline-flex px-2 py-0.5 rounded text-[9px] font-bold ${
@@ -530,13 +532,13 @@ export default function AdminReports({
                                                     ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400"
                                                     : "bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400"
                                                 }`}>
-                                                  {s.status === "CoachSubmitted" ? "Submitted" : "In Draft"}
+                                                  {s.status === "CoachSubmitted" ? t("Submitted") : t("In Draft")}
                                                 </span>
                                               </div>
 
                                               <div className="space-y-2 text-[11px]">
                                                 <div>
-                                                  <span className="font-mono text-[10px] uppercase text-slate-400 block">Overall Effectiveness:</span>
+                                                  <span className="font-mono text-[10px] uppercase text-slate-400 block">{t("Overall Effectiveness:")}</span>
                                                   <span className={`font-bold ${
                                                     s.evaluation?.overallEffectiveness === "One of the best" 
                                                       ? "text-emerald-600" 
@@ -546,28 +548,28 @@ export default function AdminReports({
                                                       ? "text-rose-600"
                                                       : "text-slate-500"
                                                   }`}>
-                                                    {s.evaluation?.overallEffectiveness || "Not rated yet"}
+                                                    {s.evaluation?.overallEffectiveness || t("Not rated yet")}
                                                   </span>
                                                 </div>
                                                 <div>
-                                                  <span className="font-mono text-[10px] uppercase text-slate-400 block">Strengths:</span>
+                                                  <span className="font-mono text-[10px] uppercase text-slate-400 block">{t("Strengths:")}</span>
                                                   <ul className="list-disc list-inside text-slate-600 dark:text-slate-400 pl-1">
                                                     {s.evaluation?.strengths?.filter(Boolean).map((str, i) => (
                                                       <li key={i}>{str}</li>
                                                     ))}
                                                     {s.evaluation?.strengths?.filter(Boolean).length === 0 && (
-                                                      <li className="italic text-slate-400 list-none">No strengths listed yet</li>
+                                                      <li className="italic text-slate-400 list-none">{t("No strengths listed yet")}</li>
                                                     )}
                                                   </ul>
                                                 </div>
                                                 <div>
-                                                  <span className="font-mono text-[10px] uppercase text-slate-400 block">Development Areas:</span>
+                                                  <span className="font-mono text-[10px] uppercase text-slate-400 block">{t("Development Areas:")}</span>
                                                   <ul className="list-disc list-inside text-slate-600 dark:text-slate-400 pl-1">
                                                     {s.evaluation?.weaknesses?.filter(Boolean).map((weak, i) => (
                                                       <li key={i}>{weak}</li>
                                                     ))}
                                                     {s.evaluation?.weaknesses?.filter(Boolean).length === 0 && (
-                                                      <li className="italic text-slate-400 list-none">No weaknesses listed yet</li>
+                                                      <li className="italic text-slate-400 list-none">{t("No weaknesses listed yet")}</li>
                                                     )}
                                                   </ul>
                                                 </div>
@@ -582,7 +584,7 @@ export default function AdminReports({
                                                 }}
                                                 className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 bg-indigo-50 dark:bg-indigo-950/20 px-2 py-1 rounded transition-colors flex items-center gap-1 cursor-pointer"
                                               >
-                                                <span>View Full Form</span>
+                                                <span>{t("View Full Form")}</span>
                                                 <ChevronRight className="w-3 h-3" />
                                               </button>
                                             </div>
@@ -613,12 +615,12 @@ export default function AdminReports({
             <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-150 dark:border-slate-800 flex items-center justify-between">
               <div>
                 <h4 className="font-extrabold text-sm text-slate-950 dark:text-slate-100 uppercase tracking-wide">
-                   📋 Evaluation Form
+                   {t("📋 Evaluation Form")}
                 </h4>
                 <p className="text-[10px] text-slate-500 font-medium">
                   {viewFullSummaryDetails.coachUid 
-                    ? `Completed by Coach ${viewFullSummaryDetails.coachName || "Nominated Coach"}`
-                    : "Staff Member Self-Evaluation Draft"}
+                    ? `${t("Completed by Coach")} ${viewFullSummaryDetails.coachName || t("Nominated Coach")}`
+                    : t("Staff Member Self-Evaluation Draft")}
                 </p>
               </div>
               <button 
@@ -633,29 +635,29 @@ export default function AdminReports({
               {/* General Information Grid */}
               <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-150 dark:border-slate-800 space-y-3">
                 <h5 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800 pb-1.5">
-                  1. General Information
+                  {t("1. General Information")}
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-[11px]">
-                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Staff Member Name:</span> <strong className="font-bold text-slate-800 dark:text-slate-200">{viewFullSummaryDetails.staffName}</strong></div>
-                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Team Leader Name:</span> <strong>{viewFullSummaryDetails.teamLeaderName || "-"}</strong></div>
-                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Reviewer Name & Position:</span> <strong>{viewFullSummaryDetails.reviewerNamePosition || "-"}</strong></div>
-                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Current Position / Role:</span> <strong>{viewFullSummaryDetails.position || "-"}</strong></div>
-                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Date Joined Staff:</span> <strong>{viewFullSummaryDetails.dateJoinedStaff || "-"}</strong></div>
-                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">In Present Position Since:</span> <strong>{viewFullSummaryDetails.presentPositionSince || "-"}</strong></div>
-                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">Supervised By Current Team Leader Since:</span> <strong>{viewFullSummaryDetails.supervisedBySince || "-"}</strong></div>
+                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">{t("Staff Member Name:")}</span> <strong className="font-bold text-slate-800 dark:text-slate-200">{viewFullSummaryDetails.staffName}</strong></div>
+                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">{t("Team Leader Name:")}</span> <strong>{viewFullSummaryDetails.teamLeaderName || "-"}</strong></div>
+                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">{t("Reviewer Name & Position:")}</span> <strong>{viewFullSummaryDetails.reviewerNamePosition || "-"}</strong></div>
+                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">{t("Current Position / Role:")}</span> <strong>{viewFullSummaryDetails.position || "-"}</strong></div>
+                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">{t("Date Joined Staff:")}</span> <strong>{viewFullSummaryDetails.dateJoinedStaff || "-"}</strong></div>
+                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">{t("In Present Position Since:")}</span> <strong>{viewFullSummaryDetails.presentPositionSince || "-"}</strong></div>
+                  <div><span className="font-mono text-[9px] uppercase text-slate-400 block">{t("Supervised By Current Team Leader Since:")}</span> <strong>{viewFullSummaryDetails.supervisedBySince || "-"}</strong></div>
                 </div>
               </div>
 
               {/* PDP Review */}
               <div className="space-y-3">
                 <h5 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800 pb-1.5 flex items-center gap-1">
-                  <Award className="w-3.5 h-3.5 text-indigo-600" /> 2. Personal Development Plan (PDP) Reviews
+                  <Award className="w-3.5 h-3.5 text-indigo-600" /> {t("2. Personal Development Plan (PDP) Reviews")}
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {(["heart", "personalLife", "relationalLife"] as const).map((cat) => {
                     const item = viewFullSummaryDetails.pdp?.[cat];
-                    const label = cat === "heart" ? "Walk with God" :
-                                  cat === "personalLife" ? "Personal Life" : "Relational Life";
+                    const label = cat === "heart" ? t("Walk with God") :
+                                  cat === "personalLife" ? t("Personal Life") : t("Relational Life");
                     return (
                       <div key={cat} className="bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 space-y-2.5">
                         <div className="flex flex-col gap-1.5">
@@ -665,11 +667,11 @@ export default function AdminReports({
                           {DEVELOPMENT_REVIEW_SECTIONS[cat] && (
                             <div className="bg-white/80 dark:bg-slate-900/60 rounded-lg p-2 border border-slate-150 dark:border-slate-800 text-[10px] space-y-1.5 leading-normal">
                               <div>
-                                <span className="font-bold text-slate-500 dark:text-slate-400 font-mono text-[9px] uppercase tracking-wider block">Core Focus:</span>
+                                <span className="font-bold text-slate-500 dark:text-slate-400 font-mono text-[9px] uppercase tracking-wider block">{t("Core Focus:")}</span>
                                 <span className="text-slate-600 dark:text-slate-350">{DEVELOPMENT_REVIEW_SECTIONS[cat].bullets.join(", ")}</span>
                               </div>
                               <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
-                                <span className="font-bold text-slate-500 dark:text-slate-400 font-mono text-[9px] uppercase tracking-wider block">Reflection Guide:</span>
+                                <span className="font-bold text-slate-500 dark:text-slate-400 font-mono text-[9px] uppercase tracking-wider block">{t("Reflection Guide:")}</span>
                                 <span className="text-slate-600 dark:text-slate-350 italic">"{DEVELOPMENT_REVIEW_SECTIONS[cat].questions.join(" • ")}"</span>
                               </div>
                             </div>
@@ -677,20 +679,20 @@ export default function AdminReports({
                         </div>
                         {item ? (
                           <div className="space-y-1.5 text-[11px]">
-                            <div><strong className="text-slate-500 font-mono text-[9px] block">Goal:</strong> {item.goal || <span className="italic text-slate-400">None</span>}</div>
-                            <div><strong className="text-slate-500 font-mono text-[9px] block">Target Outcome:</strong> {item.desiredResult || <span className="italic text-slate-400">None</span>}</div>
+                            <div><strong className="text-slate-500 font-mono text-[9px] block">{t("Goal:")}</strong> {item.goal || <span className="italic text-slate-400">{t("None")}</span>}</div>
+                            <div><strong className="text-slate-500 font-mono text-[9px] block">{t("Target Outcome:")}</strong> {item.desiredResult || <span className="italic text-slate-400">{t("None")}</span>}</div>
                             {reportQuarter === "2nd" && (
                               <>
-                                <div><strong className="text-slate-500 font-mono text-[9px] block">Progress Made:</strong> {item.progressMade || <span className="italic text-slate-400">None</span>}</div>
-                                <div><strong className="text-slate-500 font-mono text-[9px] block">Changes Needed:</strong> {item.changesNeeded || <span className="italic text-slate-400">None</span>}</div>
+                                <div><strong className="text-slate-500 font-mono text-[9px] block">{t("Progress Made:")}</strong> {item.progressMade || <span className="italic text-slate-400">{t("None")}</span>}</div>
+                                <div><strong className="text-slate-500 font-mono text-[9px] block">{t("Changes Needed:")}</strong> {item.changesNeeded || <span className="italic text-slate-400">{t("None")}</span>}</div>
                               </>
                             )}
                             {reportQuarter === "3rd" && (
-                              <div><strong className="text-slate-500 font-mono text-[9px] block">Next Growth Step:</strong> {item.nextStep || <span className="italic text-slate-400">None</span>}</div>
+                              <div><strong className="text-slate-500 font-mono text-[9px] block">{t("Next Growth Step:")}</strong> {item.nextStep || <span className="italic text-slate-400">{t("None")}</span>}</div>
                             )}
                           </div>
                         ) : (
-                          <p className="italic text-slate-400">Not filled out</p>
+                          <p className="italic text-slate-400">{t("Not filled out")}</p>
                         )}
                       </div>
                     );
@@ -701,22 +703,22 @@ export default function AdminReports({
               {/* CMO Review */}
               <div className="space-y-3">
                 <h5 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800 pb-1.5 flex items-center gap-1">
-                  <TrendingUp className="w-3.5 h-3.5 text-indigo-600" /> 3. Critical Mission Objectives (CMO)
+                  <TrendingUp className="w-3.5 h-3.5 text-indigo-600" /> {t("3. Critical Mission Objectives (CMO)")}
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   {(viewFullSummaryDetails.cmo || []).map((c, idx) => (
                     <div key={idx} className="bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 space-y-1.5 text-[11px]">
-                      <span className="font-extrabold text-[11px] text-slate-800 dark:text-slate-200">Objective #{idx + 1}</span>
-                      <div><strong className="text-slate-500 font-mono text-[9px] block">Goal description:</strong> {c.objective || "-"}</div>
-                      <div><strong className="text-slate-500 font-mono text-[9px] block">Expected outcome:</strong> {c.desiredResult || "-"}</div>
+                      <span className="font-extrabold text-[11px] text-slate-800 dark:text-slate-200">{t("Objective #")}{idx + 1}</span>
+                      <div><strong className="text-slate-500 font-mono text-[9px] block">{t("Goal description:")}</strong> {c.objective || "-"}</div>
+                      <div><strong className="text-slate-500 font-mono text-[9px] block">{t("Expected outcome:")}</strong> {c.desiredResult || "-"}</div>
                       <div className="flex justify-between items-center bg-white dark:bg-slate-900 p-1.5 rounded-lg border border-slate-100 dark:border-slate-800 mt-2 font-mono text-[10px]">
-                        <span className="text-slate-400">Completion:</span>
+                        <span className="text-slate-400">{t("Completion:")}</span>
                         <span className="font-bold text-indigo-600">{c.percentageAchieved || 0}%</span>
                       </div>
                     </div>
                   ))}
                   {(!viewFullSummaryDetails.cmo || viewFullSummaryDetails.cmo.length === 0) && (
-                    <p className="italic text-slate-400 col-span-3">No critical mission objectives listed.</p>
+                    <p className="italic text-slate-400 col-span-3">{t("No critical mission objectives listed.")}</p>
                   )}
                 </div>
               </div>
@@ -724,17 +726,17 @@ export default function AdminReports({
               {/* KDA Review */}
               <div className="space-y-3">
                 <h5 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[10px] border-b border-slate-100 dark:border-slate-800 pb-1.5 flex items-center gap-1">
-                  <BookOpen className="w-3.5 h-3.5 text-indigo-600" /> 4. Key Development Assignments (KDA)
+                  <BookOpen className="w-3.5 h-3.5 text-indigo-600" /> {t("4. Key Development Assignments (KDA)")}
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {(viewFullSummaryDetails.kda || []).map((k, idx) => (
                     <div key={idx} className="bg-slate-50 dark:bg-slate-950 border border-slate-150 dark:border-slate-850 rounded-xl p-3 space-y-1.5 text-[11px]">
-                      <span className="font-extrabold text-[11px] text-slate-800 dark:text-slate-200">Assignment #{idx + 1}</span>
-                      <div><strong className="text-slate-500 font-mono text-[9px] block">Assignment:</strong> {k.assignment || "-"}</div>
+                      <span className="font-extrabold text-[11px] text-slate-800 dark:text-slate-200">{t("Assignment #")}{idx + 1}</span>
+                      <div><strong className="text-slate-500 font-mono text-[9px] block">{t("Assignment:")}</strong> {k.assignment || "-"}</div>
                     </div>
                   ))}
                   {(!viewFullSummaryDetails.kda || viewFullSummaryDetails.kda.length === 0) && (
-                    <p className="italic text-slate-400 col-span-2">No development assignments listed.</p>
+                    <p className="italic text-slate-400 col-span-2">{t("No development assignments listed.")}</p>
                   )}
                 </div>
               </div>
@@ -742,12 +744,12 @@ export default function AdminReports({
               {/* Suggestions / Feedback */}
               <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-150 dark:border-slate-800 space-y-2">
                 <h5 className="font-bold text-slate-900 dark:text-slate-100 uppercase tracking-wider text-[10px] border-b border-slate-200 dark:border-slate-800 pb-1.5">
-                   5. Suggestions for Improvement
+                   {t("5. Suggestions for Improvement")}
                 </h5>
                 <ul className="list-decimal list-inside pl-1 text-[11px] text-slate-600 dark:text-slate-400 space-y-1.5">
                   {(viewFullSummaryDetails.suggestions || []).map((s, idx) => (
                     <li key={idx} className={s ? "" : "italic text-slate-400 list-none"}>
-                      {s || "No suggestion provided for this item."}
+                      {s || t("No suggestion provided for this item.")}
                     </li>
                   ))}
                 </ul>
@@ -756,11 +758,11 @@ export default function AdminReports({
               {/* Section 6: Coach/Leader Evaluation */}
               <div className="bg-indigo-50/40 dark:bg-slate-950 p-4 rounded-xl border border-indigo-100 dark:border-slate-800 space-y-4">
                 <h5 className="font-bold text-indigo-900 dark:text-indigo-400 uppercase tracking-wider text-[10px] border-b border-indigo-200 dark:border-slate-800 pb-1.5 flex items-center gap-1">
-                   <Star className="w-3.5 h-3.5" /> 6. Coach's Evaluation
+                   <Star className="w-3.5 h-3.5" /> {t("6. Coach's Evaluation")}
                 </h5>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px]">
                   <div>
-                    <span className="font-mono text-[9px] uppercase text-slate-400 block">Overall Effectiveness:</span>
+                    <span className="font-mono text-[9px] uppercase text-slate-400 block">{t("Overall Effectiveness:")}</span>
                     <strong className={`text-xs font-bold ${
                       viewFullSummaryDetails.evaluation?.overallEffectiveness === "One of the best" 
                         ? "text-emerald-600" 
@@ -768,19 +770,19 @@ export default function AdminReports({
                         ? "text-indigo-600" 
                         : "text-rose-600"
                     }`}>
-                      {viewFullSummaryDetails.evaluation?.overallEffectiveness || "Not rated yet"}
+                      {viewFullSummaryDetails.evaluation?.overallEffectiveness || t("Not rated yet")}
                     </strong>
                   </div>
                   <div>
-                    <span className="font-mono text-[9px] uppercase text-slate-400 block">Ready for Greater Responsibility?</span>
-                    <strong>{viewFullSummaryDetails.evaluation?.readyForGreaterResp || "No rating"}</strong>
+                    <span className="font-mono text-[9px] uppercase text-slate-400 block">{t("Ready for Greater Responsibility?")}</span>
+                    <strong>{viewFullSummaryDetails.evaluation?.readyForGreaterResp || t("No rating")}</strong>
                     {viewFullSummaryDetails.evaluation?.readyForGreaterResp === "Yes" && (
                       <div className="text-[10px] text-slate-500 mt-1 pl-1 border-l border-slate-300">
                         {viewFullSummaryDetails.evaluation?.greaterRespDetails?.position && (
-                          <p>Position: {viewFullSummaryDetails.evaluation.greaterRespDetails.position}</p>
+                          <p>{t("Position:")} {viewFullSummaryDetails.evaluation.greaterRespDetails.position}</p>
                         )}
                         {viewFullSummaryDetails.evaluation?.greaterRespDetails?.when && (
-                          <p>Timeline: {viewFullSummaryDetails.evaluation.greaterRespDetails.when}</p>
+                          <p>{t("Timeline:")} {viewFullSummaryDetails.evaluation.greaterRespDetails.when}</p>
                         )}
                       </div>
                     )}
@@ -789,24 +791,24 @@ export default function AdminReports({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px]">
                   <div>
-                    <span className="font-mono text-[9px] uppercase text-slate-400 block">Strengths:</span>
+                    <span className="font-mono text-[9px] uppercase text-slate-400 block">{t("Strengths:")}</span>
                     <ul className="list-disc list-inside pl-1 text-slate-600 dark:text-slate-400">
                       {(viewFullSummaryDetails.evaluation?.strengths || []).filter(Boolean).map((str, idx) => (
                         <li key={idx}>{str}</li>
                       ))}
                       {(viewFullSummaryDetails.evaluation?.strengths || []).filter(Boolean).length === 0 && (
-                        <li className="italic text-slate-400 list-none">No strengths listed yet</li>
+                        <li className="italic text-slate-400 list-none">{t("No strengths listed yet")}</li>
                       )}
                     </ul>
                   </div>
                   <div>
-                    <span className="font-mono text-[9px] uppercase text-slate-400 block">Development Areas:</span>
+                    <span className="font-mono text-[9px] uppercase text-slate-400 block">{t("Development Areas:")}</span>
                     <ul className="list-disc list-inside pl-1 text-slate-600 dark:text-slate-400">
                       {(viewFullSummaryDetails.evaluation?.weaknesses || []).filter(Boolean).map((weak, idx) => (
                         <li key={idx}>{weak}</li>
                       ))}
                       {(viewFullSummaryDetails.evaluation?.weaknesses || []).filter(Boolean).length === 0 && (
-                        <li className="italic text-slate-400 list-none">No weaknesses listed yet</li>
+                        <li className="italic text-slate-400 list-none">{t("No weaknesses listed yet")}</li>
                       )}
                     </ul>
                   </div>
@@ -814,18 +816,18 @@ export default function AdminReports({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-[11px] border-t border-indigo-100 dark:border-slate-800 pt-3">
                   <div>
-                    <span className="font-mono text-[9px] uppercase text-slate-400 block">Areas Lacking Confidence:</span>
+                    <span className="font-mono text-[9px] uppercase text-slate-400 block">{t("Areas Lacking Confidence:")}</span>
                     <p className="text-slate-600 dark:text-slate-400 italic">
-                      "{viewFullSummaryDetails.evaluation?.lackConfidence || "No comment left."}"
+                      "{viewFullSummaryDetails.evaluation?.lackConfidence || t("No comment left.")}"
                     </p>
                   </div>
                   <div>
-                    <span className="font-mono text-[9px] uppercase text-slate-400 block">Reassignment Recommendation:</span>
-                    <strong>{viewFullSummaryDetails.evaluation?.recommendReassignment || "No rating"}</strong>
+                    <span className="font-mono text-[9px] uppercase text-slate-400 block">{t("Reassignment Recommendation:")}</span>
+                    <strong>{viewFullSummaryDetails.evaluation?.recommendReassignment || t("No rating")}</strong>
                     {viewFullSummaryDetails.evaluation?.recommendReassignment === "Yes" && (
                       <div className="text-[10px] text-slate-500 mt-1 pl-1 border-l border-slate-300">
-                        <p>Suggested Location/Position: {viewFullSummaryDetails.evaluation.reassignmentDetails?.positionLocation || "-"}</p>
-                        <p>Justification: {viewFullSummaryDetails.evaluation.reassignmentDetails?.why || "-"}</p>
+                        <p>{t("Suggested Location/Position:")} {viewFullSummaryDetails.evaluation.reassignmentDetails?.positionLocation || "-"}</p>
+                        <p>{t("Justification:")} {viewFullSummaryDetails.evaluation.reassignmentDetails?.why || "-"}</p>
                       </div>
                     )}
                   </div>
@@ -834,15 +836,15 @@ export default function AdminReports({
                 {/* Team Leader Sign-off */}
                 <div className="bg-white dark:bg-slate-900 border border-indigo-50 dark:border-slate-800 p-3 rounded-lg flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 text-[10px] font-mono">
                   <div>
-                    <span className="text-slate-400 uppercase">Team Leader Signature:</span>
+                    <span className="text-slate-400 uppercase">{t("Team Leader Signature:")}</span>
                     <span className="font-sans font-extrabold text-indigo-700 dark:text-indigo-400 block mt-0.5">
-                      ✍ {viewFullSummaryDetails.evaluation?.teamLeaderSignature || "Unsigned"}
+                      ✍ {viewFullSummaryDetails.evaluation?.teamLeaderSignature || t("Unsigned")}
                     </span>
                   </div>
                   <div>
-                    <span className="text-slate-400 uppercase">Signature Date:</span>
+                    <span className="text-slate-400 uppercase">{t("Signature Date:")}</span>
                     <span className="font-bold text-slate-700 dark:text-slate-300 block mt-0.5">
-                      {viewFullSummaryDetails.evaluation?.teamLeaderSignatureDate || "Pending"}
+                      {viewFullSummaryDetails.evaluation?.teamLeaderSignatureDate || t("Pending")}
                     </span>
                   </div>
                 </div>
@@ -854,7 +856,7 @@ export default function AdminReports({
                 onClick={() => setViewFullSummaryDetails(null)}
                 className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl font-bold text-xs cursor-pointer"
               >
-                Close Detailed View
+                {t("Close Detailed View")}
               </button>
             </div>
           </div>
@@ -870,10 +872,10 @@ export default function AdminReports({
             <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 border-b border-slate-150 dark:border-slate-800 flex items-center justify-between print:hidden">
               <div>
                 <span className="inline-flex px-2 py-0.5 bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 text-[10px] font-mono font-bold rounded-full uppercase mb-1">
-                  Consolidated Oversight Report
+                  {t("Consolidated Oversight Report")}
                 </span>
                 <h4 className="font-extrabold text-sm text-slate-950 dark:text-slate-100 uppercase tracking-wide">
-                  🎓 1-Page Consolidated Review Center
+                  {t("🎓 1-Page Consolidated Review Center")}
                 </h4>
               </div>
               <div className="flex items-center gap-2">
@@ -883,7 +885,7 @@ export default function AdminReports({
                   className="inline-flex items-center gap-1 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg text-[11px] font-bold transition-all cursor-pointer"
                 >
                   <Printer className="w-3.5 h-3.5" />
-                  <span>Print Report</span>
+                  <span>{t("Print Report")}</span>
                 </button>
                 <button 
                   onClick={() => setActiveReportMember(null)}
@@ -901,36 +903,36 @@ export default function AdminReports({
               <div className="border-b border-slate-200 dark:border-slate-800 pb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                   <h1 className="font-sans font-black text-slate-900 dark:text-white text-lg tracking-tight uppercase">
-                    Consolidated Quarterly Review
+                    {t("Consolidated Quarterly Review")}
                   </h1>
                   <p className="text-[11px] text-slate-500 font-medium">
-                    Africa Region Leadership Development Framework
+                    {t("Africa Region Leadership Development Framework")}
                   </p>
                 </div>
                 <div className="text-right sm:text-right text-[10px] font-mono">
-                  <div>Quarter: <strong className="text-slate-800 dark:text-slate-200">{reportQuarter} Quarter ({reportYear})</strong></div>
-                  <div>Report Date: <strong>{new Date().toLocaleDateString()}</strong></div>
+                  <div>{t("Quarter:")} <strong className="text-slate-800 dark:text-slate-200">{reportQuarter} {t("Quarter")} ({reportYear})</strong></div>
+                  <div>{t("Report Date:")} <strong>{new Date().toLocaleDateString()}</strong></div>
                 </div>
               </div>
 
               {/* Staff Member Metadata */}
               <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-150 dark:border-slate-800 grid grid-cols-2 md:grid-cols-4 gap-4 text-[11px]">
                 <div>
-                  <span className="text-slate-400 font-mono text-[9px] uppercase block">Staff Member:</span>
+                  <span className="text-slate-400 font-mono text-[9px] uppercase block">{t("Staff Member:")}</span>
                   <strong className="text-slate-800 dark:text-slate-200 text-xs font-bold">{activeReportMember.member.name}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-mono text-[9px] uppercase block">Assigned Role:</span>
+                  <span className="text-slate-400 font-mono text-[9px] uppercase block">{t("Assigned Role:")}</span>
                   <strong>{activeReportMember.member.role}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-mono text-[9px] uppercase block">Email Address:</span>
+                  <span className="text-slate-400 font-mono text-[9px] uppercase block">{t("Email Address:")}</span>
                   <strong>{activeReportMember.member.email}</strong>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-mono text-[9px] uppercase block">Assigned Coaches:</span>
+                  <span className="text-slate-400 font-mono text-[9px] uppercase block">{t("Assigned Coaches:")}</span>
                   <strong className="text-indigo-600 dark:text-indigo-400">
-                    {activeReportMember.coachSummaries.map(c => c.coachName).join(", ") || "None assigned yet"}
+                    {activeReportMember.coachSummaries.map(c => c.coachName).join(", ") || t("None assigned yet")}
                   </strong>
                 </div>
               </div>
@@ -943,50 +945,50 @@ export default function AdminReports({
                   <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-4">
                     <h5 className="font-sans font-extrabold text-[11px] uppercase tracking-wider text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-1.5">
                       <Users className="w-3.5 h-3.5 text-indigo-500" />
-                      Staff Self-Draft Highlights
+                      {t("Staff Self-Draft Highlights")}
                     </h5>
 
                     {activeReportMember.baseSummary ? (
                       <div className="space-y-4 text-[11px]">
                         {/* PDP Goals */}
                         <div className="space-y-1.5">
-                          <span className="font-mono text-[10px] text-slate-400 uppercase">Personal Development Goals:</span>
+                          <span className="font-mono text-[10px] text-slate-400 uppercase">{t("Personal Development Goals:")}</span>
                           <div className="space-y-1 pl-2 border-l-2 border-slate-200">
-                            <div><strong className="font-semibold text-slate-700">Walk with God:</strong> {activeReportMember.baseSummary.pdp?.heart?.goal || "None set"}</div>
-                            <div><strong className="font-semibold text-slate-700">Personal Life:</strong> {activeReportMember.baseSummary.pdp?.personalLife?.goal || "None set"}</div>
-                            <div><strong className="font-semibold text-slate-700">Relational Life:</strong> {activeReportMember.baseSummary.pdp?.relationalLife?.goal || "None set"}</div>
+                            <div><strong className="font-semibold text-slate-700">{t("Walk with God:")}</strong> {activeReportMember.baseSummary.pdp?.heart?.goal || t("None set")}</div>
+                            <div><strong className="font-semibold text-slate-700">{t("Personal Life:")}</strong> {activeReportMember.baseSummary.pdp?.personalLife?.goal || t("None set")}</div>
+                            <div><strong className="font-semibold text-slate-700">{t("Relational Life:")}</strong> {activeReportMember.baseSummary.pdp?.relationalLife?.goal || t("None set")}</div>
                           </div>
                         </div>
 
                         {/* CMO Objectives */}
                         <div className="space-y-1.5">
-                          <span className="font-mono text-[10px] text-slate-400 uppercase">Critical Mission Goals:</span>
+                          <span className="font-mono text-[10px] text-slate-400 uppercase">{t("Critical Mission Goals:")}</span>
                           <ul className="list-disc list-inside space-y-1 text-slate-600 dark:text-slate-400 pl-1">
                             {activeReportMember.baseSummary.cmo?.filter(c => !!c.objective).map((c, i) => (
                               <li key={i}>{c.objective} <span className="font-mono text-[9px] text-indigo-600">({c.percentageAchieved || 0}%)</span></li>
                             ))}
                             {(!activeReportMember.baseSummary.cmo || activeReportMember.baseSummary.cmo.filter(c => !!c.objective).length === 0) && (
-                              <li className="italic text-slate-400 list-none">No critical objectives draft compiled.</li>
+                              <li className="italic text-slate-400 list-none">{t("No critical objectives draft compiled.")}</li>
                             )}
                           </ul>
                         </div>
 
                         {/* Suggestions */}
                         <div className="space-y-1.5">
-                          <span className="font-mono text-[10px] text-slate-400 uppercase">Department Suggestions:</span>
+                          <span className="font-mono text-[10px] text-slate-400 uppercase">{t("Department Suggestions:")}</span>
                           <ul className="list-decimal list-inside space-y-1 text-slate-600 dark:text-slate-400 pl-1">
                             {activeReportMember.baseSummary.suggestions?.filter(Boolean).map((s, i) => (
                               <li key={i}>{s}</li>
                             ))}
                             {(!activeReportMember.baseSummary.suggestions || activeReportMember.baseSummary.suggestions.filter(Boolean).length === 0) && (
-                              <li className="italic text-slate-400 list-none">No suggestions submitted.</li>
+                              <li className="italic text-slate-400 list-none">{t("No suggestions submitted.")}</li>
                             )}
                           </ul>
                         </div>
                       </div>
                     ) : (
                       <div className="p-4 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-500 italic">
-                        No base self-evaluation summary compiled for this quarter yet.
+                        {t("No base self-evaluation summary compiled for this quarter yet.")}
                       </div>
                     )}
                   </div>
@@ -997,12 +999,12 @@ export default function AdminReports({
                   <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-4 space-y-4">
                     <h5 className="font-sans font-extrabold text-[11px] uppercase tracking-wider text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-2 flex items-center gap-1.5">
                       <Star className="w-3.5 h-3.5 text-indigo-500" />
-                       Evaluations
+                       {t("Evaluations")}
                     </h5>
 
                     {activeReportMember.coachSummaries.length === 0 ? (
                       <div className="p-8 bg-slate-50 dark:bg-slate-950/40 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center text-slate-400 italic">
-                        Awaiting coach evaluations. Assigned coaches will complete their assessments inside the Oversight portal.
+                        {t("Awaiting coach evaluations. Assigned coaches will complete their assessments inside the Oversight portal.")}
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -1010,45 +1012,45 @@ export default function AdminReports({
                           <div key={s.id || idx} className="bg-slate-50 dark:bg-slate-950 rounded-xl p-4 border border-slate-150 dark:border-slate-850 space-y-3">
                             <div className="flex justify-between items-center border-b border-slate-200/50 dark:border-slate-800/60 pb-2">
                               <div>
-                                <span className="font-bold text-slate-800 dark:text-slate-200">{s.coachName || "Coach"}</span>
-                                <span className="text-[9px] font-mono text-slate-400 block">Submitted: {new Date(s.updatedAt || Date.now()).toLocaleDateString()}</span>
+                                <span className="font-bold text-slate-800 dark:text-slate-200">{s.coachName || t("Coach")}</span>
+                                <span className="text-[9px] font-mono text-slate-400 block">{t("Submitted:")} {new Date(s.updatedAt || Date.now()).toLocaleDateString()}</span>
                               </div>
                               <span className="px-2.5 py-0.5 bg-indigo-100 dark:bg-indigo-950 text-indigo-800 dark:text-indigo-400 font-bold text-[10px] rounded">
-                                Rating: {s.evaluation?.overallEffectiveness || "Not rated"}
+                                {t("Rating:")} {s.evaluation?.overallEffectiveness || t("Not rated")}
                               </span>
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px]">
                               <div>
-                                <span className="font-mono text-[9px] text-slate-400 uppercase block">Identified Strengths:</span>
+                                <span className="font-mono text-[9px] text-slate-400 uppercase block">{t("Identified Strengths:")}</span>
                                 <ul className="list-disc list-inside pl-1 text-slate-600 dark:text-slate-400 space-y-0.5">
                                   {s.evaluation?.strengths?.filter(Boolean).map((str, i) => (
                                     <li key={i}>{str}</li>
                                   ))}
                                   {(!s.evaluation?.strengths || s.evaluation.strengths.filter(Boolean).length === 0) && (
-                                    <li className="italic text-slate-400 list-none">No strengths listed.</li>
+                                    <li className="italic text-slate-400 list-none">{t("No strengths listed.")}</li>
                                   )}
                                 </ul>
                               </div>
                               <div>
-                                <span className="font-mono text-[9px] text-slate-400 uppercase block">Development Areas:</span>
+                                <span className="font-mono text-[9px] text-slate-400 uppercase block">{t("Development Areas:")}</span>
                                 <ul className="list-disc list-inside pl-1 text-slate-600 dark:text-slate-400 space-y-0.5">
                                   {s.evaluation?.weaknesses?.filter(Boolean).map((weak, i) => (
                                     <li key={i}>{weak}</li>
                                   ))}
                                   {(!s.evaluation?.weaknesses || s.evaluation.weaknesses.filter(Boolean).length === 0) && (
-                                    <li className="italic text-slate-400 list-none">No weaknesses listed.</li>
+                                    <li className="italic text-slate-400 list-none">{t("No weaknesses listed.")}</li>
                                   )}
                                 </ul>
                               </div>
                             </div>
                             
                             <div className="text-[11px] pt-1 border-t border-slate-200/40">
-                              <span className="font-mono text-[9px] text-slate-400 uppercase block">Reassignments/Next Steps:</span>
+                              <span className="font-mono text-[9px] text-slate-400 uppercase block">{t("Reassignments/Next Steps:")}</span>
                               <p className="text-slate-600 dark:text-slate-400 font-medium italic">
                                 {s.evaluation?.recommendReassignment === "Yes" 
-                                  ? `Recommend Reassignment: ${s.evaluation.reassignmentDetails?.positionLocation || "-"} (${s.evaluation.reassignmentDetails?.why || "-"})`
-                                  : "Maintains current assignment."}
+                                  ? `${t("Recommend Reassignment:")} ${s.evaluation.reassignmentDetails?.positionLocation || "-"} (${s.evaluation.reassignmentDetails?.why || "-"})`
+                                  : t("Maintains current assignment.")}
                               </p>
                             </div>
                           </div>
@@ -1066,7 +1068,7 @@ export default function AdminReports({
                 onClick={() => setActiveReportMember(null)}
                 className="px-4 py-2 bg-slate-200 hover:bg-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl font-bold text-xs cursor-pointer"
               >
-                Close Report
+                {t("Close Report")}
               </button>
             </div>
           </div>

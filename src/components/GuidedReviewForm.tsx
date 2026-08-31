@@ -4,6 +4,7 @@ import { QUARTER_INFO, DEVELOPMENT_REVIEW_SECTIONS } from "../constants";
 import {
   Save, Check, ChevronLeft, ChevronRight, ClipboardCheck, Heart, User, Users, Award, AlertCircle
 } from "lucide-react";
+import { useLanguage } from "../i18n";
 
 interface GuidedReviewFormProps {
   review: DevelopmentReview;
@@ -64,6 +65,7 @@ export default function GuidedReviewForm({
   isOwner = false,
   onSwitchStandard
 }: GuidedReviewFormProps) {
+  const { t } = useLanguage();
   const [formData, setFormData] = useState<DevelopmentReview>(() => ({
     ...review,
     heart: { strengths: [...(review.heart?.strengths || ["", "", ""])], needsImprovement: [...(review.heart?.needsImprovement || ["", "", ""])], suggestedActionPoints: [...(review.heart?.suggestedActionPoints || ["", "", ""])] },
@@ -83,23 +85,23 @@ export default function GuidedReviewForm({
 
   const steps = useMemo<Step[]>(() => {
     const list: Step[] = [
-      { id: "h0", heading: "Your name", helper: "The name of the staff member being reviewed." },
-      { id: "h1", heading: "Your ministry assignment", helper: "Where are you assigned? e.g. National Headquarters." },
-      { id: "h2", heading: "Your supervisor / Team Leader", helper: "The person you report to." },
-      { id: "h3", heading: "Months covered", helper: "Which months does this review cover? e.g. July - October 2025." }
+      { id: "h0", heading: t("Your name"), helper: t("The name of the staff member being reviewed.") },
+      { id: "h1", heading: t("Your ministry assignment"), helper: t("Where are you assigned? e.g. National Headquarters.") },
+      { id: "h2", heading: t("Your supervisor / Team Leader"), helper: t("The person you report to.") },
+      { id: "h3", heading: t("Months covered"), helper: t("Which months does this review cover? e.g. July - October 2025.") }
     ];
 
     QUADRANTS.forEach(q => {
       const sec = DEVELOPMENT_REVIEW_SECTIONS[q.key];
       for (let idx = 0; idx < 3; idx++) {
-        list.push({ id: `${q.key}-s${idx}`, heading: `${q.label} · Strength ${idx + 1}`, helper: sec ? sec.questions[0] : undefined });
-        list.push({ id: `${q.key}-n${idx}`, heading: `${q.label} · Needs Improvement ${idx + 1}`, helper: sec ? sec.questions[1] : undefined });
-        list.push({ id: `${q.key}-a${idx}`, heading: `${q.label} · Action Point ${idx + 1}`, helper: sec ? sec.questions[2] : undefined });
+        list.push({ id: `${q.key}-s${idx}`, heading: `${t(q.label)} · ${t("Strength")} ${idx + 1}`, helper: sec ? sec.questions[0] : undefined });
+        list.push({ id: `${q.key}-n${idx}`, heading: `${t(q.label)} · ${t("Needs Improvement")} ${idx + 1}`, helper: sec ? sec.questions[1] : undefined });
+        list.push({ id: `${q.key}-a${idx}`, heading: `${t(q.label)} · ${t("Action Point")} ${idx + 1}`, helper: sec ? sec.questions[2] : undefined });
       }
     });
 
     return list;
-  }, [quarter]);
+  }, [quarter, t]);
 
   const totalSteps = steps.length;
   const isLast = stepIndex === totalSteps - 1;
@@ -207,7 +209,7 @@ export default function GuidedReviewForm({
       setTimeout(() => setJustSaved(false), 1500);
     } catch (e: any) {
       console.error("Guided review draft save failed:", e);
-      setSubmitError(e?.message || "Failed to save your draft. Please try again.");
+      setSubmitError(e?.message || t("Failed to save your draft. Please try again."));
     } finally {
       submittingRef.current = false;
       setSaving(false);
@@ -232,7 +234,7 @@ export default function GuidedReviewForm({
           const q = QUADRANTS.find(x => x.key === k);
           return q ? q.label : k;
         });
-        setSubmitError(`Please fill all required answers for: ${labels.join(", ")} before submitting.`);
+        setSubmitError(`${t("Please fill all required answers for:")} ${labels.map(l => t(l)).join(", ")} ${t("before submitting.")}`);
         submittingRef.current = false;
         return;
       }
@@ -242,7 +244,7 @@ export default function GuidedReviewForm({
       onClose();
     } catch (e: any) {
       console.error("Guided review submit failed:", e);
-      setSubmitError(e?.message || "Failed to submit your review. Please try again.");
+      setSubmitError(e?.message || t("Failed to submit your review. Please try again."));
       submittingRef.current = false;
     } finally {
       setSaving(false);
@@ -257,11 +259,11 @@ export default function GuidedReviewForm({
   };
 
   const sectionOf = (step: Step): string => {
-    if (step.id.startsWith("h")) return "About you";
+    if (step.id.startsWith("h")) return t("About you");
     const ctx = stepCtx(step.id);
     if (!ctx) return "";
     const q = QUADRANTS.find(x => x.key === ctx.key);
-    return q ? q.label : "";
+    return q ? t(q.label) : "";
   };
 
   const currentSection = sectionOf(current);
@@ -292,15 +294,15 @@ export default function GuidedReviewForm({
 
   const renderStep = () => {
     const step = current;
-    if (step.id === "h0") return <BigText value={formData.staffMemberName} onChange={(v) => updateHeader("staffMemberName", v)} placeholder="Full name" />;
-    if (step.id === "h1") return <BigText value={formData.ministryAssignment} onChange={(v) => updateHeader("ministryAssignment", v)} placeholder="e.g. National Headquarters" />;
-    if (step.id === "h2") return <BigText value={formData.supervisorName} onChange={(v) => updateHeader("supervisorName", v)} placeholder="Your supervisor's name" />;
-    if (step.id === "h3") return <BigText value={formData.monthsCovered} onChange={(v) => updateHeader("monthsCovered", v)} placeholder="e.g. July - October 2025" />;
+    if (step.id === "h0") return <BigText value={formData.staffMemberName} onChange={(v) => updateHeader("staffMemberName", v)} placeholder={t("Full name")} />;
+    if (step.id === "h1") return <BigText value={formData.ministryAssignment} onChange={(v) => updateHeader("ministryAssignment", v)} placeholder={t("e.g. National Headquarters")} />;
+    if (step.id === "h2") return <BigText value={formData.supervisorName} onChange={(v) => updateHeader("supervisorName", v)} placeholder={t("Your supervisor's name")} />;
+    if (step.id === "h3") return <BigText value={formData.monthsCovered} onChange={(v) => updateHeader("monthsCovered", v)} placeholder={t("e.g. July - October 2025")} />;
 
     const ctx = stepCtx(step.id);
     if (ctx) {
       const value = formData[ctx.key][ctx.field][ctx.idx] || "";
-      return <BigTextarea value={value} onChange={(v) => updateSection(ctx.key, ctx.field, ctx.idx, v)} placeholder={FIELD_PLACEHOLDERS[ctx.field]} rows={3} />;
+      return <BigTextarea value={value} onChange={(v) => updateSection(ctx.key, ctx.field, ctx.idx, v)} placeholder={t(FIELD_PLACEHOLDERS[ctx.field])} rows={3} />;
     }
 
     return null;
@@ -313,20 +315,20 @@ export default function GuidedReviewForm({
         <div className="flex items-center justify-between gap-4">
           <div>
             <span className="text-[11px] font-semibold uppercase tracking-widest text-emerald-300 bg-emerald-950/70 px-3 py-1 rounded-full border border-emerald-500/30">
-              Easy mode · Step by step
+              {t("Easy mode · Step by step")}
             </span>
             <h2 className="text-xl font-sans font-bold mt-2">
-              {QUARTER_INFO[quarter].name} Development Review
+              {QUARTER_INFO[quarter].name} {t("Development Review")}
             </h2>
             <p className="text-xs text-slate-300 font-mono mt-1">
-              {isLeaderView ? `Review for ${staffName || formData.staffMemberName}` : `Status: ${formData.status}`} {locked && " • Read-only"}
+              {isLeaderView ? `${t("Review for")} ${staffName || formData.staffMemberName}` : `${t("Status:")} ${formData.status}`} {locked && t(" • Read-only")}
             </p>
           </div>
           <button
             onClick={handleClose}
             className="text-xs text-slate-200 hover:text-white bg-slate-800 hover:bg-slate-700 px-3 py-2 rounded-lg transition-colors"
           >
-            Save &amp; Close
+            {t("Save & Close")}
           </button>
         </div>
       </div>
@@ -336,9 +338,9 @@ export default function GuidedReviewForm({
         <div className="flex items-center justify-between text-xs font-medium text-slate-500 mb-1.5">
           <span className="inline-flex items-center gap-1.5">
             <ClipboardCheck className="w-3.5 h-3.5 text-indigo-500" />
-            {currentSection || "About you"}
+            {currentSection || t("About you")}
           </span>
-          <span>{stepIndex + 1} of {totalSteps}</span>
+          <span>{stepIndex + 1} {t("of")} {totalSteps}</span>
         </div>
         <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
           <div
@@ -352,7 +354,7 @@ export default function GuidedReviewForm({
       <div className="px-6 py-6 max-w-2xl mx-auto">
         {locked && (
           <div className="mb-4 text-sm text-slate-500 bg-slate-50 rounded-xl px-4 py-3">
-            This review was submitted and is read-only. You can view each question but not change the answers.
+            {t("This review was submitted and is read-only. You can view each question but not change the answers.")}
           </div>
         )}
         {submitError && (
@@ -375,13 +377,13 @@ export default function GuidedReviewForm({
             disabled={stepIndex === 0}
             className="inline-flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" /> Back
+            <ChevronLeft className="w-4 h-4" /> {t("Back")}
           </button>
 
           <div className="flex items-center gap-2">
             {justSaved && (
               <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 animate-fade-in">
-                <Check className="w-3.5 h-3.5" strokeWidth={3} /> Saved
+                <Check className="w-3.5 h-3.5" strokeWidth={3} /> {t("Saved")}
               </span>
             )}
             {isLast ? (
@@ -391,7 +393,7 @@ export default function GuidedReviewForm({
                 disabled={saving}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors"
               >
-                <Check className="w-4 h-4" strokeWidth={3} /> {saving ? "Saving..." : isLeaderView || isAdmin ? "Finish" : "Submit to Leader"}
+                <Check className="w-4 h-4" strokeWidth={3} /> {saving ? t("Saving...") : isLeaderView || isAdmin ? t("Finish") : t("Submit to Leader")}
               </button>
             ) : (
               <button
@@ -399,7 +401,7 @@ export default function GuidedReviewForm({
                 onClick={handleNext}
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-500 transition-colors"
               >
-                Next <ChevronRight className="w-4 h-4" />
+                {t("Next")} <ChevronRight className="w-4 h-4" />
               </button>
             )}
           </div>
@@ -415,10 +417,10 @@ export default function GuidedReviewForm({
                 disabled={saving}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-600 border border-slate-200 hover:bg-slate-50 px-3 py-2 rounded-lg transition-colors"
               >
-                <Save className="w-3.5 h-3.5" /> Save Draft
+                <Save className="w-3.5 h-3.5" /> {t("Save Draft")}
               </button>
             )}
-            <span className="text-xs text-slate-400">Your answers are saved as you move between questions.</span>
+            <span className="text-xs text-slate-400">{t("Your answers are saved as you move between questions.")}</span>
           </div>
           {onSwitchStandard && canEdit && (
             <button
@@ -426,7 +428,7 @@ export default function GuidedReviewForm({
               onClick={() => { autosave(); onSwitchStandard(); }}
               className="text-xs font-semibold text-indigo-600 hover:text-indigo-800"
             >
-              Switch to full form
+              {t("Switch to full form")}
             </button>
           )}
         </div>

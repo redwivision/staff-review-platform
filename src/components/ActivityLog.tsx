@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { ActivityLog, UserProfile } from "../types";
 import { Clock, Search, Filter, FileText, CheckCircle2, User, RefreshCw, Trash2, Calendar } from "lucide-react";
+import { useLanguage } from "../i18n";
 
 interface ActivityLogProps {
   logs: ActivityLog[];
@@ -10,6 +11,7 @@ interface ActivityLogProps {
 }
 
 export default function ActivityLogList({ logs, staffProfiles, isLeader, onClearLogs }: ActivityLogProps) {
+  const { t } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
@@ -95,24 +97,24 @@ export default function ActivityLogList({ logs, staffProfiles, isLeader, onClear
         <div>
           <h3 className="text-lg font-sans font-bold text-slate-900 flex items-center gap-2">
             <Clock className="w-5 h-5 text-indigo-600" />
-            Evaluation Activity Log
+            {t("Evaluation Activity Log")}
           </h3>
           <p className="text-xs text-slate-500 mt-1">
-            Real-time history of development review updates and leader summary modifications.
+            {t("Real-time history of development review updates and leader summary modifications.")}
           </p>
         </div>
         
         {isLeader && onClearLogs && logs.length > 0 && (
           <button
             onClick={() => {
-              if (window.confirm("Are you sure you want to clear the activity logs?")) {
+              if (window.confirm(t("Are you sure you want to clear the activity logs?"))) {
                 onClearLogs();
               }
             }}
             className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 font-semibold rounded-lg text-xs transition-colors flex items-center gap-1 border border-rose-100"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            Clear Log History
+            {t("Clear Log History")}
           </button>
         )}
       </div>
@@ -123,7 +125,7 @@ export default function ActivityLogList({ logs, staffProfiles, isLeader, onClear
           <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
-            placeholder="Search by staff, editor, or action..."
+            placeholder={t("Search by staff, editor, or action...")}
             value={searchTerm}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-xs focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 bg-slate-50/50"
@@ -137,7 +139,7 @@ export default function ActivityLogList({ logs, staffProfiles, isLeader, onClear
             onChange={(e) => handleStaffChange(e.target.value)}
             className="w-full p-2 border border-slate-200 rounded-xl text-xs bg-slate-50/50"
           >
-            <option value="all">All Staff Members</option>
+            <option value="all">{t("All Staff Members")}</option>
             {staffProfiles.map(staff => (
               <option key={staff.uid} value={staff.uid}>{staff.name}</option>
             ))}
@@ -150,9 +152,9 @@ export default function ActivityLogList({ logs, staffProfiles, isLeader, onClear
             onChange={(e) => handleTypeChange(e.target.value)}
             className="w-full p-2 border border-slate-200 rounded-xl text-xs bg-slate-50/50"
           >
-            <option value="all">All Document Types</option>
-            <option value="review">Reviews Only</option>
-            <option value="summary">Summaries Only</option>
+            <option value="all">{t("All Document Types")}</option>
+            <option value="review">{t("Reviews Only")}</option>
+            <option value="summary">{t("Summaries Only")}</option>
           </select>
         </div>
       </div>
@@ -161,8 +163,8 @@ export default function ActivityLogList({ logs, staffProfiles, isLeader, onClear
       {filteredLogs.length === 0 ? (
         <div className="text-center py-10 border border-dashed border-slate-200 rounded-xl bg-slate-50/30">
           <Clock className="w-8 h-8 text-slate-300 mx-auto mb-2 stroke-[1.5]" />
-          <p className="text-slate-400 text-xs font-semibold">No evaluation activities logged yet.</p>
-          <p className="text-[10px] text-slate-400 mt-0.5">Edits and submissions will appear here in real time.</p>
+          <p className="text-slate-400 text-xs font-semibold">{t("No evaluation activities logged yet.")}</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">{t("Edits and submissions will appear here in real time.")}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -184,7 +186,7 @@ export default function ActivityLogList({ logs, staffProfiles, isLeader, onClear
                         </span>
                         <span className="text-[10px] text-slate-400">•</span>
                         <span className="text-[10px] font-bold uppercase tracking-wider bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded border border-slate-200">
-                          {log.quarter} Quarter ({log.year})
+                          {t(`${log.quarter} Quarter (${log.year})`)}
                         </span>
                         <span className="text-[10px] text-slate-400">•</span>
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border ${
@@ -192,7 +194,7 @@ export default function ActivityLogList({ logs, staffProfiles, isLeader, onClear
                             ? "bg-slate-50 text-slate-700 border-slate-200" 
                             : "bg-indigo-50 text-indigo-700 border-indigo-100"
                         }`}>
-                          {log.activityType === "review" ? "Development Review" : "Summary Evaluation"}
+                          {log.activityType === "review" ? t("Development Review") : t("Summary Evaluation")}
                         </span>
                       </div>
                       <p className="text-slate-600 text-xs font-medium">
@@ -200,7 +202,7 @@ export default function ActivityLogList({ logs, staffProfiles, isLeader, onClear
                       </p>
                       <div className="flex items-center gap-1 text-[11px] text-slate-400">
                         <User className="w-3 h-3 text-slate-300" />
-                        <span>By {log.editedBy}</span>
+                        <span>{t("By")} {log.editedBy}</span>
                       </div>
                     </div>
                   </div>
@@ -220,9 +222,9 @@ export default function ActivityLogList({ logs, staffProfiles, isLeader, onClear
           {totalLogPages > 1 && (
             <div className="flex items-center justify-between pt-2 text-xs font-medium text-slate-500">
               <span>
-                Showing <strong>{Math.min(totalLogs, (logPage - 1) * logsPerPage + 1)}</strong> to{" "}
-                <strong>{Math.min(totalLogs, logPage * logsPerPage)}</strong> of{" "}
-                <strong>{totalLogs}</strong> activities
+                {t("Showing")} <strong>{Math.min(totalLogs, (logPage - 1) * logsPerPage + 1)}</strong> {t("to")}{" "}
+                <strong>{Math.min(totalLogs, logPage * logsPerPage)}</strong> {t("of")}{" "}
+                <strong>{totalLogs}</strong> {t("activities")}
               </span>
               <div className="flex items-center gap-1">
                 <button
@@ -235,7 +237,7 @@ export default function ActivityLogList({ logs, staffProfiles, isLeader, onClear
                       : "bg-white border-slate-200 hover:bg-slate-50 text-slate-700"
                   }`}
                 >
-                  Prev
+                  {t("Prev")}
                 </button>
                 <span className="px-2 font-bold text-slate-700">
                   {logPage} / {totalLogPages}
@@ -250,7 +252,7 @@ export default function ActivityLogList({ logs, staffProfiles, isLeader, onClear
                       : "bg-white border-slate-200 hover:bg-slate-50 text-slate-700"
                   }`}
                 >
-                  Next
+                  {t("Next")}
                 </button>
               </div>
             </div>

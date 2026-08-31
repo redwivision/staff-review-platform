@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { CoachingRequest, UserProfile } from "../types";
 import { Users, UserPlus, Trash2, CheckCircle2, XCircle, AlertCircle, Info, ChevronRight, HelpCircle } from "lucide-react";
+import { useLanguage } from "../i18n";
 
 interface CoachingNominationsProps {
   currentUser: UserProfile;
@@ -17,6 +18,7 @@ export default function CoachingNominations({
   onAddRequest,
   onDeleteRequest
 }: CoachingNominationsProps) {
+  const { t } = useLanguage();
   const [newCoachName, setNewCoachName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -41,17 +43,17 @@ export default function CoachingNominations({
     if (!trimmedName) return;
 
     if (trimmedName.toLowerCase() === currentUser.name.toLowerCase()) {
-      setError("Validation Error: You cannot nominate yourself as your own coach.");
+      setError(t("Validation Error: You cannot nominate yourself as your own coach."));
       return;
     }
 
     if (myRequests.some(r => r.coachName.toLowerCase() === trimmedName.toLowerCase())) {
-      setError("Validation Error: You have already nominated this coach.");
+      setError(t("Validation Error: You have already nominated this coach."));
       return;
     }
 
     if (myRequests.length >= 1) {
-      setError("Validation Error: You can only nominate exactly 1 coach or TL.");
+      setError(t("Validation Error: You can only nominate exactly 1 coach or TL."));
       return;
     }
 
@@ -61,7 +63,7 @@ export default function CoachingNominations({
       setNewCoachName("");
       setShowSuggestions(false);
     } catch (err: any) {
-      setError(err.message || "Failed to submit coaching nomination.");
+      setError(err.message || t("Failed to submit coaching nomination."));
     } finally {
       setLoading(false);
     }
@@ -74,10 +76,10 @@ export default function CoachingNominations({
           <Users className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
           <div>
             <h3 className="font-sans font-extrabold text-slate-900 dark:text-slate-100 text-base">
-              My Coaching Nomination
+              {t("My Coaching Nomination")}
             </h3>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Choose exactly 1 coach or TL to guide you. Admin will verify and notify them to accept or decline.
+              {t("Choose exactly 1 coach or TL to guide you. Admin will verify and notify them to accept or decline.")}
             </p>
           </div>
         </div>
@@ -86,7 +88,7 @@ export default function CoachingNominations({
             ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900"
             : "bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-100 dark:border-amber-900"
         }`}>
-          {myRequests.length} of 1 Chosen {myRequests.length === 0 && "• 1 Required"}
+          {myRequests.length}{t(" of 1 Chosen ")}{myRequests.length === 0 && t("• 1 Required")}
         </span>
       </div>
 
@@ -101,7 +103,7 @@ export default function CoachingNominations({
       {myRequests.length < 1 && (
         <form onSubmit={handleSubmit} className="space-y-2 relative">
           <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 font-mono uppercase">
-            Nominate your Coach or TL
+            {t("Nominate your Coach or TL")}
           </label>
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -113,7 +115,7 @@ export default function CoachingNominations({
                   setShowSuggestions(true);
                 }}
                 onFocus={() => setShowSuggestions(true)}
-                placeholder="Enter coach's full name..."
+                placeholder={t("Enter coach's full name...")}
                 className="w-full text-sm rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800"
                 disabled={loading}
               />
@@ -141,11 +143,11 @@ export default function CoachingNominations({
               className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0 flex items-center gap-1.5 shadow"
             >
               <UserPlus className="w-4 h-4" />
-              Nominate
+              {t("Nominate")}
             </button>
           </div>
           <p className="text-[10px] text-slate-400 font-mono leading-tight">
-            💡 You can type any name, but matching a registered user's full name enables instant interactive alerts for them.
+            {t("💡 You can type any name, but matching a registered user's full name enables instant interactive alerts for them.")}
           </p>
         </form>
       )}
@@ -154,7 +156,7 @@ export default function CoachingNominations({
       {myRequests.length === 0 ? (
         <div className="text-center p-8 bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
           <Users className="w-8 h-8 text-slate-300 dark:text-slate-700 mx-auto mb-2" />
-          <p className="text-xs text-slate-500 dark:text-slate-400">No coach nominated yet. Please nominate exactly 1 coach or TL to guide your evaluation process.</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{t("No coach nominated yet. Please nominate exactly 1 coach or TL to guide your evaluation process.")}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -173,12 +175,12 @@ export default function CoachingNominations({
                 {(!isApproved || isCoachDeclined) && (
                   <button
                     onClick={() => {
-                      if (confirm(`Are you sure you want to withdraw your nomination for ${req.coachName}?`)) {
+                      if (confirm(t("Are you sure you want to withdraw your nomination for ") + req.coachName + "?")) {
                         onDeleteRequest(req.id);
                       }
                     }}
                     className="absolute top-3.5 right-3.5 p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-white dark:hover:bg-slate-900 transition-colors"
-                    title="Withdraw Nomination"
+                    title={t("Withdraw Nomination")}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -189,25 +191,25 @@ export default function CoachingNominations({
                     {req.coachName}
                   </h4>
                   <p className="text-[10px] font-mono text-slate-400 mt-0.5">
-                    Updated {new Date(req.updatedAt).toLocaleDateString()}
+                    {t("Updated ") + new Date(req.updatedAt).toLocaleDateString()}
                   </p>
                 </div>
 
                 <div className="space-y-2 border-t border-slate-150 dark:border-slate-800/80 pt-2.5">
                   {/* Step 1: Admin Approval */}
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-500 font-medium">1. Admin Verification:</span>
+                    <span className="text-slate-500 font-medium">{t("1. Admin Verification:")}</span>
                     {isApproved ? (
                       <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> Verified
+                        <CheckCircle2 className="w-3.5 h-3.5" /> {t("Verified")}
                       </span>
                     ) : isRejected ? (
                       <span className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                        <XCircle className="w-3.5 h-3.5" /> Rejected
+                        <XCircle className="w-3.5 h-3.5" /> {t("Rejected")}
                       </span>
                     ) : (
                       <span className="font-bold text-amber-600 dark:text-amber-400 flex items-center gap-1 animate-pulse">
-                        <AlertCircle className="w-3.5 h-3.5" /> Pending
+                        <AlertCircle className="w-3.5 h-3.5" /> {t("Pending")}
                       </span>
                     )}
                   </div>
@@ -215,18 +217,18 @@ export default function CoachingNominations({
                   {/* Step 2: Nominee Acceptance (only shown if admin approved) */}
                   {isApproved && (
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500 font-medium">2. Coach Acceptance:</span>
+                      <span className="text-slate-500 font-medium">{t("2. Coach Acceptance:")}</span>
                       {isAccepted ? (
                         <span className="font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                          <CheckCircle2 className="w-3.5 h-3.5" /> Active Coach
+                          <CheckCircle2 className="w-3.5 h-3.5" /> {t("Active Coach")}
                         </span>
                       ) : isCoachDeclined ? (
                         <span className="font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                          <XCircle className="w-3.5 h-3.5" /> Declined
+                          <XCircle className="w-3.5 h-3.5" /> {t("Declined")}
                         </span>
                       ) : (
                         <span className="font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                          <Info className="w-3.5 h-3.5 animate-pulse" /> Awaiting Response
+                          <Info className="w-3.5 h-3.5 animate-pulse" /> {t("Awaiting Response")}
                         </span>
                       )}
                     </div>
@@ -235,13 +237,13 @@ export default function CoachingNominations({
                   {/* Rejection / Decline Note */}
                   {isRejected && req.adminNotes && (
                     <p className="text-[11px] text-rose-600 dark:text-rose-400 italic bg-rose-50/50 dark:bg-rose-950/20 p-2 rounded-lg border border-rose-100/30">
-                      Reason: {req.adminNotes}
+                      {t("Reason: ") + req.adminNotes}
                     </p>
                   )}
 
                   {isCoachDeclined && req.coachRejectReason && (
                     <p className="text-[11px] text-rose-600 dark:text-rose-400 italic bg-rose-50/50 dark:bg-rose-950/20 p-2 rounded-lg border border-rose-100/30">
-                      Declined Reason: {req.coachRejectReason}
+                      {t("Declined Reason: ") + req.coachRejectReason}
                     </p>
                   )}
                 </div>

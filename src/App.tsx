@@ -2414,10 +2414,7 @@ export default function App() {
                 referrerPolicy="no-referrer"
               />
             </div>
-            <h1 className="text-2xl font-sans font-extrabold tracking-tight text-slate-900">
-              Asseso
-            </h1>
-            <p className="text-sm text-slate-500 font-medium">
+            <p className="text-xl font-sans font-extrabold tracking-tight text-slate-900">
               {t("Africa Region Staff Development Portal")}
             </p>
           </div>
@@ -2634,21 +2631,15 @@ export default function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center overflow-hidden border border-slate-800">
+              <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center overflow-hidden border border-slate-800 shadow-sm">
                 <img
                   src="/asseso_logo.jpg"
-                  alt="Asseso Logo"
+                  alt="Asseso"
                   className="w-full h-full object-cover"
                   referrerPolicy="no-referrer"
                 />
               </div>
-              <div>
-                <h1 className="text-sm font-bold tracking-tight flex items-center gap-1.5">
-                  Asseso
-                  <span className="text-[9px] uppercase tracking-wider bg-indigo-900/60 text-indigo-200 px-1.5 py-0.5 rounded font-mono font-medium">{t("Development")}</span>
-                </h1>
-                <p className="text-[10px] text-slate-400 font-mono">{t("Africa Region National Ministries")}</p>
-              </div>
+              <p className="text-[11px] text-slate-400 font-mono">{t("Africa Region National Ministries")}</p>
             </div>
 
             <div className="flex items-center gap-5">
@@ -4942,7 +4933,7 @@ export default function App() {
                           setShowModalSuggestions(true);
                         }}
                         onFocus={() => setShowModalSuggestions(true)}
-                        placeholder="Type or select a coach's name..."
+                        placeholder={t("Type or select a coach's name...")}
                         className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-850 bg-slate-50 dark:bg-slate-950 px-3 py-2.5"
                         disabled={coachingRequests.filter(req => req.memberId === user.uid).length >= 1}
                       />
@@ -5087,7 +5078,7 @@ export default function App() {
                     }
                   }}
                   className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 cursor-pointer"
-                  title="Export Evaluation Report as PDF"
+                  title={t("Export Evaluation Report as PDF")}
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Export PDF</span>
@@ -5388,7 +5379,7 @@ export default function App() {
                 </label>
                 <textarea
                   className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg px-3 py-2.5 text-xs text-slate-800 dark:text-slate-250 h-32 focus:ring-1 focus:ring-rose-500 focus:border-rose-500 outline-none"
-                  placeholder="Specify exactly what needs to be updated or corrected (e.g., 'Please elaborate on the development goals in the weaknesses section' or 'Ensure the strengths align with the CMO outcomes...')"
+                  placeholder={t("Specify exactly what needs to be updated or corrected (e.g., 'Please elaborate on the development goals in the weaknesses section' or 'Ensure the strengths align with the CMO outcomes...')")}
                   value={declineReasonText}
                   onChange={(e) => setDeclineReasonText(e.target.value)}
                 />
@@ -5446,7 +5437,7 @@ export default function App() {
                 </label>
                 <textarea
                   className="w-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-950 rounded-lg px-3 py-2.5 text-xs text-slate-800 dark:text-slate-250 h-32 focus:ring-1 focus:ring-rose-500 focus:border-rose-500 outline-none"
-                  placeholder="Specify a shared reason for the bulk decline (e.g., 'Please ensure quarterly SMART goals are defined' or 'We need to update evaluation targets...')"
+                  placeholder={t("Specify a shared reason for the bulk decline (e.g., 'Please ensure quarterly SMART goals are defined' or 'We need to update evaluation targets...')")}
                   value={bulkDeclineReason}
                   onChange={(e) => setBulkDeclineReason(e.target.value)}
                 />

@@ -326,10 +326,10 @@ export default function GuidedSummaryForm({
   const renderStep = () => {
     const step = current;
     // HEADER
-    if (step.id === "header0") return <BigText value={formData.staffName} onChange={(v) => updateHeader("staffName", v)} placeholder="Full name" />;
-    if (step.id === "header1") return <BigText value={formData.teamLeaderName} onChange={(v) => updateHeader("teamLeaderName", v)} placeholder="Team leader's name" />;
-    if (step.id === "header2") return <BigText value={formData.position} onChange={(v) => updateHeader("position", v)} placeholder="e.g. Ministry Coordinator" />;
-    if (step.id === "header3") return <BigText value={formData.dateJoinedStaff} onChange={(v) => updateHeader("dateJoinedStaff", v)} placeholder="e.g. September 2018" />;
+    if (step.id === "header0") return <BigText value={formData.staffName} onChange={(v) => updateHeader("staffName", v)} placeholder={t("Full name")} />;
+    if (step.id === "header1") return <BigText value={formData.teamLeaderName} onChange={(v) => updateHeader("teamLeaderName", v)} placeholder={t("Team leader's name")} />;
+    if (step.id === "header2") return <BigText value={formData.position} onChange={(v) => updateHeader("position", v)} placeholder={t("e.g. Ministry Coordinator")} />;
+    if (step.id === "header3") return <BigText value={formData.dateJoinedStaff} onChange={(v) => updateHeader("dateJoinedStaff", v)} placeholder={t("e.g. September 2018")} />;
     if (step.id === "header4") return <BigText value={formData.presentPositionSince} onChange={(v) => updateHeader("presentPositionSince", v)} placeholder="e.g. January 2023" />;
 
     // PDP

@@ -831,4 +831,10 @@ export const amharicDictionary: Record<string, string> = {
   "🎓 1-Page Consolidated Review Center": "🎓 1-ገጽ የተጠቃለለ የግምገማ ማዕከል",
   "🎓 Coaches' Feedback": "🎓 የአሰልጣኞች አስተያየት",
   "📋 Evaluation Form": "📋 የግምገማ ቅጽ",
+  "Type or select a coach's name...": "የአሰልጣኝ ስም ይተይቡ ወይም ይምረጡ...",
+  "Export Evaluation Report as PDF": "የግምገማ ሪፖርቱን እንደ PDF አስተላልፍ",
+  "Specify exactly what needs to be updated or corrected (e.g., 'Please elaborate on the development goals in the weaknesses section' or 'Ensure the strengths align with the CMO outcomes...')": "ማሻሻል ወይም ማረም የሚያስፈልገውን በትክክል ይግለጹ (ለምሳሌ፡ 'በድክመቶቹ ክፍል የልማት ግቦቹን ያብራሩ' ወይም 'ጥንካሬዎቹ ከሲኤምኦ ውጤቶች ጋር እንዲጣጣሙ ያድርጉ...')",
+  "Specify a shared reason for the bulk decline (e.g., 'Please ensure quarterly SMART goals are defined' or 'We need to update evaluation targets...')": "ለቡድን መቃወም የጋራ ምክንያት ይግለጹ (ለምሳሌ፡ 'እባክዎ የሩብ ዓመት SMART ግቦች መገለጻቸውን ያረጋግጡ' ወይም 'የግምገማ ዒላማዎችን ማዘመን ያስፈልገናል...')",
+  "Team leader's name": "የቡድን መሪ ስም",
+  "e.g. Ministry Coordinator": "ለምሳሌ፡ የአገልግሎት አስተባባሪ",
 };

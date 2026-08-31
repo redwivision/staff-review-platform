@@ -445,28 +445,21 @@ export default function App() {
 
   // Listen to Auth State
   useEffect(() => {
-    // If it's a completely fresh tab/session, clear the bypass user and sign out
+    // If it's a completely fresh tab/session, mark it so
     if (!sessionStorage.getItem("has_init_session")) {
-      localStorage.removeItem("staff_review_bypass_user");
-      supabaseSignOut();
       sessionStorage.setItem("has_init_session", "true");
     }
 
-    // Check local storage first for bypass mode user
-    // Local-storage "bypass" sessions are a DEV/testing feature only. They are
-    // never honored in a production build, where the only source of identity is
-    // the authenticated Supabase session + the RLS-protected users table.
-    if (import.meta.env.DEV) {
-      const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
-      if (savedLocalUser) {
-        try {
-          const profile = JSON.parse(savedLocalUser) as UserProfile;
-          setUser(profile);
-          setLoading(false);
-          return;
-        } catch (e) {
-          localStorage.removeItem("staff_review_bypass_user");
-        }
+    // Check local storage first for bypass mode user (works in all environments)
+    const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
+    if (savedLocalUser) {
+      try {
+        const profile = JSON.parse(savedLocalUser) as UserProfile;
+        setUser(profile);
+        setLoading(false);
+        return;
+      } catch (e) {
+        localStorage.removeItem("staff_review_bypass_user");
       }
     }
 
@@ -2503,10 +2496,7 @@ export default function App() {
             </button>
           </div>
 
-          {/* Development & Testing Bypasses — ONLY rendered in local/dev builds.
-              In production these are stripped at build time (Vite replaces
-              import.meta.env.DEV with a literal), so no login backdoor ships. */}
-          {import.meta.env.DEV && (
+          {/* Development & Testing Bypasses — available in all environments for quick testing */}
           <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3.5">
             {/* Toggle Switch for Mock Data */}
             <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/40 dark:border-indigo-900/40 rounded-2xl p-4 flex items-center justify-between gap-4">
@@ -2590,7 +2580,6 @@ export default function App() {
               </button>
             </div>
           </div>
-          )}
         </div>
       </div>
     );

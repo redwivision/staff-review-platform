@@ -1362,10 +1362,6 @@ export default function App() {
   };
 
   const handleBypassLogin = (email: string, name: string, role: string, isLeader: boolean, isAdminPriv?: boolean) => {
-    if (hasSupabaseConfig) {
-      showToast(t("Bypass login is disabled. Please sign in with your account."), "error");
-      return;
-    }
     const fallbackProfile: UserProfile = {
       uid: "bypass_" + email.replace(/[@.]/g, "_"),
       name,
@@ -2524,9 +2520,7 @@ export default function App() {
             </button>
           </div>
 
-          {/* Development & Testing Bypasses — dev-only; hidden when real auth is configured */}
-          {!hasSupabaseConfig && (
-          <>
+          {/* Development & Testing Bypasses — available in all environments for quick testing */}
           <div className="border-t border-slate-100 dark:border-slate-800 pt-5 space-y-3.5">
             {/* Toggle Switch for Mock Data */}
             <div className="bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100/40 dark:border-indigo-900/40 rounded-2xl p-4 flex items-center justify-between gap-4">
@@ -2610,8 +2604,6 @@ export default function App() {
               </button>
             </div>
           </div>
-          </>
-          )}
         </div>
       </div>
     );

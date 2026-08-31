@@ -13,6 +13,7 @@ interface SummaryFormEditorProps {
   isOwner?: boolean;
   isCoachOrAdmin?: boolean;
   isAdmin?: boolean;
+  hasVerifiedCoach?: boolean;
 }
 
 export default function SummaryFormEditor({
@@ -23,7 +24,8 @@ export default function SummaryFormEditor({
   staffName,
   isOwner = false,
   isCoachOrAdmin = false,
-  isAdmin = false
+  isAdmin = false,
+  hasVerifiedCoach = true
 }: SummaryFormEditorProps) {
   const [formData, setFormData] = useState<QuarterlySummary>({ ...summary });
   const [activeTab, setActiveTab] = useState<"header" | "pdp" | "cmo" | "kda" | "evaluation" | "comments">("header");
@@ -235,6 +237,10 @@ export default function SummaryFormEditor({
               <button
                 id="submit-summary-to-coach-btn"
                 onClick={async () => {
+                  if (!hasVerifiedCoach) {
+                    alert("You don't have a confirmed coach yet. You can keep filling and saving your form — just submit it to your coach once they've accepted your coaching request.");
+                    return;
+                  }
                   if (!formData.presentPositionSince || !formData.teamLeaderName) {
                     alert("Please fill out the Team Leader Name and In Present Position Since fields in Section 1 (General Information) before submitting.");
                     return;

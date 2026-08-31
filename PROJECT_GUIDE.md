@@ -359,6 +359,14 @@ the whole product does.
 - The **coach** fills the TL Evaluation section.
 - Has a status that moves through a workflow: `Draft → Submitted → CoachSubmitted → Declined`.
 
+**Important:** the staff member does **not** have to wait for their coach to be confirmed
+before they start their Quarterly Summary. As long as a quarter is *unlocked* (by the
+admin), they can open the form, fill it in, and **save as a draft** at any time. The only
+step that requires a confirmed coach (admin-approved **and** coach-accepted) is the final
+**"Submit to Coach"** button — until then they can keep drafting and saving freely. In the
+code this is the `myHasVerifiedCoach` flag in `App.tsx`, passed into `SummaryFormEditor.tsx`
+as `hasVerifiedCoach`.
+
 The word **"status"** here is powerful — it's a **state machine**: the form can only be
 in certain states, and only certain transitions are allowed. This is a real software
 engineering concept you'll use again and again.
@@ -405,7 +413,7 @@ There are three levels of "who can do what":
 
 | Role | In the app |
 |------|-----------|
-| **Staff Member** | Fill their own reviews; submit to their coach |
+| **Staff Member** | Fill their own reviews and Quarterly Summaries; submit the summary to their coach once one is confirmed |
 | **Coach / Team Leader** | Evaluate the staff they coach |
 | **Admin** | See everything, manage users, export PDFs, decline evaluations |
 

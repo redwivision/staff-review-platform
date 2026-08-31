@@ -368,6 +368,16 @@ export default function App() {
 
   const hasPendingInvitation = pendingInvitations.length > 0;
 
+  // Nominations created by the current user + whether they have a verified coach
+  // (admin-approved AND the coach accepted). Given the member a verified coach is
+  // required only for the final "Submit to Coach" step, not for filling/saving.
+  const memberNominations = user
+    ? coachingRequests.filter(req => req.memberId === user.uid)
+    : [];
+  const myHasVerifiedCoach = memberNominations.some(
+    r => r.status === "approved" && r.acceptedByCoach === "accepted"
+  );
+
   const isLeaderOrCoach = user
     ? (user.isLeader || myActiveCoachedUids.length > 0 || hasPendingInvitation || isAdmin)
     : false;
@@ -379,12 +389,11 @@ export default function App() {
   const myNextStep = (() => {
     if (!user) return null;
     const quarters: ("1st" | "2nd" | "3rd")[] = ["1st", "2nd", "3rd"];
-    const memberNominations = coachingRequests.filter(req => req.memberId === user.uid);
 
     // MY REVIEWS — staff member's quarterly self-review journey
     if (currentTab === "my-reviews") {
       // A coach only counts as "set" once they're verified: admin-approved AND they accepted.
-      const hasVerifiedCoach = memberNominations.some(r => r.status === "approved" && r.acceptedByCoach === "accepted");
+      const hasVerifiedCoach = myHasVerifiedCoach;
 
       // Step for the quarterly form (only when that quarter is unlocked)
       const draftOrDeclined = mySummaries.find(s =>
@@ -398,23 +407,31 @@ export default function App() {
         return { type: "wait" as const, quarter: null, label: "Great job — it's with your coach", description: "Your quarterly form is submitted to your coach. They'll add their evaluation and send it to Admin.", btn: "View Coach" };
       }
 
-      // Form is ready AND the coach is verified → move to Step 2.
-      if ((draftOrDeclined || unlockedQ) && hasVerifiedCoach) {
-        if (draftOrDeclined) {
-          return { type: "fill-summary" as const, quarter: draftOrDeclined.quarter, label: "Step 2 · Continue your quarterly form", description: `Finish the ${QUARTER_INFO[draftOrDeclined.quarter].name} Quarterly Summary, then press "Submit to Coach".`, btn: "Continue Form" };
-        }
-        return { type: "fill-summary" as const, quarter: unlockedQ, label: "Step 2 · Start your quarterly form", description: `Open the ${QUARTER_INFO[unlockedQ].name} Quarterly Summary, fill it in, then press "Submit to Coach".`, btn: "Start Form" };
+      // As long as a quarter is unlocked, the form is always open to fill &
+      // save whenever you like — you do NOT need to wait for your coach. You
+      // only submit once your coach is confirmed.
+      if (draftOrDeclined || unlockedQ) {
+        const quarter = draftOrDeclined ? draftOrDeclined.quarter : (unlockedQ as "1st" | "2nd" | "3rd");
+        const coachHint = hasVerifiedCoach
+          ? "Fill it in, then press \"Submit to Coach\"."
+          : "Fill it in and save now — you'll submit to your coach once they're confirmed.";
+        return {
+          type: "fill-summary" as const,
+          quarter,
+          label: draftOrDeclined ? "Continue your quarterly form" : "Start your quarterly form",
+          description: `Open the ${QUARTER_INFO[quarter].name} Quarterly Summary. ${coachHint}`,
+          btn: draftOrDeclined ? "Continue Form" : "Start Form"
+        };
       }
 
-      // Otherwise surface the coach step — never show a "locked" state, and
-      // never jump to the form until the coach is verified.
+      // No unlocked quarter yet → surface the coach step so it's clear what's next.
       if (memberNominations.length === 0) {
-        return { type: "nominate" as const, quarter: null, label: "Step 1 · Pick your coach", description: "Choose the Team Leader who will guide your review. Your form will open once your coach is confirmed.", btn: "View Coach" };
+        return { type: "nominate" as const, quarter: null, label: "Pick your coach", description: "Choose the Team Leader who will guide your review. Your quarterly form will open here as soon as it's unlocked.", btn: "View Coach" };
       }
       if (!hasVerifiedCoach) {
-        return { type: "nominate" as const, quarter: null, label: "Waiting for your coach to accept", description: "Admin has your request and your coach needs to accept. You can start your form as soon as they're confirmed.", btn: "View Coach" };
+        return { type: "nominate" as const, quarter: null, label: "Awaiting coach confirmation", description: "Admin has your request and your coach needs to accept. Keep an eye on your form — it's yours whenever it's unlocked.", btn: "View Coach" };
       }
-      return { type: "nominate" as const, quarter: null, label: "Your coach is ready", description: "Your coach is confirmed. Your form will open here once it's ready.", btn: "View Coach" };
+      return { type: "nominate" as const, quarter: null, label: "Your coach is ready", description: "Your coach is confirmed. Your form will open here once it's unlocked for you to fill in.", btn: "View Coach" };
     }
 
     // TEAM REVIEWS — coach/leader evaluates their staff's summaries
@@ -2721,6 +2738,7 @@ export default function App() {
               isOwner={activeSummary.userId === user?.uid}
               isCoachOrAdmin={user ? (isAdmin || myActiveCoachedUids.includes(activeSummary.userId)) : false}
               isAdmin={isAdmin}
+              hasVerifiedCoach={activeSummary.userId === user?.uid ? myHasVerifiedCoach : true}
             />
           </div>
         )}

@@ -19,8 +19,9 @@ Asseso provides a structured framework for staff self-reflection, coach-led eval
 - **Coach Evaluation** — team leaders review and score submitted summaries; evaluations are routed to the admin for approval
 - **Admin Dashboard** — view all evaluations, export individual or bulk PDFs, and manage follow-up tasks
 - **Coaching Requests** — any member can nominate a coach; coaches accept or decline, and become leaders on acceptance
+- **Flexible quarterly form** — fill and save your Quarterly Summary as soon as it's unlocked; you only *submit* it to your coach once they've confirmed the coaching relationship
 - **Role-based access** — roles: Staff, Coach/Leader, and Admin
-- **Bypass / Demo Mode** — full offline functionality with seeded mock data, no backend required
+- **Bypass / Demo Mode** — instant one-click login as any role (Platform Owner, Team Leader, or Member) with optional seeded mock data, so you can test any workflow without setting up accounts. Available in all environments (dev and production).
 
 ---
 
@@ -47,7 +48,10 @@ staff-review-platform/
 │   │   ├── ReviewFormEditor.tsx      # Monthly Development Review form
 │   │   ├── SummaryFormEditor.tsx     # Quarterly Summary form (PDP, CMO, KDA, Evaluation)
 │   │   ├── AdminReports.tsx          # Admin dashboard with controls and PDF export
-│   │   ├── CoachingRequests.tsx      # Coach nomination and approval workflow
+│   │   ├── AdminCoachingPanel.tsx    # Admin coaching oversight & approvals
+│   │   ├── CoachingInvitations.tsx   # Coach accept/decline incoming requests
+│   │   ├── CoachingNominations.tsx   # Staff nominate their coach
+│   │   ├── UserManagement.tsx        # Admin role management
 │   │   └── ...
 │   ├── utils/
 │   │   ├── pdfExport.ts              # PDF generation logic
@@ -99,7 +103,7 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_anon_public_key
 ```
 
-Get these from **Supabase Dashboard → Settings → API**. If the `.env` file is missing, the app runs in Bypass / Demo Mode with seeded mock data in localStorage.
+Get these from **Supabase Dashboard → Settings → API**. If the `.env` file is missing **or** Supabase auth is unavailable, the app still works — use the **Bypass buttons** on the login screen to log in instantly as Platform Owner, Team Leader, or Member (toggle **Mock Data** to seed rich testing data). Note: `.env` files are git-ignored, so for Vercel you set these variables in the dashboard (see [Deployment](#deployment)), never by committing them.
 
 ### Development
 
@@ -122,7 +126,9 @@ npm run preview
 |---|---|
 | **Staff** | Fill and submit own Development Reviews and Quarterly Summaries |
 | **Coach / Leader** | View coached staff, fill evaluation tab, approve summaries |
-| **Admin** | View all evaluations, export PDFs, generate AI reports, manage tasks and user roles |
+| **Admin** | View all evaluations, export PDFs, manage tasks and user roles |
+
+**The quarterly form and your coach:** you don't need to wait for your coach to start working. As soon as a quarter is unlocked, you can open your Quarterly Summary, fill it in, and save it as a draft at any time. The **"Submit to Coach"** step is the only thing that requires a confirmed coach (admin-approved **and** coach-accepted) — until then you can keep drafting and saving freely.
 
 The email `lewikb13@gmail.com` is auto-promoted to Admin on signup. Any member who accepts a coaching invitation is automatically promoted to Coach/Leader. Admins can promote/demote roles from the **Team Members** tab.
 

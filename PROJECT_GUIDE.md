@@ -168,11 +168,6 @@ Almost every web app has three parts. Asseso has all three:
 ┌─────────────────────┐
 │  2. BACKEND         │   Supabase (a "Backend-as-a-Service")
 │   (data + rules)    │   PostgreSQL database + Auth + Row-Level Security
-└──────────┬──────────┘
-           │ (only one job)
-           ▼
-┌─────────────────────┐
-│  3. AI SERVICE      │   Google Gemini — only used for the AI review summary
 └─────────────────────┘
 ```
 
@@ -184,7 +179,8 @@ app easier to understand, test, and change.
 > Express.js server you'll see). Asseso mostly uses **Supabase** as its "backend,"
 > which means the database, login system, and security rules are all provided by a
 > cloud service. That's a very common modern approach — it saves a ton of work. The
-> small Express server exists for exactly one feature (AI synthesis).
+> small Express server just serves the app files for local development (Vercel hosts
+> the live site directly, so the Express server isn't used in production).
 
 ---
 
@@ -204,7 +200,7 @@ A "tech stack" is just the list of technologies a project uses. Here is Asseso's
 | **jsPDF** | Creates PDF files in the browser | The "Export to PDF" button |
 | **Motion** | Animation library | Smooth transitions between screens |
 | **Lucide React** | Icon library | The little icons (User, Save, Heart…) |
-| **Express** | A web server | Only for the AI endpoint |
+| **Express** | A web server | Serves the app locally for development (`npm run dev`) |
 
 ### About TypeScript (this is worth learning well)
 TypeScript = JavaScript + **types**. A type describes the shape of your data. When you
@@ -244,7 +240,7 @@ staff-review-platform/
 │   ├── types.ts         ← the shapes of all data (very important)
 │   ├── utils/           ← helper functions (like PDF export)
 │   └── components/      ← separate, reusable UI pieces
-├── server.ts            ← the tiny Express server (AI feature)
+├── server.ts            ← Express server (local dev file server + Vite middleware)
 ├── index.html           ← the single-page shell
 ├── supabase-schema.sql  ← the database rules (security + tables)
 ├── package.json         ← list of packages + the commands
@@ -625,7 +621,7 @@ staff-review-platform/
 │   ├── components/
 │   │   ├── ReviewFormEditor.tsx   ← Development Review form (4 quadrants)
 │   │   ├── SummaryFormEditor.tsx  ← Quarterly Summary form (6 tabs)
-│   │   ├── AdminReports.tsx       ← admin reports + AI synthesis
+│   │   ├── AdminReports.tsx       ← admin reports
 │   │   ├── AdminCoachingPanel.tsx ← admin coaching oversight
 │   │   ├── ActivityLog.tsx        ← audit trail view
 │   │   ├── CoachingInvitations.tsx← coach accept/reject
@@ -633,7 +629,7 @@ staff-review-platform/
 │   │   └── UserManagement.tsx     ← admin role management
 │   └── utils/
 │       └── pdfExport.ts           ← PDF generation (lazy-loaded)
-├── server.ts                      ← Express server (AI endpoint only)
+├── server.ts                      ← Express dev server (Vite + static file serving)
 ├── index.html                     ← single HTML shell
 ├── supabase-schema.sql            ← database blueprint + security rules
 ├── package.json                   ← dependencies + scripts
@@ -702,7 +698,6 @@ If you get a red error, copy the red message and send it back — we'll fix it.
 |----------|---------|
 | `VITE_SUPABASE_URL` | Supabase project URL (e.g. `https://xxx.supabase.co`) |
 | `VITE_SUPABASE_ANON_KEY` | Supabase public/anon key (starts with `eyJ...`) |
-| `GEMINI_API_KEY` | AI synthesis (server-only) |
 
 `VITE_` variables are visible to the browser. All others are server-side only.
 
@@ -719,7 +714,6 @@ A good engineer is honest about what's not done yet. These are the current gaps:
 - **Single role per user** — no hybrid staff+coach. (Planned: multi-role.)
 - **Hardcoded July–June fiscal quarters.** (Planned: admin-configurable.)
 - **Offline mode** is dev-only, not real offline support.
-- **AI synthesis (Gemini)** — intentionally not worked on here (per the project owner).
 - **PDF** uses a static template (no custom branding/logos).
 - **Web-only** — no native mobile app yet.
 - **Coach matching is manual** (admins approve one by one).

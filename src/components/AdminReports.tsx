@@ -20,9 +20,7 @@ import {
   ThumbsUp,
   FileCheck2,
   X,
-  Sparkles,
   Printer,
-  Loader2,
   HelpCircle
 } from "lucide-react";
 
@@ -56,8 +54,6 @@ export default function AdminReports({
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const [activeReportMember, setActiveReportMember] = useState<{ member: UserProfile, coachSummaries: QuarterlySummary[], baseSummary?: QuarterlySummary } | null>(null);
   const [viewFullSummaryDetails, setViewFullSummaryDetails] = useState<QuarterlySummary | null>(null);
-  const [aiSynthesisMap, setAiSynthesisMap] = useState<Record<string, string>>({});
-  const [aiLoading, setAiLoading] = useState(false);
 
   // Helper: Calculate completion count for a review's section data
   const calculateSectionFilledCount = (section: { strengths: string[]; needsImprovement: string[]; suggestedActionPoints: string[] }) => {
@@ -1063,111 +1059,6 @@ export default function AdminReports({
                 </div>
               </div>
 
-              {/* AI-Synthesized Consensus Review Block (Bottom Section) */}
-              <div className="mt-6 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 bg-gradient-to-tr from-slate-50 via-slate-50 to-indigo-50/20 dark:from-slate-950 dark:via-slate-950 dark:to-indigo-950/20 space-y-4 print:border-slate-300">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:hidden">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-indigo-100 dark:bg-indigo-950 rounded-xl text-indigo-600 dark:text-indigo-400">
-                      <Sparkles className="w-4 h-4 animate-pulse" />
-                    </div>
-                    <div>
-                      <h5 className="font-sans font-black text-xs uppercase text-slate-800 dark:text-slate-200">
-                        ✨ AI-Synthesized Consensus Review
-                      </h5>
-                      <p className="text-[10px] text-slate-500 font-medium">
-                        Synthesize multiple coach inputs with the staff self-review using Gemini AI.
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Generate Button */}
-                  <button
-                    id="btn-trigger-ai-synthesis"
-                    onClick={async () => {
-                      setAiLoading(true);
-                      try {
-                        const res = await fetch("/api/gemini/synthesize", {
-                          method: "POST",
-                          headers: { "Content-Type": "application/json" },
-                          body: JSON.stringify({
-                            staffName: activeReportMember.member.name,
-                            staffRole: activeReportMember.member.role,
-                            quarter: reportQuarter,
-                            year: reportYear,
-                            baseSummary: activeReportMember.baseSummary,
-                            coachEvaluations: activeReportMember.coachSummaries.map(c => ({
-                              coachName: c.coachName,
-                              evaluation: c.evaluation,
-                              status: c.status
-                            }))
-                          })
-                        });
-                        const data = await res.json();
-                        if (data.synthesis) {
-                          setAiSynthesisMap(prev => ({
-                            ...prev,
-                            [`${activeReportMember.member.uid}-${reportQuarter}-${reportYear}`]: data.synthesis
-                          }));
-                        } else if (data.error) {
-                          alert("Error: " + data.error);
-                        }
-                      } catch (err) {
-                        console.error("AI synthesis error:", err);
-                        alert("An error occurred while generating synthesis.");
-                      } finally {
-                        setAiLoading(false);
-                      }
-                    }}
-                    disabled={aiLoading || activeReportMember.coachSummaries.length === 0}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 disabled:bg-slate-200 dark:disabled:bg-slate-800 text-white disabled:text-slate-400 dark:disabled:text-slate-600 rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer shrink-0"
-                  >
-                    {aiLoading ? (
-                      <>
-                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                        <span>Generating Synthesis...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="w-3.5 h-3.5" />
-                        <span>Compile Consensus Synthesis</span>
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                {/* AI Output Result */}
-                {aiLoading ? (
-                  <div className="py-12 bg-slate-100/40 dark:bg-slate-950/40 rounded-xl border border-dashed border-indigo-200/30 flex flex-col items-center justify-center text-center">
-                    <Loader2 className="w-8 h-8 text-indigo-500 animate-spin mb-3" />
-                    <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Synthesizing Development Data</p>
-                    <p className="text-[10px] text-slate-500 mt-1 max-w-xs">
-                      Gemini is compiling self-evaluation drafts, analyzing supervisor comments, and structuring consensus action plans...
-                    </p>
-                  </div>
-                ) : aiSynthesisMap[`${activeReportMember.member.uid}-${reportQuarter}-${reportYear}`] ? (
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-850 rounded-xl p-5 shadow-sm space-y-3 text-slate-700 dark:text-slate-300 print:shadow-none print:border-none print:p-0">
-                    <div className="flex justify-between items-center border-b border-slate-100 dark:border-slate-800 pb-2 mb-2 print:border-slate-300">
-                      <span className="font-mono text-[9px] text-indigo-600 dark:text-indigo-400 uppercase font-bold tracking-wider print:text-slate-800">
-                        ✓ Consensus Evaluation Draft Synthesized Successfully (Gemini AI)
-                      </span>
-                      <span className="text-[9px] text-slate-400 font-mono print:hidden">Model: Gemini 3.5 Flash</span>
-                    </div>
-                    {/* Rendered output */}
-                    <div className="prose prose-sm dark:prose-invert max-w-none text-slate-700 dark:text-slate-300 text-xs leading-relaxed whitespace-pre-line bg-slate-50/50 dark:bg-slate-950/30 rounded-xl p-4 border border-slate-100 dark:border-slate-800 print:bg-white print:p-0 print:border-none">
-                      {aiSynthesisMap[`${activeReportMember.member.uid}-${reportQuarter}-${reportYear}`]}
-                    </div>
-                    <div className="text-[9px] text-slate-400 font-medium italic mt-2 print:text-slate-500">
-                      Note: This synthesis represents an AI-generated aggregation. The Leadership Oversight committee has final approval.
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-5 bg-slate-100/40 dark:bg-slate-950/40 rounded-xl border border-dashed border-slate-200/50 text-center text-slate-400 italic">
-                    {activeReportMember.coachSummaries.length === 0
-                      ? "Awaiting coach evaluations before synthesis can be initiated."
-                      : "No consensus synthesis generated yet. Click the button above to synthesize and draft consensus review outcomes."}
-                  </div>
-                )}
-              </div>
             </div>
 
             <div className="px-6 py-4 bg-slate-50 dark:bg-slate-950 border-t border-slate-150 dark:border-slate-800 flex justify-end gap-2 print:hidden">

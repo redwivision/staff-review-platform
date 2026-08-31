@@ -17,7 +17,7 @@ Asseso provides a structured framework for staff self-reflection, coach-led eval
 - **Quarterly Development Review** — staff self-assess across four areas: Heart, Personal Life, Relational Life, and Ministry Effectiveness
 - **Quarterly Summary Form** — staff compile progress on PDP goals, Critical Mission Objectives, and Key Deliverable Assignments
 - **Coach Evaluation** — team leaders review and score submitted summaries; evaluations are routed to the admin for approval
-- **Admin Dashboard** — view all evaluations, generate AI-synthesized staff reports, export individual or bulk PDFs, and manage follow-up tasks
+- **Admin Dashboard** — view all evaluations, export individual or bulk PDFs, and manage follow-up tasks
 - **Coaching Requests** — any member can nominate a coach; coaches accept or decline, and become leaders on acceptance
 - **Role-based access** — roles: Staff, Coach/Leader, and Admin
 - **Bypass / Demo Mode** — full offline functionality with seeded mock data, no backend required
@@ -31,7 +31,6 @@ Asseso provides a structured framework for staff self-reflection, coach-led eval
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS |
 | Backend / Auth | Supabase (PostgreSQL + Auth) |
 | Database | Supabase PostgreSQL |
-| AI Integration | Google GenAI (Gemini) |
 | PDF Export | jsPDF, html2canvas |
 | Animations | Framer Motion |
 | Testing | Playwright (E2E), K6 (load) |

@@ -69,6 +69,7 @@ export async function supabaseGetUser(uid: string): Promise<UserProfile | null> 
     email: data.email,
     isLeader: data.is_leader,
     isAdmin: data.is_admin,
+    coachUid: data.coach_uid || null,
     createdAt: data.created_at,
   };
 }
@@ -82,6 +83,7 @@ export async function supabaseUpsertUser(profile: UserProfile) {
     email: profile.email,
     is_leader: profile.isLeader,
     is_admin: profile.isAdmin,
+    coach_uid: profile.coachUid ?? null,
     created_at: profile.createdAt,
   });
   if (error) throw error;
@@ -265,6 +267,7 @@ export async function getAllStaff(): Promise<UserProfile[]> {
     email: r.email,
     isLeader: r.is_leader,
     isAdmin: r.is_admin,
+    coachUid: r.coach_uid || null,
     createdAt: r.created_at,
   }));
 }

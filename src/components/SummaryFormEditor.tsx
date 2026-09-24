@@ -689,7 +689,7 @@ export default function SummaryFormEditor({
 
             <div className="space-y-8">
               {(["heart", "personalLife", "relationalLife"] as const).map(category => {
-                const categoryLabel = category === "heart" ? "Walk with God" : category === "personalLife" ? "Personal Life" : "Relational Life";
+                const categoryLabel = category === "heart" ? "Heart" : category === "personalLife" ? "Personal Life" : "Relational Life";
                 const catData = formData.pdp[category];
 
                 return (

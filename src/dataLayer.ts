@@ -107,6 +107,18 @@ export async function dataUpdateUserProfile(uid: string, updates: Partial<{ isLe
   if (error) throw error;
 }
 
+// Assigns (or clears) the coach linked to a staff member. Gate: admins only
+// (the users_admin_update RLS policy is the source of truth).
+export async function dataUpdateAssignedCoach(uid: string, coachUid: string | null) {
+  const { supabase } = await import("./supabase");
+  if (!supabase) return;
+  const { error } = await supabase
+    .from("users")
+    .update({ coach_uid: coachUid })
+    .eq("uid", uid);
+  if (error) throw error;
+}
+
 // Safe self-promotion to leader via DB RPC (enforced server-side).
 export async function dataPromoteSelfToLeaderIfVerified(): Promise<boolean> {
   const { supabasePromoteSelfToLeaderIfVerified } = await import("./supabaseDb");

@@ -336,6 +336,15 @@ export default function App() {
   // this flag only controls which UI to show.
   const isAdmin = user && user.isAdmin === true;
 
+  // Assigned coach for the signed-in user. Resolved from the realtime-updated
+  // staff list so an admin assignment shows up without a reload.
+  const myAssignedCoachUid = user
+    ? (staffProfiles.find(s => s.uid === user.uid)?.coachUid || user.coachUid || null)
+    : null;
+  const myAssignedCoach = myAssignedCoachUid
+    ? staffProfiles.find(s => s.uid === myAssignedCoachUid)
+    : null;
+
   const myActiveCoachedUids = user
     ? coachingRequests
         .filter(req => req.status === "approved" && req.acceptedByCoach === "accepted" && (req.coachUid === user.uid || req.coachName.toLowerCase() === user.name.toLowerCase()))
@@ -2654,6 +2663,9 @@ export default function App() {
                     <span>{t("Team Member")}</span>
                   )}
                   {` • ${user.role}`}
+                  {myAssignedCoach && (
+                    <span className="text-emerald-500 font-semibold">{` • ${t("Coach:")} ${myAssignedCoach.name}`}</span>
+                  )}
                 </span>
               </div>
 

@@ -5,6 +5,7 @@ export interface UserProfile {
   email: string;
   isLeader: boolean;
   isAdmin?: boolean;
+  coachUid?: string | null;
   createdAt: number;
 }
 

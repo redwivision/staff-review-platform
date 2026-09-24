@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getAllStaff } from "../supabaseDb";
-import { dataUpdateUserProfile } from "../dataLayer";
+import { dataUpdateUserProfile, dataUpdateAssignedCoach } from "../dataLayer";
 import { UserProfile } from "../types";
 import { Users, UserX, Shield, ShieldCheck, Mail, Briefcase, RefreshCw, Star } from "lucide-react";
 import { useLanguage } from "../i18n";
@@ -14,6 +14,7 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [updatingCoachId, setUpdatingCoachId] = useState<string | null>(null);
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -176,12 +177,58 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
                 <th className="px-6 py-3.5">{t("Email Address")}</th>
                 <th className="px-6 py-3.5">{t("Assigned Title/Role")}</th>
                 <th className="px-6 py-3.5">{t("Access Level")}</th>
+                <th className="px-6 py-3.5">{t("Assigned Coach")}</th>
                 <th className="px-6 py-3.5 text-right">{t("Actions")}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               {users.map(u => {
-                return (
+const updateAssignedCoach = async (targetUser: UserProfile, coachUid: string | null) => {
+    if (!currentUser.isAdmin) {
+      alert(t("Access Denied: Only administrators can assign coaches."));
+      return;
+    }
+
+    setUpdatingCoachId(targetUser.uid);
+    try {
+      // Local bypass mode keeps everything in localStorage.
+      const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
+      if (savedLocalUser && JSON.parse(savedLocalUser).uid.startsWith("bypass_")) {
+        const localUsersStr = localStorage.getItem("staff_review_bypass_users") || "[]";
+        let localUsers = JSON.parse(localUsersStr) as UserProfile[];
+
+        localUsers = localUsers.map(u => (u.uid === targetUser.uid ? { ...u, coachUid: coachUid } : u));
+        localStorage.setItem("staff_review_bypass_users", JSON.stringify(localUsers));
+
+        const owner = JSON.parse(savedLocalUser) as UserProfile;
+        if (owner.uid === targetUser.uid) {
+          owner.coachUid = coachUid;
+          localStorage.setItem("staff_review_bypass_user", JSON.stringify(owner));
+        }
+
+        setUsers(prev =>
+          prev.map(u => (u.uid === targetUser.uid ? { ...u, coachUid: coachUid } : u))
+        );
+        return;
+      }
+
+      await dataUpdateAssignedCoach(targetUser.uid, coachUid);
+
+      // Update local state
+      setUsers(prev =>
+        prev.map(u => (u.uid === targetUser.uid ? { ...u, coachUid: coachUid } : u))
+      );
+    } catch (err) {
+      console.error("Failed to update assigned coach:", err);
+      alert(t("Error updating assigned coach. The database rejected the change."));
+    } finally {
+      setUpdatingCoachId(null);
+    }
+  };
+
+  const coaches = users.filter(u => u.isLeader);
+
+  return (
                   <tr key={u.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-100 flex items-center gap-2">
                       {u.isAdmin && <Star className="w-4 h-4 text-amber-500 fill-amber-500" />}
@@ -216,6 +263,20 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
                           {t("Team Member")}
                         </span>
                       )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <select
+                        id={`coach-select-${u.uid}`}
+                        value={u.coachUid || ""}
+                        disabled={updatingCoachId === u.uid}
+                        onChange={(e) => updateAssignedCoach(u, e.target.value || null)}
+                        className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg py-1.5 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
+                      >
+                        <option value="">{t("No Coach")}</option>
+                        {coaches.map(c => (
+                          <option key={c.uid} value={c.uid}>{c.name}</option>
+                        ))}
+                      </select>
                     </td>
                     <td className="px-6 py-4 text-right">
                       {u.uid === currentUser.uid ? (

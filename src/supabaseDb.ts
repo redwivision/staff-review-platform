@@ -6,7 +6,6 @@ import type {
   FollowUpTask,
   ReviewRequirementSettings,
   ActivityLog,
-  CoachingRequest,
 } from "./types";
 
 // ─── AUTH ────────────────────────────────────────────────────────────────────
@@ -23,10 +22,11 @@ export async function supabaseSignUp(email: string, password: string, name: stri
     role: role.trim(),
     email: email.trim(),
     // Privilege flags are NOT set from the client. They are granted in the
-    // database (users.is_leader / users.is_admin) by an admin or via the
-    // secure promote_self_to_leader_if_verified() RPC. The client must never
-    // be able to grant itself admin/leader, so a signup always starts as a
-    // plain member regardless of email.
+    // database (users.is_leader / users.is_admin) by an admin, or automatically
+    // by the sync_assigned_coach() trigger when an admin assigns this person as
+    // somebody's coach. The client must never be able to grant itself
+    // admin/leader, so a signup always starts as a plain member regardless of
+    // email.
     isLeader: false,
     isAdmin: false,
     createdAt: Date.now(),
@@ -89,19 +89,9 @@ export async function supabaseUpsertUser(profile: UserProfile) {
   if (error) throw error;
 }
 
-// Safely promote the current authenticated user to leader, but ONLY if they are
-// a verified (approved + accepted) coach for at least one member. Enforcement is
-// done inside a SECURITY DEFINER function on the database, so the client cannot
-// grant itself privileges.
-export async function supabasePromoteSelfToLeaderIfVerified(): Promise<boolean> {
-  if (!supabase) return false;
-  const { error } = await supabase.rpc("promote_self_to_leader_if_verified");
-  if (error) {
-    console.error("promote_self_to_leader_if_verified error:", error);
-    return false;
-  }
-  return true;
-}
+// Leader status is no longer granted by the client. An admin assigns a coach
+// directly in Team Members, and the database's sync_assigned_coach() trigger
+// marks that person a leader, so there is no self-promotion RPC to call.
 
 // ─── HELPER: Supabase → App type mappers ─────────────────────────────────────
 
@@ -172,22 +162,6 @@ function mapFollowUp(row: any): FollowUpTask {
     quarter: row.quarter,
     year: row.year,
     isOverride: row.is_override,
-  };
-}
-
-function mapCoachingRequest(row: any): CoachingRequest {
-  return {
-    id: row.id,
-    memberId: row.member_id,
-    memberName: row.member_name,
-    memberEmail: row.member_email,
-    coachName: row.coach_name,
-    status: row.status,
-    adminNotes: row.admin_notes,
-    acceptedByCoach: row.accepted_by_coach,
-    coachRejectReason: row.coach_reject_reason,
-    coachUid: row.coach_uid,
-    updatedAt: row.updated_at,
   };
 }
 
@@ -310,13 +284,6 @@ export async function getActivityLogs(userId?: string, limit = 100): Promise<Act
   const { data, error } = await query;
   if (error) throw error;
   return (data || []).map(mapActivityLog);
-}
-
-export async function getCoachingRequests(): Promise<CoachingRequest[]> {
-  if (!supabase) throw new Error("Supabase not configured");
-  const { data, error } = await supabase.from("coaching_requests").select("*");
-  if (error) throw error;
-  return (data || []).map(mapCoachingRequest);
 }
 
 export async function getMeetings(): Promise<any[]> {
@@ -466,43 +433,6 @@ export async function deleteActivityLogsByUser(userId: string) {
   if (error) throw error;
 }
 
-export async function saveCoachingRequest(req: CoachingRequest) {
-  if (!supabase) return;
-  const { error } = await supabase.from("coaching_requests").upsert({
-    id: req.id,
-    member_id: req.memberId,
-    member_name: req.memberName,
-    member_email: req.memberEmail,
-    coach_name: req.coachName,
-    status: req.status,
-    admin_notes: req.adminNotes,
-    accepted_by_coach: req.acceptedByCoach,
-    coach_reject_reason: req.coachRejectReason,
-    coach_uid: req.coachUid,
-    updated_at: req.updatedAt,
-  });
-  if (error) throw error;
-}
-
-export async function updateCoachingRequest(id: string, updates: Partial<CoachingRequest>) {
-  if (!supabase) return;
-  const dbUpdates: any = {};
-  if (updates.status !== undefined) dbUpdates.status = updates.status;
-  if (updates.adminNotes !== undefined) dbUpdates.admin_notes = updates.adminNotes;
-  if (updates.acceptedByCoach !== undefined) dbUpdates.accepted_by_coach = updates.acceptedByCoach;
-  if (updates.coachRejectReason !== undefined) dbUpdates.coach_reject_reason = updates.coachRejectReason;
-  if (updates.coachUid !== undefined) dbUpdates.coach_uid = updates.coachUid;
-  dbUpdates.updated_at = Date.now();
-  const { error } = await supabase.from("coaching_requests").update(dbUpdates).eq("id", id);
-  if (error) throw error;
-}
-
-export async function deleteCoachingRequest(id: string) {
-  if (!supabase) return;
-  const { error } = await supabase.from("coaching_requests").delete().eq("id", id);
-  if (error) throw error;
-}
-
 export async function saveMeeting(meeting: any) {
   if (!supabase) return;
   const { error } = await supabase.from("meetings").upsert({
@@ -617,14 +547,6 @@ export function subscribeStaff(callback: (profiles: UserProfile[]) => void): Uns
   return subscribeRealtimeOrPoll<UserProfile[]>({
     table: "users",
     fetchData: getAllStaff,
-    applyData: callback,
-  });
-}
-
-export function subscribeCoachingRequests(callback: (reqs: CoachingRequest[]) => void): Unsubscribe {
-  return subscribeRealtimeOrPoll<CoachingRequest[]>({
-    table: "coaching_requests",
-    fetchData: getCoachingRequests,
     applyData: callback,
   });
 }

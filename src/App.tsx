@@ -11,23 +11,21 @@ import {
   subscribeReviews,
   subscribeSummaries,
   subscribeStaff,
-  subscribeCoachingRequests,
   subscribeActivityLogs,
   subscribeMeetings,
   subscribeFollowUpTasks,
   subscribeRequirementSettings,
   subscribeReviewSchedules,
 } from "./supabaseDb";
-import { UserProfile, DevelopmentReview, QuarterlySummary, FollowUpTask, ReviewRequirementSettings, ActivityLog, CoachingRequest } from "./types";
+import { UserProfile, DevelopmentReview, QuarterlySummary, FollowUpTask, ReviewRequirementSettings, ActivityLog } from "./types";
 import { createNewReview, createNewSummary, getPdfDefaultTasks, calculateReviewProgress } from "./utils";
 import type { PDFExportOptions } from "./utils/pdfExport";
 import { QUARTER_INFO } from "./constants";
 import {
   dataSaveReview, dataGetReviewById, dataSaveSummary, dataGetSummaryById,
-  dataSaveCoachingRequest, dataUpdateCoachingRequest, dataDeleteCoachingRequest,
   dataSaveActivityLog, dataDeleteAllActivityLogs, dataSaveFollowUpTask,
   dataSaveRequirementSettings, dataSaveReviewSchedule, dataSaveMeeting,
-  dataUpdateUserProfile, dataPromoteSelfToLeaderIfVerified,
+  dataUpdateUserProfile,
 } from "./dataLayer";
 // Lazy-load each view so its code is fetched only when that view is opened.
 // This shrinks the initial page load for everyone -- important on weak wifi.
@@ -37,9 +35,6 @@ const ReviewFormEditor = lazy(() => import("./components/ReviewFormEditor") as u
 const SummaryFormEditor = lazy(() => import("./components/SummaryFormEditor") as unknown as Promise<{ default: React.ComponentType<any> }>);
 const UserManagement = lazy(() => import("./components/UserManagement") as unknown as Promise<{ default: React.ComponentType<any> }>);
 const ActivityLogList = lazy(() => import("./components/ActivityLog") as unknown as Promise<{ default: React.ComponentType<any> }>);
-const CoachingNominations = lazy(() => import("./components/CoachingNominations") as unknown as Promise<{ default: React.ComponentType<any> }>);
-const CoachingInvitations = lazy(() => import("./components/CoachingInvitations") as unknown as Promise<{ default: React.ComponentType<any> }>);
-const AdminCoachingPanel = lazy(() => import("./components/AdminCoachingPanel") as unknown as Promise<{ default: React.ComponentType<any> }>);
 const AdminReports = lazy(() => import("./components/AdminReports") as unknown as Promise<{ default: React.ComponentType<any> }>);
 import { 
   Heart, 
@@ -136,7 +131,6 @@ export default function App() {
   const [allSummaries, setAllSummaries] = useState<QuarterlySummary[]>([]);
   const [staffProfiles, setStaffProfiles] = useState<UserProfile[]>([]);
   const [meetings, setMeetings] = useState<any[]>([]);
-  const [coachingRequests, setCoachingRequests] = useState<CoachingRequest[]>([]);
 
   // O(1) Memoized Lookup Maps for High-Scale (500+ users) Performance
   const summariesMap = useMemo(() => {
@@ -169,17 +163,20 @@ export default function App() {
     return map;
   }, [allReviews]);
 
-  const coachesMap = useMemo(() => {
-    const map = new Map<string, CoachingRequest[]>();
-    coachingRequests.forEach(req => {
-      if (req.status === "approved" && req.acceptedByCoach === "accepted") {
-        const existing = map.get(req.memberId) || [];
-        existing.push(req);
-        map.set(req.memberId, existing);
-      }
+  // Display helper: the coach an admin assigned to each member, resolved from
+  // `users.coach_uid` (the same column is_coach_of() reads in the database, so
+  // what the UI shows and what RLS allows can't drift apart). Replaces the old
+  // coaching_requests lookup, which no longer holds live assignment data.
+  const coachNameByMemberUid = useMemo(() => {
+    const map = new Map<string, string>();
+    staffProfiles.forEach(s => {
+      if (!s.coachUid) return;
+      const coach = staffProfiles.find(c => c.uid === s.coachUid);
+      if (coach) map.set(s.uid, coach.name);
     });
     return map;
-  }, [coachingRequests]);
+  }, [staffProfiles]);
+
 
   // Navigation / UI active states
   const [currentTab, setCurrentTab] = useState<"my-reviews" | "team-reviews" | "admin" | "meetings">("my-reviews");
@@ -345,10 +342,12 @@ export default function App() {
     ? staffProfiles.find(s => s.uid === myAssignedCoachUid)
     : null;
 
+  // People this user actually coaches. Derived from `users.coach_uid`, which is
+  // the single source of truth: an admin assigns a coach in Team Members and
+  // this list -- plus every RLS policy that calls is_coach_of() -- follows
+  // immediately. There is no separate nomination/acceptance state to reconcile.
   const myActiveCoachedUids = user
-    ? coachingRequests
-        .filter(req => req.status === "approved" && req.acceptedByCoach === "accepted" && (req.coachUid === user.uid || req.coachName.toLowerCase() === user.name.toLowerCase()))
-        .map(req => req.memberId)
+    ? staffProfiles.filter(s => s.coachUid && s.coachUid === user.uid).map(s => s.uid)
     : [];
 
   const filteredStaffProfiles = user
@@ -369,31 +368,17 @@ export default function App() {
         : allSummaries.filter(s => myActiveCoachedUids.includes(s.userId) || s.userId === user.uid))
     : [];
 
-  const pendingInvitations = user
-    ? coachingRequests.filter(req => {
-        const isNameMatch = req.coachName.toLowerCase() === user.name.toLowerCase();
-        const isUidMatch = req.coachUid === user.uid;
-        return (isNameMatch || isUidMatch) && req.status === "approved" && req.acceptedByCoach === "pending";
-      })
-    : [];
+  // A member has a confirmed coach as soon as an admin assigns one. That is the
+  // only gate on the final "Submit to Coach" step; filling and saving a draft
+  // never required a coach in the first place.
+  const myHasVerifiedCoach = myAssignedCoachUid !== null;
 
-  const hasPendingInvitation = pendingInvitations.length > 0;
-
-  // Nominations created by the current user + whether they have a verified coach
-  // (admin-approved AND the coach accepted). Given the member a verified coach is
-  // required only for the final "Submit to Coach" step, not for filling/saving.
-  const memberNominations = user
-    ? coachingRequests.filter(req => req.memberId === user.uid)
-    : [];
-  const myHasVerifiedCoach = memberNominations.some(
-    r => r.status === "approved" && r.acceptedByCoach === "accepted"
-  );
-
+  // Leader OR actively coaching somebody OR admin. Assigned coaches are included
+  // via myActiveCoachedUids, so a coach keeps their Team Reviews access even if
+  // an admin later clears their is_leader flag.
   const isLeaderOrCoach = user
-    ? (user.isLeader || myActiveCoachedUids.length > 0 || hasPendingInvitation || isAdmin)
+    ? (user.isLeader || myActiveCoachedUids.length > 0 || isAdmin)
     : false;
-
-  const pendingInvitationsCount = pendingInvitations.length;
 
   // Tab-aware "Next Step" panel — walks the user through what to do on the
   // current tab, focused ONLY on the Quarterly Summary workflow.
@@ -436,20 +421,14 @@ export default function App() {
       }
 
       // No unlocked quarter yet → surface the coach step so it's clear what's next.
-      if (memberNominations.length === 0) {
-        return { type: "nominate" as const, quarter: null, label: t("Pick your coach"), description: t("Choose the Team Leader who will guide your review. Your quarterly form will open here as soon as it's unlocked."), btn: t("View Coach") };
-      }
       if (!hasVerifiedCoach) {
-        return { type: "nominate" as const, quarter: null, label: t("Awaiting coach confirmation"), description: t("Admin has your request and your coach needs to accept. Keep an eye on your form — it's yours whenever it's unlocked."), btn: t("View Coach") };
+        return { type: "nominate" as const, quarter: null, label: t("Waiting for your coach"), description: t("An admin assigns your coach for you. Your quarterly form will open here as soon as it's unlocked — and you can fill it in as soon as you have one."), btn: t("View Coach") };
       }
       return { type: "nominate" as const, quarter: null, label: t("Your coach is ready"), description: t("Your coach is confirmed. Your form will open here once it's unlocked for you to fill in."), btn: t("View Coach") };
     }
 
     // TEAM REVIEWS — coach/leader evaluates their staff's summaries
     if (currentTab === "team-reviews") {
-      if (hasPendingInvitation) {
-        return { type: "invitation" as const, quarter: null, label: t("Respond to your coaching request"), description: t("A staff member wants you as their Team Leader and coach. Accept or decline to keep things moving."), btn: t("Respond") };
-      }
       return { type: "leader" as const, quarter: null, label: t("Evaluate your team's summaries"), description: t("Open a staff member's submitted Quarterly Summary, fill the TL Evaluation, then press \"Submit to Admin\"."), btn: t("Open Summaries") };
     }
 
@@ -615,11 +594,6 @@ export default function App() {
         const localLogs = JSON.parse(localLogsStr) as ActivityLog[];
         setActivityLogs(localLogs);
 
-        // Load coaching requests
-        const localCoachingStr = localStorage.getItem("staff_review_bypass_coaching_requests") || "[]";
-        const localCoaching = JSON.parse(localCoachingStr) as CoachingRequest[];
-        setCoachingRequests(localCoaching);
-
         // Seed default mock staff members for testing
         const localUsersStr = localStorage.getItem("staff_review_bypass_users") || "[]";
         let localUsers = JSON.parse(localUsersStr) as UserProfile[];
@@ -685,7 +659,6 @@ export default function App() {
     }
 
     unsubscribers.push(subscribeStaff((profiles) => setStaffProfiles(profiles)));
-    unsubscribers.push(subscribeCoachingRequests((reqs) => setCoachingRequests(reqs)));
     unsubscribers.push(subscribeMeetings((meetings) => setMeetings(meetings)));
     unsubscribers.push(subscribeFollowUpTasks((tasks) => setFollowUpTasks(tasks)));
     unsubscribers.push(subscribeRequirementSettings((s) => setRequirementSettings(s || {
@@ -704,6 +677,29 @@ export default function App() {
 
     return () => { unsubscribers.forEach(u => u()); };
   }, [user]);
+
+  // Keep the signed-in user's OWN profile in sync with the users table.
+  //
+  // The staff list updates live (realtime, or the 30s poll fallback), but the
+  // signed-in profile is loaded once at login. That went stale in a way users
+  // noticed: an admin assigning somebody a coach set is_leader on that person's
+  // row, yet the person kept seeing the old profile until they reloaded — so
+  // their Team Reviews tab did not appear. Re-reading our own row from the
+  // already-live staff list closes that gap without another subscription.
+  useEffect(() => {
+    if (!user) return;
+    const fresh = staffProfiles.find(p => p.uid === user.uid);
+    if (!fresh) return;
+    if (
+      fresh.isLeader !== user.isLeader ||
+      !!fresh.isAdmin !== !!user.isAdmin ||
+      (fresh.coachUid || null) !== (user.coachUid || null) ||
+      fresh.role !== user.role ||
+      fresh.name !== user.name
+    ) {
+      setUser(fresh);
+    }
+  }, [staffProfiles, user]);
 
   // Handle Authentication submit
   const handleAuthSubmit = async (e: React.FormEvent) => {
@@ -772,6 +768,7 @@ export default function App() {
         role: "Regional Coordinator",
         email: "leader@example.com",
         isLeader: true,
+        coachUid: "bypass_lewikb13_gmail_com",
         createdAt: Date.now()
       },
       {
@@ -780,6 +777,7 @@ export default function App() {
         role: "Ministry Coordinator",
         email: "john.staff@example.com",
         isLeader: false,
+        coachUid: "bypass_leader_example_com",
         createdAt: Date.now()
       },
       {
@@ -788,6 +786,7 @@ export default function App() {
         role: "National Coordinator",
         email: "anna.coord@example.com",
         isLeader: false,
+        coachUid: "bypass_leader_example_com",
         createdAt: Date.now()
       },
       {
@@ -796,72 +795,19 @@ export default function App() {
         role: "Field Representative",
         email: "peter.field@example.com",
         isLeader: false,
+        coachUid: "bypass_leader_example_com",
         createdAt: Date.now()
       }
     ];
     localStorage.setItem("staff_review_bypass_users", JSON.stringify(mockUsers));
 
-    // 2. Coaching requests (approved and accepted so Sarah Leader is their coach)
-    const mockRequests: CoachingRequest[] = [
-      {
-        id: "req_bypass_john_staff_example_com_Sarah_Leader",
-        memberId: "bypass_john_staff_example_com",
-        memberName: "John Staff",
-        memberEmail: "john.staff@example.com",
-        coachName: "Sarah Leader",
-        status: "approved",
-        acceptedByCoach: "accepted",
-        coachUid: "bypass_leader_example_com",
-        updatedAt: Date.now()
-      },
-      {
-        id: "req_bypass_anna_coordinator_example_com_Sarah_Leader",
-        memberId: "bypass_anna_coordinator_example_com",
-        memberName: "Anna Coordinator",
-        memberEmail: "anna.coord@example.com",
-        coachName: "Sarah Leader",
-        status: "approved",
-        acceptedByCoach: "accepted",
-        coachUid: "bypass_leader_example_com",
-        updatedAt: Date.now()
-      },
-      {
-        id: "req_bypass_peter_field_example_com_Sarah_Leader",
-        memberId: "bypass_peter_field_example_com",
-        memberName: "Peter Field Officer",
-        memberEmail: "peter.field@example.com",
-        coachName: "Sarah Leader",
-        status: "approved",
-        acceptedByCoach: "accepted",
-        coachUid: "bypass_leader_example_com",
-        updatedAt: Date.now()
-      },
-      {
-        id: "req_bypass_leader_example_com_Lewis_KB",
-        memberId: "bypass_leader_example_com",
-        memberName: "Sarah Leader",
-        memberEmail: "leader@example.com",
-        coachName: "Lewis KB",
-        status: "approved",
-        acceptedByCoach: "accepted",
-        coachUid: "bypass_lewikb13_gmail_com",
-        updatedAt: Date.now()
-      },
-      {
-        id: "req_bypass_peter_field_example_com_Sarah_Leader",
-        memberId: "bypass_peter_field_example_com",
-        memberName: "Peter Field Officer",
-        memberEmail: "peter.field@example.com",
-        coachName: "Sarah Leader",
-        status: "approved",
-        acceptedByCoach: "accepted",
-        coachUid: "bypass_leader_example_com",
-        updatedAt: Date.now()
-      }
-    ];
-    localStorage.setItem("staff_review_bypass_coaching_requests", JSON.stringify(mockRequests));
+    // Coaching relationships are carried by `coachUid` on the users above
+    // (the same column the database reads), so there is no request seed to keep.
+    // Drop any rows left behind by the retired nomination workflow.
+    localStorage.removeItem("staff_review_bypass_coaching_requests");
 
-    // 3. Reviews:
+    // 2. Reviews:
+
     const mockReviews: DevelopmentReview[] = [
       // John Staff - 1st Quarter - Submitted
       {
@@ -1398,184 +1344,6 @@ export default function App() {
     setCurrentTab("my-reviews");
   };
 
-  // Coaching Nomination and Invitation Handlers
-  const handleAddCoachingRequest = async (coachName: string) => {
-    if (!user) return;
-    const requestId = `req_${user.uid}_${encodeURIComponent(coachName)}`;
-    const newReq: CoachingRequest = {
-      id: requestId,
-      memberId: user.uid,
-      memberName: user.name,
-      memberEmail: user.email,
-      coachName: coachName,
-      status: "pending",
-      acceptedByCoach: "pending",
-      updatedAt: Date.now()
-    };
-
-    // Auto-fill coachUid if the nominee is already a registered user
-    const matchedCoach = staffProfiles.find(u => u.name.toLowerCase() === coachName.toLowerCase());
-    if (matchedCoach) {
-      newReq.coachUid = matchedCoach.uid;
-    }
-
-    if (user.uid.startsWith("bypass_")) {
-      const localCoachingStr = localStorage.getItem("staff_review_bypass_coaching_requests") || "[]";
-      const localCoaching = JSON.parse(localCoachingStr) as CoachingRequest[];
-      localCoaching.push(newReq);
-      localStorage.setItem("staff_review_bypass_coaching_requests", JSON.stringify(localCoaching));
-      setCoachingRequests(localCoaching);
-      return;
-    }
-
-    await dataSaveCoachingRequest(newReq);
-  };
-
-  const handleNominateInModal = async (coachName: string) => {
-    setModalError("");
-    const trimmed = coachName.trim();
-    if (!trimmed) return;
-
-    if (user && trimmed.toLowerCase() === user.name.toLowerCase()) {
-      setModalError(t("Validation Error: You cannot nominate yourself as your own coach."));
-      return;
-    }
-
-    const userNominations = coachingRequests.filter(req => req.memberId === user?.uid);
-    if (userNominations.some(r => r.coachName.toLowerCase() === trimmed.toLowerCase())) {
-      setModalError(t("Validation Error: You have already nominated this coach."));
-      return;
-    }
-
-    if (userNominations.length >= 1) {
-      setModalError(t("Validation Error: You can only nominate exactly 1 coach or TL."));
-      return;
-    }
-
-    try {
-      await handleAddCoachingRequest(trimmed);
-      setModalSearchName("");
-      setShowModalSuggestions(false);
-    } catch (e: any) {
-      setModalError(e.message || t("Failed to submit coaching nomination."));
-    }
-  };
-
-  const handleDeleteCoachingRequest = async (requestId: string) => {
-    if (!user) return;
-    if (user.uid.startsWith("bypass_")) {
-      const localCoachingStr = localStorage.getItem("staff_review_bypass_coaching_requests") || "[]";
-      const localCoaching = JSON.parse(localCoachingStr) as CoachingRequest[];
-      const filtered = localCoaching.filter(req => req.id !== requestId);
-      localStorage.setItem("staff_review_bypass_coaching_requests", JSON.stringify(filtered));
-      setCoachingRequests(filtered);
-      return;
-    }
-
-    await dataDeleteCoachingRequest(requestId);
-  };
-
-  const handleApproveCoachingRequest = async (requestId: string) => {
-    if (!user) return;
-    if (user.uid.startsWith("bypass_")) {
-      const localCoachingStr = localStorage.getItem("staff_review_bypass_coaching_requests") || "[]";
-      const localCoaching = JSON.parse(localCoachingStr) as CoachingRequest[];
-      const updated = localCoaching.map(req => {
-        if (req.id === requestId) {
-          return { ...req, status: "approved" as const, updatedAt: Date.now() };
-        }
-        return req;
-      });
-      localStorage.setItem("staff_review_bypass_coaching_requests", JSON.stringify(updated));
-      setCoachingRequests(updated);
-      return;
-    }
-
-    await dataUpdateCoachingRequest(requestId, { status: "approved" });
-  };
-
-  const handleRejectCoachingRequest = async (requestId: string, reason: string) => {
-    if (!user) return;
-    if (user.uid.startsWith("bypass_")) {
-      const localCoachingStr = localStorage.getItem("staff_review_bypass_coaching_requests") || "[]";
-      const localCoaching = JSON.parse(localCoachingStr) as CoachingRequest[];
-      const updated = localCoaching.map(req => {
-        if (req.id === requestId) {
-          return { ...req, status: "rejected" as const, adminNotes: reason, updatedAt: Date.now() };
-        }
-        return req;
-      });
-      localStorage.setItem("staff_review_bypass_coaching_requests", JSON.stringify(updated));
-      setCoachingRequests(updated);
-      return;
-    }
-
-    await dataUpdateCoachingRequest(requestId, { status: "rejected", adminNotes: reason });
-  };
-
-  const handleAcceptCoachingInvitation = async (requestId: string) => {
-    if (!user) return;
-    if (user.uid.startsWith("bypass_")) {
-      const localCoachingStr = localStorage.getItem("staff_review_bypass_coaching_requests") || "[]";
-      const localCoaching = JSON.parse(localCoachingStr) as CoachingRequest[];
-      const updated = localCoaching.map(req => {
-        if (req.id === requestId) {
-          return { ...req, acceptedByCoach: "accepted" as const, coachUid: user.uid, updatedAt: Date.now() };
-        }
-        return req;
-      });
-      localStorage.setItem("staff_review_bypass_coaching_requests", JSON.stringify(updated));
-      setCoachingRequests(updated);
-
-      // Promote nominee to leader locally
-      const localUsersStr = localStorage.getItem("staff_review_bypass_users") || "[]";
-      let localUsers = JSON.parse(localUsersStr) as UserProfile[];
-      localUsers = localUsers.map(u => u.uid === user.uid ? { ...u, isLeader: true } : u);
-      localStorage.setItem("staff_review_bypass_users", JSON.stringify(localUsers));
-      setStaffProfiles(localUsers);
-
-      const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
-      if (savedLocalUser) {
-        const uObj = JSON.parse(savedLocalUser);
-        if (uObj.uid === user.uid) {
-          uObj.isLeader = true;
-          localStorage.setItem("staff_review_bypass_user", JSON.stringify(uObj));
-          setUser(prev => prev ? { ...prev, isLeader: true } : null);
-        }
-      }
-      return;
-    }
-
-    await dataUpdateCoachingRequest(requestId, { acceptedByCoach: "accepted", coachUid: user.uid });
-
-    // Promote to leader safely via SECURITY DEFINER RPC (enforced in the DB).
-    const promoted = await dataPromoteSelfToLeaderIfVerified();
-    if (promoted) {
-      setUser(prev => prev ? { ...prev, isLeader: true } : null);
-    } else {
-      console.warn("Self-promotion to leader was not granted by the server (no verified coaching arrangement).");
-    }
-  };
-
-  const handleRejectCoachingInvitation = async (requestId: string, reason: string) => {
-    if (!user) return;
-    if (user.uid.startsWith("bypass_")) {
-      const localCoachingStr = localStorage.getItem("staff_review_bypass_coaching_requests") || "[]";
-      const localCoaching = JSON.parse(localCoachingStr) as CoachingRequest[];
-      const updated = localCoaching.map(req => {
-        if (req.id === requestId) {
-          return { ...req, acceptedByCoach: "rejected" as const, coachRejectReason: reason, coachUid: user.uid, updatedAt: Date.now() };
-        }
-        return req;
-      });
-      localStorage.setItem("staff_review_bypass_coaching_requests", JSON.stringify(updated));
-      setCoachingRequests(updated);
-      return;
-    }
-
-    await dataUpdateCoachingRequest(requestId, { acceptedByCoach: "rejected", coachRejectReason: reason, coachUid: user.uid });
-  };
-
   // Create or retrieve existing Development Review form
   const handleSelectMyReview = async (quarter: "1st" | "2nd" | "3rd") => {
     if (!user) return;
@@ -1652,9 +1420,9 @@ export default function App() {
   const handleSelectStaffSummary = async (member: UserProfile, quarter: "1st" | "2nd" | "3rd") => {
     const year = "2025/2026";
     
-    // Check if the current user is a coach for this member (and not the member themselves)
-    const coaches = coachesMap.get(member.uid) || [];
-    const isCoachOfMember = coaches.some(c => c.coachUid === user?.uid);
+    // Check if the current user is the coach admin assigned to this member (and
+    // not the member themselves). This mirrors is_coach_of() in the database.
+    const isCoachOfMember = !!member.coachUid && member.coachUid === user?.uid;
     const isCoach = user && user.uid !== member.uid && (isAdmin || isCoachOfMember);
     
     // Determine the document ID we want to open/save
@@ -2706,34 +2474,6 @@ export default function App() {
 
       {/* CORE VIEWPORT */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Global Coaching Invitation Banner */}
-        {pendingInvitationsCount > 0 && (
-          <div className="bg-gradient-to-r from-indigo-600 to-indigo-700 text-white rounded-2xl p-5 shadow-md flex flex-col md:flex-row items-center justify-between gap-4 animate-fade-in border border-indigo-500">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center">
-                <Users className="w-5 h-5 text-white" />
-              </div>
-              <div>
-                <h4 className="font-extrabold text-sm">{t("🔔 Pending Coaching Invitations")}</h4>
-                <p className="text-xs text-indigo-100 mt-0.5">
-                  {t(`You have ${pendingInvitationsCount} member${pendingInvitationsCount > 1 ? "s" : ""} requesting you as their coach. Review and accept them to access their profiles.`)}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                setCurrentTab("team-reviews");
-                setTimeout(() => {
-                  document.getElementById("coaching-invitations-container")?.scrollIntoView({ behavior: "smooth" });
-                }, 150);
-              }}
-              className="px-4 py-2 bg-white text-indigo-700 hover:bg-slate-50 text-xs font-bold rounded-xl transition-all shadow shrink-0"
-            >
-              {t("Go to Coaching Dashboard")}
-            </button>
-          </div>
-        )}
-
         {/* Editor Modals */}
         {activeReview && (
           <div className="animate-fade-in">
@@ -2842,7 +2582,7 @@ export default function App() {
                       <CheckCircle2 className="w-7 h-7" />
                     ) : myNextStep.type === "admin" || myNextStep.type === "leader" ? (
                       <ShieldCheck className="w-7 h-7" />
-                    ) : myNextStep.type === "invitation" || myNextStep.type === "nominate" ? (
+                    ) : myNextStep.type === "nominate" ? (
                       <HeartHandshake className="w-7 h-7" />
                     ) : myNextStep.type === "meeting" ? (
                       <Calendar className="w-7 h-7" />
@@ -2860,8 +2600,8 @@ export default function App() {
                       if (myNextStep.type === "fill-summary" && myNextStep.quarter && user) {
                         handleSelectStaffSummary(user, myNextStep.quarter);
                       } else if (myNextStep.type === "nominate" || myNextStep.type === "wait") {
-                        document.getElementById("coaching-nominations-card")?.scrollIntoView({ behavior: "smooth" });
-                      } else if (myNextStep.type === "invitation" || myNextStep.type === "leader") {
+                        document.getElementById("my-coach-card")?.scrollIntoView({ behavior: "smooth" });
+                      } else if (myNextStep.type === "leader") {
                         setCurrentTab("team-reviews");
                       } else if (myNextStep.type === "admin") {
                         setCurrentTab("admin");
@@ -2884,34 +2624,6 @@ export default function App() {
             {/* TAB: MY REVIEWS */}
             {currentTab === "my-reviews" && (
               <div className="space-y-6 animate-fade-in">
-                {/* Pending Coaching Invitation Banner (nominated coach, awaiting their response) */}
-                {hasPendingInvitation && !isAdmin && (
-                  <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/30 dark:to-teal-950/20 border-2 border-emerald-200 dark:border-emerald-800 rounded-2xl p-5 shadow-sm animate-scale-up flex flex-col sm:flex-row sm:items-center gap-4">
-                    <div className="bg-emerald-600 text-white rounded-full p-2.5 shadow-sm shrink-0">
-                      <HeartHandshake className="w-5 h-5" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[10px] font-bold uppercase tracking-widest bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 px-2.5 py-0.5 rounded-full">
-                        {t("Coaching request for you")}
-                      </span>
-                      <h4 className="font-sans font-extrabold text-sm text-emerald-950 dark:text-emerald-100 mt-1.5">
-                        {pendingInvitations.length === 1
-                          ? t(`${pendingInvitations[0].memberName} nominated you as their Team Leader and coach.`)
-                          : t(`${pendingInvitations.length} staff members nominated you as their Team Leader and coach.`)}
-                      </h4>
-                      <p className="text-xs text-emerald-800 dark:text-emerald-200/80 mt-1">
-                        {t("Accept, or decline with a reason (sent to the Admin and the person who nominated you). Your coach tab opens once you accept.")}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setCurrentTab("team-reviews")}
-                      className="shrink-0 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-bold rounded-xl transition-colors shadow"
-                    >
-                      {t("Review Invitation")}
-                    </button>
-                  </div>
-                )}
-
                 {/* Active Review Period Banners */}
                 {Object.entries(reviewSchedules).map(([qKey, schedVal]) => {
                   const sched = schedVal as { startDate: string; dueDate: string; notifyAll: boolean; notificationMessage?: string };
@@ -2962,15 +2674,6 @@ export default function App() {
                     </div>
                   );
                 })}
-
-                {/* Coaching Nominations Section */}
-                <CoachingNominations 
-                  coachingRequests={coachingRequests}
-                  onAddRequest={handleAddCoachingRequest}
-                  onDeleteRequest={handleDeleteCoachingRequest}
-                  currentUser={user}
-                  registeredUsers={staffProfiles}
-                />
 
                 {/* Meetings Coordinator */}
                 {meetings.filter(m => m.userId === user.uid).length > 0 && (
@@ -3280,17 +2983,9 @@ export default function App() {
               </div>
             )}
 
-            {/* TAB: TEAM REVIEWS (LEADERS & APPROVED COACHES) */}
+            {/* TAB: TEAM REVIEWS (LEADERS & COACHES) */}
             {isLeaderOrCoach && currentTab === "team-reviews" && (
               <div className="space-y-6 animate-fade-in">
-                {/* Coaching Invitations Panel */}
-                <CoachingInvitations 
-                  coachingRequests={coachingRequests}
-                  onAcceptInvitation={handleAcceptCoachingInvitation}
-                  onRejectInvitation={handleRejectCoachingInvitation}
-                  currentUser={user}
-                />
-
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
                   <div>
                     <h3 className="text-lg font-sans font-bold text-slate-800 dark:text-slate-100">
@@ -3436,7 +3131,7 @@ export default function App() {
                           return (["1st", "2nd", "3rd"] as const).map(quarter => {
                             const summary = summariesMap.get(`${member.uid}-${quarter}`);
                             const review = reviewsMap.get(`${member.uid}-${quarter}`);
-                            const coaches = coachesMap.get(member.uid) || [];
+                            const coachName = coachNameByMemberUid.get(member.uid) || "";
                             const isCompiled = !!(summary && summary.evaluation.overallEffectiveness);
                             const hasReview = !!review;
                             return {
@@ -3444,7 +3139,7 @@ export default function App() {
                               quarter,
                               summary,
                               review,
-                              coaches,
+                              coachName,
                               isCompiled,
                               hasReview
                             };
@@ -3471,7 +3166,7 @@ export default function App() {
                           // Search filter
                           if (overviewSearch) {
                             const q = overviewSearch.toLowerCase();
-                            const coachNames = item.coaches.map(c => c.coachName).join(", ");
+                            const coachNames = item.coachName;
                             const matchesMember = item.member.name.toLowerCase().includes(q) || item.member.role.toLowerCase().includes(q);
                             const matchesCoach = coachNames.toLowerCase().includes(q) || (item.summary?.evaluation.teamLeaderSignature || "").toLowerCase().includes(q);
                             if (!matchesMember && !matchesCoach) {
@@ -3636,9 +3331,9 @@ export default function App() {
                             {/* Grid of singled out reports */}
                             <div className="grid grid-cols-1 gap-6">
                               {paginatedEvals.map((item) => {
-                                const { member, quarter, summary, isCompiled, coaches } = item;
+                                const { member, quarter, summary, isCompiled, coachName } = item;
                                 const rating = summary?.evaluation.overallEffectiveness;
-                                const coachNames = summary?.evaluation.teamLeaderSignature || coaches.map(c => c.coachName).join(", ") || "No Coach Nominated";
+                                const coachNames = summary?.evaluation.teamLeaderSignature || coachName || t("No Coach Assigned");
                                 const strengths = summary?.evaluation.strengths || [];
                                 const weaknesses = summary?.evaluation.weaknesses || [];
                                 const readyForGreater = summary?.evaluation.readyForGreaterResp || "No";
@@ -3925,8 +3620,7 @@ export default function App() {
                       (() => {
                         // Filter staff members based on search and quarter/effectiveness filters
                         const filteredMembers = filteredStaffProfiles.filter(member => {
-                          const coaches = coachesMap.get(member.uid) || [];
-                          const coachNames = coaches.map(c => c.coachName).join(", ");
+                          const coachNames = coachNameByMemberUid.get(member.uid) || "";
                           
                           // 1. Search filter
                           if (overviewSearch) {
@@ -4031,8 +3725,7 @@ export default function App() {
                                 </thead>
                                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/80 text-slate-700 dark:text-slate-300">
                                   {paginatedMembers.map((member) => {
-                                    const coaches = coachesMap.get(member.uid) || [];
-                                    const coachNames = coaches.map(c => c.coachName).join(", ") || "No Coach Nominated";
+                                    const coachNames = coachNameByMemberUid.get(member.uid) || t("No Coach Assigned");
                                     
                                     const q1 = getQuarterData(member, "1st");
                                     const q2 = getQuarterData(member, "2nd");
@@ -4233,9 +3926,9 @@ export default function App() {
                   filteredStaffProfiles.length === 0 ? (
                     <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 p-12 text-center text-slate-400 dark:text-slate-500 transition-colors duration-200">
                       <UserX className="w-10 h-10 text-slate-300 dark:text-slate-700 mx-auto mb-3 animate-pulse" />
-                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("No active coachees assigned to you.")}</p>
+                      <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t("No staff members are assigned to you yet.")}</p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
-                        {t("Once you accept an incoming coaching invitation from a staff member, they will appear in this center so you can review their quadrants and compile evaluations.")}
+                        {t("An admin assigns you as a coach from the Team Members tab. Anyone they assign to you appears here so you can review their quadrants and compile evaluations.")}
                       </p>
                     </div>
                   ) : (
@@ -4470,7 +4163,6 @@ export default function App() {
                       registeredUsers={staffProfiles}
                       allReviews={allReviews}
                       allSummaries={allSummaries}
-                      coachingRequests={coachingRequests}
                       currentQuarter={selectedQuarter}
                       currentYear={selectedYear}
                     />
@@ -4715,13 +4407,6 @@ export default function App() {
                     })}
                   </div>
                 </div>
-
-                <AdminCoachingPanel 
-                  coachingRequests={coachingRequests}
-                  onApproveNomination={handleApproveCoachingRequest}
-                  onRejectNomination={handleRejectCoachingRequest}
-                  registeredUsers={staffProfiles}
-                />
               </div>
             )}
 
@@ -4856,14 +4541,11 @@ export default function App() {
             <div className="p-6 overflow-y-auto space-y-5 flex-1">
               {/* Next-steps checklist */}
               {(() => {
-                const userNominations = coachingRequests.filter(req => req.memberId === user.uid);
-                const count = userNominations.length;
-                const approved = userNominations.some(r => r.status === "approved");
-                const allSet = count === 1 && approved;
+                const allSet = myHasVerifiedCoach;
                 const steps = [
-                  { label: "Review submitted", done: true, current: false },
-                  { label: count === 1 ? "Coach picked" : "Pick your coach", done: count === 1, current: !allSet && count !== 1 },
-                  { label: "Coach accepts your request", done: allSet, current: !allSet && count === 1 },
+                  { label: t("Review submitted"), done: true, current: false },
+                  { label: t("Admin assigns your coach"), done: allSet, current: !allSet },
+                  { label: t("Your coach evaluates your summary"), done: false, current: false },
                 ];
                 return (
                   <div className={`p-5 rounded-2xl border ${allSet ? "bg-emerald-50/60 dark:bg-emerald-950/10 border-emerald-200 dark:border-emerald-900/40" : "bg-slate-50 dark:bg-slate-950 border-slate-150 dark:border-slate-800"}`}>
@@ -4900,146 +4582,44 @@ export default function App() {
                             </li>
                           ))}
                         </ul>
-                        {!allSet && count !== 1 && (
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-3 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-xl px-3 py-2">
-                            👉 <strong>Now:</strong> Pick one coach below. This is required to finish.
-                          </p>
-                        )}
+                        <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-3 bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800 rounded-xl px-3 py-2">
+                          👉 <strong>Note:</strong> An admin assigns your coach — there's nothing for you to do here.
+                        </p>
                       </>
                     )}
                   </div>
                 );
               })()}
 
-              {/* Coach Nomination Form inside Modal */}
-              {(() => {
-                const userNominations = coachingRequests.filter(req => req.memberId === user.uid);
-                const count = userNominations.length;
-                const approved = userNominations.some(r => r.status === "approved");
-                const allSet = count === 1 && approved;
-                return allSet ? null : (
-              <div className="space-y-4">
-                <div className="space-y-2 relative">
-                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 font-mono uppercase">
-                    Select and Nominate Coach / TL
-                  </label>
-                  
-                  {modalError && (
-                    <p className="text-xs text-rose-600 dark:text-rose-400 flex items-center gap-1 bg-rose-50 dark:bg-rose-950/30 p-2 rounded-lg border border-rose-100 dark:border-rose-900/30">
-                      <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      {modalError}
-                    </p>
-                  )}
-
-                  {/* Autocomplete form */}
-                  <form onSubmit={(e) => {
-                    e.preventDefault();
-                    handleNominateInModal(modalSearchName);
-                  }} className="flex gap-2">
-                    <div className="relative flex-1">
-                      <input
-                        type="text"
-                        value={modalSearchName}
-                        onChange={(e) => {
-                          setModalSearchName(e.target.value);
-                          setShowModalSuggestions(true);
-                        }}
-                        onFocus={() => setShowModalSuggestions(true)}
-                        placeholder={t("Type or select a coach's name...")}
-                        className="w-full text-sm rounded-xl border border-slate-200 dark:border-slate-850 bg-slate-50 dark:bg-slate-950 px-3 py-2.5"
-                        disabled={coachingRequests.filter(req => req.memberId === user.uid).length >= 1}
-                      />
-                      {showModalSuggestions && modalSearchName.trim() !== "" && (
-                        <div className="absolute top-full left-0 right-0 z-30 mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-lg max-h-40 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-850">
-                          {(() => {
-                            const userNominations = coachingRequests.filter(req => req.memberId === user.uid);
-                            const nominatedNames = userNominations.map(r => r.coachName.toLowerCase());
-                            const suggestions = staffProfiles.filter(u => 
-                              u.uid !== user.uid && 
-                              !nominatedNames.includes(u.name.toLowerCase()) &&
-                              (u.name.toLowerCase().includes(modalSearchName.toLowerCase()) || (u.role && u.role.toLowerCase().includes(modalSearchName.toLowerCase())))
-                            );
-                            return suggestions.length > 0 ? (
-                              suggestions.map(u => (
-                                <button
-                                  key={u.uid}
-                                  type="button"
-                                  onClick={() => {
-                                    handleNominateInModal(u.name);
-                                    setModalSearchName("");
-                                    setShowModalSuggestions(false);
-                                  }}
-                                  className="w-full text-left px-4 py-2 text-xs text-slate-700 dark:text-slate-200 hover:bg-indigo-50 dark:hover:bg-slate-800 font-medium transition-colors flex justify-between items-center"
-                                >
-                                  <span>{u.name}</span>
-                                  <span className="text-slate-400 font-mono text-[10px]">({u.role || "Staff"})</span>
-                                </button>
-                              ))
-                            ) : (
-                              <div className="px-4 py-2.5 text-xs text-slate-400 italic">No matching staff found</div>
-                            );
-                          })()}
-                        </div>
-                      )}
+              {/* Assigned coach (assigned by an admin — read only) */}
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono uppercase">
+                  {t("Your Coach")}
+                </h4>
+                {myAssignedCoach ? (
+                  <div className="flex justify-between items-center bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div className="flex items-center gap-2">
+                      <Users className="w-4 h-4 text-indigo-500" />
+                      <div>
+                        <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{myAssignedCoach.name}</p>
+                        <span className="text-[9px] font-mono px-1.5 py-0.5 rounded font-semibold uppercase bg-emerald-50 dark:bg-emerald-950 text-emerald-600">
+                          {t("Assigned by Admin")}
+                        </span>
+                      </div>
                     </div>
-                    <button
-                      type="submit"
-                      disabled={!modalSearchName.trim() || coachingRequests.filter(req => req.memberId === user.uid).length >= 1}
-                      className="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl transition-colors shrink-0 flex items-center gap-1.5 shadow"
-                    >
-                      <UserPlus className="w-4 h-4" />
-                      Nominate
-                    </button>
-                  </form>
-                </div>
-
-                {/* Current Nominated Coaches list */}
-                <div className="space-y-2">
-                  <h4 className="text-xs font-bold text-slate-500 dark:text-slate-400 font-mono uppercase">
-                    Your Coach Nomination
-                  </h4>
-                  {coachingRequests.filter(req => req.memberId === user.uid).length === 0 ? (
-                    <p className="text-xs text-slate-400 italic bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
-                      No coach nominated yet. Please nominate exactly 1 coach or TL.
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-1 gap-2">
-                      {coachingRequests.filter(req => req.memberId === user.uid).map(req => (
-                        <div key={req.id} className="flex justify-between items-center bg-slate-50 dark:bg-slate-950 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
-                          <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-indigo-500" />
-                            <div>
-                              <p className="text-xs font-bold text-slate-800 dark:text-slate-200">{req.coachName}</p>
-                              <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded font-semibold uppercase ${
-                                req.status === "approved" 
-                                  ? "bg-emerald-50 dark:bg-emerald-950 text-emerald-600" 
-                                  : "bg-amber-50 dark:bg-amber-950 text-amber-600"
-                              }`}>
-                                {req.status === "approved" ? "Approved by Admin" : "Awaiting Admin Approval"}
-                              </span>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteCoachingRequest(req.id)}
-                            className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-slate-400 italic bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
+                    {t("No coach assigned yet. An admin will assign one for you.")}
+                  </p>
+                )}
               </div>
-                );
-              })()}
             </div>
 
             {/* Footer */}
             <div className="bg-slate-50 dark:bg-slate-950 border-t border-slate-150 dark:border-slate-850 p-6 flex flex-col sm:flex-row sm:justify-between items-center gap-4">
               <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono text-center sm:text-left">
-                💡 Nominate exactly 1 coach or TL to complete this step.
+                💡 {t("Your review is saved. Your coach is assigned by an admin.")}
               </span>
               <button
                 type="button"
@@ -5048,15 +4628,10 @@ export default function App() {
                   setModalSearchName("");
                   setModalError("");
                 }}
-                disabled={coachingRequests.filter(req => req.memberId === user.uid).length !== 1}
-                className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 ${
-                  coachingRequests.filter(req => req.memberId === user.uid).length === 1
-                    ? "bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
-                    : "bg-slate-200 dark:bg-slate-800 text-slate-400 dark:text-slate-600 cursor-not-allowed"
-                }`}
+                className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                Done & Complete
+                Done
               </button>
             </div>
           </div>

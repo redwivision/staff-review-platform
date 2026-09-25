@@ -137,6 +137,66 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
     }
   };
 
+  // Admin-only: assign or clear a staff member's coach.
+  //
+  // The database is the authority. users_admin_update lets an admin change any
+  // row's coach_uid, and the SECURITY DEFINER trigger sync_assigned_coach()
+  // then marks the assigned person a Team Leader and refuses self-assignment.
+  // The client never grants privileges itself.
+  const updateAssignedCoach = async (targetUser: UserProfile, coachUid: string | null) => {
+    if (!currentUser.isAdmin) {
+      alert(t("Access Denied: Only administrators can assign coaches."));
+      return;
+    }
+
+    setUpdatingCoachId(targetUser.uid);
+
+    // The database trigger also promotes a newly assigned coach to leader, so
+    // reflect that immediately instead of leaving a stale "Team Member" badge
+    // until the next reload. Clearing a coach does not demote, so isLeader is
+    // left alone in that case.
+    const patch = (u: UserProfile): UserProfile =>
+      u.uid === targetUser.uid
+        ? { ...u, coachUid, ...(coachUid ? { isLeader: true } : {}) }
+        : u;
+
+    try {
+      // Local bypass mode keeps everything in localStorage.
+      const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
+      if (savedLocalUser && JSON.parse(savedLocalUser).uid.startsWith("bypass_")) {
+        const localUsers = JSON.parse(localStorage.getItem("staff_review_bypass_users") || "[]") as UserProfile[];
+        localStorage.setItem("staff_review_bypass_users", JSON.stringify(localUsers.map(patch)));
+
+        const owner = JSON.parse(savedLocalUser) as UserProfile;
+        if (owner.uid === targetUser.uid) {
+          localStorage.setItem("staff_review_bypass_user", JSON.stringify(patch(owner)));
+        }
+
+        setUsers(localUsers.map(patch));
+        return;
+      }
+
+      await dataUpdateAssignedCoach(targetUser.uid, coachUid);
+
+      setUsers(prev => prev.map(patch));
+    } catch (err) {
+      console.error("Failed to update assigned coach:", err);
+      alert(t("Error updating assigned coach. The database rejected the change."));
+    } finally {
+      setUpdatingCoachId(null);
+    }
+  };
+
+  // Anyone can be assigned as a coach — the database promotes them to Team
+  // Leader automatically. Listing only existing leaders left the dropdown empty
+  // on a fresh install, where nobody is a leader yet, so the client appeared to
+  // have no way to assign coaches at all. A person is never offered as their own
+  // coach; existing leaders are simply listed first for convenience.
+  const coachOptionsFor = (memberUid: string) =>
+    users
+      .filter(c => c.uid !== memberUid)
+      .sort((a, b) => Number(b.isLeader) - Number(a.isLeader) || a.name.localeCompare(b.name));
+
   return (
     <div id="user-management-container" className="bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors duration-200">
       <div className="p-6 border-b border-slate-150 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -183,52 +243,7 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
               {users.map(u => {
-const updateAssignedCoach = async (targetUser: UserProfile, coachUid: string | null) => {
-    if (!currentUser.isAdmin) {
-      alert(t("Access Denied: Only administrators can assign coaches."));
-      return;
-    }
-
-    setUpdatingCoachId(targetUser.uid);
-    try {
-      // Local bypass mode keeps everything in localStorage.
-      const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
-      if (savedLocalUser && JSON.parse(savedLocalUser).uid.startsWith("bypass_")) {
-        const localUsersStr = localStorage.getItem("staff_review_bypass_users") || "[]";
-        let localUsers = JSON.parse(localUsersStr) as UserProfile[];
-
-        localUsers = localUsers.map(u => (u.uid === targetUser.uid ? { ...u, coachUid: coachUid } : u));
-        localStorage.setItem("staff_review_bypass_users", JSON.stringify(localUsers));
-
-        const owner = JSON.parse(savedLocalUser) as UserProfile;
-        if (owner.uid === targetUser.uid) {
-          owner.coachUid = coachUid;
-          localStorage.setItem("staff_review_bypass_user", JSON.stringify(owner));
-        }
-
-        setUsers(prev =>
-          prev.map(u => (u.uid === targetUser.uid ? { ...u, coachUid: coachUid } : u))
-        );
-        return;
-      }
-
-      await dataUpdateAssignedCoach(targetUser.uid, coachUid);
-
-      // Update local state
-      setUsers(prev =>
-        prev.map(u => (u.uid === targetUser.uid ? { ...u, coachUid: coachUid } : u))
-      );
-    } catch (err) {
-      console.error("Failed to update assigned coach:", err);
-      alert(t("Error updating assigned coach. The database rejected the change."));
-    } finally {
-      setUpdatingCoachId(null);
-    }
-  };
-
-  const coaches = users.filter(u => u.isLeader);
-
-  return (
+                return (
                   <tr key={u.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-100 flex items-center gap-2">
                       {u.isAdmin && <Star className="w-4 h-4 text-amber-500 fill-amber-500" />}
@@ -273,8 +288,10 @@ const updateAssignedCoach = async (targetUser: UserProfile, coachUid: string | n
                         className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg py-1.5 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
                       >
                         <option value="">{t("No Coach")}</option>
-                        {coaches.map(c => (
-                          <option key={c.uid} value={c.uid}>{c.name}</option>
+                        {coachOptionsFor(u.uid).map(c => (
+                          <option key={c.uid} value={c.uid}>
+                            {c.name}{c.isLeader ? ` (${t("Coach / Leader")})` : ""}
+                          </option>
                         ))}
                       </select>
                     </td>

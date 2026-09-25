@@ -205,7 +205,15 @@ as $$
   ), false);
 $$;
 
--- Returns TRUE if the current caller is the designated coach/leader of `member_uid`.
+-- Returns TRUE if the current caller is the assigned coach of `member_uid`.
+--
+-- SINGLE SOURCE OF TRUTH: the admin sets `users.coach_uid` directly in the Team
+-- Members tab, so that column is what defines a coaching relationship. Every RLS
+-- policy that needs to know "may I read this person's data?" calls this
+-- function, which is why one admin assignment immediately changes access
+-- everywhere. The old nomination workflow (coaching_requests rows reaching
+-- status='approved' AND accepted_by_coach='accepted') is no longer consulted;
+-- those rows are retained for audit history only.
 create or replace function public.is_coach_of(member_uid text)
 returns boolean
 language sql
@@ -215,11 +223,9 @@ set search_path = public
 as $$
   select exists (
     select 1
-    from public.coaching_requests cr
-    where cr.member_id = member_uid
-      and cr.status = 'approved'
-      and cr.accepted_by_coach = 'accepted'
-      and cr.coach_uid = auth.uid()::text
+    from public.users u
+    where u.uid = member_uid
+      and u.coach_uid = auth.uid()::text
   );
 $$;
 
@@ -294,32 +300,55 @@ as $$
   select (select u.coach_uid from public.users u where u.uid = auth.uid()::text);
 $$;
 
--- SAFE SELF-PROMOTION: A user may become a leader ONLY if there exists a
--- coaching request where they are the approved+accepted coach (i.e. someone
--- ELSE nominated them and admin approved). The `member_id <> u.uid` guard
--- prevents a user from nominating THEMSELVES and then "accepting" to promote
--- themselves. Never grant privileges from the client.
-create or replace function public.promote_self_to_leader_if_verified()
-returns void
+-- COACHING RELATIONSHIP GUARD.
+--
+-- Runs whenever an admin assigns or clears a staff member's coach_uid. It keeps
+-- the two related facts in sync without trusting the client:
+--   1. Whoever is assigned as somebody's coach is marked a Team Leader
+--      (is_leader = true), so they appear correctly across the app.
+--   2. A user can never be their own coach.
+--
+-- SECURITY DEFINER so the internal UPDATE is not subject to RLS (an admin
+-- assigning a coach is not a leader and could not otherwise update that row).
+-- The trigger only fires on changes to coach_uid, so promoting the coach does
+-- not recurse.
+create or replace function public.sync_assigned_coach()
+returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  target text;
 begin
-  update public.users u
-  set is_leader = true
-  where u.uid = auth.uid()::text
-    and u.is_leader = false
-    and exists (
-      select 1
-      from public.coaching_requests cr
-      where cr.coach_uid = u.uid
-        and cr.member_id <> u.uid              -- a real, other-person request
-        and cr.status = 'approved'
-        and cr.accepted_by_coach = 'accepted'
-    );
+  target := new.coach_uid;
+
+  if target is not null and target = new.uid then
+    raise exception 'A user cannot be their own coach (uid: %)', new.uid;
+  end if;
+
+  if target is not null then
+    update public.users
+       set is_leader = true
+     where uid = target
+       and is_leader = false;
+  end if;
+
+  return new;
 end;
 $$;
+
+drop trigger if exists trg_sync_assigned_coach on public.users;
+create trigger trg_sync_assigned_coach
+  before insert or update of coach_uid on public.users
+  for each row execute function public.sync_assigned_coach();
+
+-- The nomination workflow is gone: an admin assigns a coach directly, so the
+-- member no longer nominates and the coach no longer accepts. This RPC granted
+-- leader status to a coach who had accepted an approved nomination and is
+-- unreachable now that those screens are gone. Dropped so no dead privilege
+-- path is left behind; leader status comes from sync_assigned_coach() instead.
+drop function if exists public.promote_self_to_leader_if_verified();
 
 -- Coaching-request state machine guard.
 -- The member who made a request must never be able to forge an "approved" or
@@ -442,9 +471,9 @@ CREATE POLICY "users_insert_self"
   );
 
 -- Users can update ONLY their own row, and may NOT change is_admin / is_leader /
--- role/email/uid/coach_uid. Admin promotion is done by a privileged server role;
--- leadership is granted only via public.promote_self_to_leader_if_verified();
--- coach assignment only via the admins-only policy below. Each column is
+-- role/email/uid/coach_uid. All of those are granted in the database only: admin
+-- and coach assignment happen through the admins-only policy below, and leader
+-- status is applied by the sync_assigned_coach() trigger. Each column is
 -- compared against a SECURITY DEFINER helper that reads the row as it was
 -- BEFORE this statement ran, so "unchanged" is enforced server-side.
 CREATE POLICY "users_update_self"
@@ -615,7 +644,8 @@ ON CONFLICT (id) DO NOTHING;
 --
 -- After bootstrap, additional admins/leaders are granted by an existing admin
 -- (writing the users.is_admin / users.is_leader flags through the users_admin_update
--- policy) or via the promote_self_to_leader_if_verified() RPC.
+-- policy). Assigning somebody a coach marks them a leader automatically via the
+-- sync_assigned_coach() trigger.
 
 create or replace function public.bootstrap_first_admin()
 returns trigger

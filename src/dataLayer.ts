@@ -1,9 +1,6 @@
 import {
   saveReview as sbSaveReview,
   saveSummary as sbSaveSummary,
-  saveCoachingRequest as sbSaveCoaching,
-  updateCoachingRequest as sbUpdateCoaching,
-  deleteCoachingRequest as sbDeleteCoaching,
   saveActivityLog as sbSaveLog,
   saveFollowUpTask as sbSaveTask,
   saveRequirementSettings as sbSaveSettings,
@@ -15,7 +12,6 @@ import {
 import type {
   DevelopmentReview,
   QuarterlySummary,
-  CoachingRequest,
   ActivityLog,
   FollowUpTask,
   ReviewRequirementSettings,
@@ -39,20 +35,6 @@ export async function dataGetSummaryById(id: string): Promise<QuarterlySummary |
 
 export async function dataSaveSummary(summary: QuarterlySummary) {
   return sbSaveSummary(summary);
-}
-
-// ─── COACHING REQUESTS ───────────────────────────────────────────────────────
-
-export async function dataSaveCoachingRequest(req: CoachingRequest) {
-  return sbSaveCoaching(req);
-}
-
-export async function dataUpdateCoachingRequest(id: string, updates: Partial<CoachingRequest>) {
-  return sbUpdateCoaching(id, updates);
-}
-
-export async function dataDeleteCoachingRequest(id: string) {
-  return sbDeleteCoaching(id);
 }
 
 // ─── ACTIVITY LOGS ───────────────────────────────────────────────────────────
@@ -119,10 +101,4 @@ export async function dataUpdateAssignedCoach(uid: string, coachUid: string | nu
     .update({ coach_uid: coachUid })
     .eq("uid", uid);
   if (error) throw error;
-}
-
-// Safe self-promotion to leader via DB RPC (enforced server-side).
-export async function dataPromoteSelfToLeaderIfVerified(): Promise<boolean> {
-  const { supabasePromoteSelfToLeaderIfVerified } = await import("./supabaseDb");
-  return supabasePromoteSelfToLeaderIfVerified();
 }

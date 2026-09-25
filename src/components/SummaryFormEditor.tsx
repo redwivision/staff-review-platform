@@ -240,7 +240,7 @@ export default function SummaryFormEditor({
                 id="submit-summary-to-coach-btn"
                 onClick={async () => {
                   if (!hasVerifiedCoach) {
-                    alert(t("You don't have a confirmed coach yet. You can keep filling and saving your form — just submit it to your coach once they've accepted your coaching request."));
+                    alert(t("You don't have a coach assigned yet. You can keep filling and saving your form — an admin assigns your coach, and you can submit once they have."));
                     return;
                   }
                   if (!formData.presentPositionSince || !formData.teamLeaderName) {

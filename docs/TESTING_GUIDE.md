@@ -124,6 +124,36 @@ What to check:
 
 ---
 
+## Step 8b: Assign a Coach (the only way a coaching relationship starts)
+
+1. Still logged in as **Lewis KB**, click the **Team Members** sub-tab
+2. Find **John Staff** and look at the **"Assigned Coach"** column
+3. Open the dropdown — it should list the other staff members, not be empty
+4. Pick **Sarah Leader**, then press **F5** to refresh
+
+What to check:
+- [ ] The dropdown lists every *other* staff member (a person is never offered as their own coach)
+- [ ] Choosing "No Coach" clears the assignment
+- [ ] Sarah Leader now shows **Coach / Leader** in her own Access Level, even if she was a plain member before
+
+Now log out, log back in as **Sarah Leader**, and check the flip side:
+
+- [ ] Her **Team Reviews** tab is there
+- [ ] John Staff appears in it
+- [ ] John Staff's summary is openable
+
+And log in as **John Staff**:
+
+- [ ] His next-step card shows his coach's name (or "Waiting for your coach" if unassigned)
+- [ ] There is **no** "Nominate" button, no "Pick your coach", and no invitation to accept anywhere
+
+Finally, confirm access actually moved:
+
+- [ ] After reassigning John Staff to a different coach, the previous coach can no longer see him
+- [ ] Sarah Leader still sees the staff she was assigned, and nothing else
+
+---
+
 ## Step 9: Check the Labels Are Consistent
 
 Search the entire app for these old jargon words — they should NOT appear anywhere in the UI:
@@ -134,6 +164,8 @@ Search the entire app for these old jargon words — they should NOT appear anyw
 | KDA | My Main Tasks / Main Tasks |
 | PDP | My Growth Plan / Growth Plan |
 | TL Evaluation | Coach's Review / Coach's Evaluation |
+| Nominate / Pick your coach | (removed) an admin assigns your coach in Team Members |
+| Awaiting coach confirmation | Waiting for your coach |
 | Heart Walk | Walk with God |
 | Ministry Effectiveness | Ministry Impact |
 | Staff Identity | Your Details |

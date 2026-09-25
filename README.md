@@ -33,8 +33,8 @@ All documentation lives in [`docs/`](./docs):
 - **Quarterly Summary Form** — staff compile progress on PDP goals, Critical Mission Objectives, and Key Deliverable Assignments
 - **Coach Evaluation** — team leaders review and score submitted summaries; evaluations are routed to the admin for approval
 - **Admin Dashboard** — view all evaluations, export individual or bulk PDFs, and manage follow-up tasks
-- **Coaching Requests** — any member can nominate a coach; coaches accept or decline, and become leaders on acceptance
-- **Flexible quarterly form** — fill and save your Quarterly Summary as soon as it's unlocked; you only *submit* it to your coach once they've confirmed the coaching relationship
+- **Coach assignment** — an admin assigns a coach to any staff member from the **Team Members** tab. That single action sets the coaching relationship everywhere at once: the member sees their coach, the coach immediately gains access to that person's data, and they are marked Coach/Leader automatically. There is no nomination, approval, or acceptance step.
+- **Flexible quarterly form** — fill and save your Quarterly Summary as soon as it's unlocked; you only *submit* it to your coach once an admin has assigned one to you
 - **Role-based access** — roles: Staff, Coach/Leader, and Admin
 - **Bypass / Demo Mode** — instant one-click login as any role (Platform Owner, Team Leader, or Member) with optional seeded mock data, so you can test any workflow without setting up accounts. Available in all environments (dev and production) with no environment guard. It opens the full interface but returns **no data**, because every read still passes through RLS and no matching row exists in the database. See [ARCHITECTURE.md § 12](./docs/ARCHITECTURE.md#12-bypass--demo-mode).
 
@@ -67,10 +67,7 @@ staff-review-platform/
 │   │   ├── ReviewFormEditor.tsx      # Monthly Development Review form
 │   │   ├── SummaryFormEditor.tsx     # Quarterly Summary form (PDP, CMO, KDA, Evaluation)
 │   │   ├── AdminReports.tsx          # Admin dashboard with controls and PDF export
-│   │   ├── AdminCoachingPanel.tsx    # Admin coaching oversight & approvals
-│   │   ├── CoachingInvitations.tsx   # Coach accept/decline incoming requests
-│   │   ├── CoachingNominations.tsx   # Staff nominate their coach
-│   │   ├── UserManagement.tsx        # Admin role management
+│   │   ├── UserManagement.tsx        # Admin role management + assign a staff member's coach
 │   │   └── ...
 │   ├── utils/
 │   │   ├── pdfExport.ts              # PDF generation logic
@@ -157,14 +154,15 @@ npm run preview
 | **Coach / Leader** | View coached staff, fill evaluation tab, approve summaries |
 | **Admin** | View all evaluations, export PDFs, manage tasks and user roles |
 
-**The quarterly form and your coach:** you don't need to wait for your coach to start working. As soon as a quarter is unlocked, you can open your Quarterly Summary, fill it in, and save it as a draft at any time. The **"Submit to Coach"** step is the only thing that requires a confirmed coach (admin-approved **and** coach-accepted) — until then you can keep drafting and saving freely.
+**The quarterly form and your coach:** you don't need to wait for a coach to start working. As soon as a quarter is unlocked, you can open your Quarterly Summary, fill it in, and save it as a draft at any time. The **"Submit to Coach"** step is the only thing that requires a coach — until then you can keep drafting and saving freely. Your coach is assigned to you by an admin; there is nothing for you to request or approve.
 
 The **first person to register** (while the `users` table is still empty) is
 automatically promoted to Admin by a database trigger — no email address is
 special-cased. After that, admins grant roles from the **Team Members** tab
-(write access is enforced by the `users_admin_update` RLS policy), and a member
-who has an admin-approved coaching request accepted by them is promoted to
-Coach/Leader by the `promote_self_to_leader_if_verified()` RPC.
+(write access is enforced by the `users_admin_update` RLS policy). When an admin
+assigns somebody a coach, the `sync_assigned_coach()` trigger marks that coach
+`is_leader = true` in the database — leadership is never granted by the client,
+and a person can never be set as their own coach.
 
 ---
 

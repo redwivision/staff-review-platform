@@ -159,18 +159,19 @@ export interface ActivityLog {
   timestamp: number;
 }
 
-export interface CoachingRequest {
-  id: string; // Document ID: e.g. "req_memberUid_coachName"
+// Retired. Members no longer nominate a coach and coaches no longer accept:
+// an admin assigns a coach directly on a staff member's row, recorded in
+// UserProfile.coachUid (users.coach_uid in the database). That column is the
+// single source of truth — the database's is_coach_of() reads it for RLS, and
+// the app derives visibility from it. The coaching_requests table is kept in the
+// schema for historical rows only; the app neither reads nor writes it.
+export type LegacyCoachingRequest = {
+  id: string;
   memberId: string;
-  memberName: string;
-  memberEmail: string;
-  coachName: string; // The entered coach name (full name)
-  status: "pending" | "approved" | "rejected"; // Admin's approval status
-  adminNotes?: string;
-  acceptedByCoach: "pending" | "accepted" | "rejected"; // Nominee's acceptance status
-  coachRejectReason?: string; // Reason why the coach rejected
-  coachUid?: string; // The uid of the coach, if they have registered
+  coachName: string;
+  status: "pending" | "approved" | "rejected";
+  acceptedByCoach: "pending" | "accepted" | "rejected";
   updatedAt: number;
-}
+};
 
 

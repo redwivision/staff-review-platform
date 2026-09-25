@@ -186,24 +186,39 @@ derives its admin flag from the database row and nowhere else
 const isAdmin = user && user.isAdmin === true;
 ```
 
-### How someone becomes a leader
+### How someone becomes a coach (direct admin assignment)
 
-1. A member nominates a coach → row in `coaching_requests`, `status='pending'`.
-2. An **admin approves** it → `status='approved'`.
-3. The **coach accepts** → `accepted_by_coach='accepted'`.
-4. Only then does the app call the RPC `promote_self_to_leader_if_verified()`
-   (`src/App.tsx:1552`), which grants `is_leader = true` **in the database**, and
-   only if the caller coaches at least one *other* person
-   (`supabase-schema.sql:152-172`).
+There is exactly **one** path, and it starts with an admin:
 
-Because the RPC is `SECURITY DEFINER` and checks the request table itself, the
-client cannot shortcut it. Step 2 is what makes a self-nomination impossible.
+1. An **admin** picks a coach in the **Team Members** tab
+   (`src/components/UserManagement.tsx`). This writes `users.coach_uid` on that
+   person's row via `dataUpdateAssignedCoach()`.
+2. The `users_update_self` policy pins `coach_uid` to its current value, so a
+   non-admin cannot change their own coach — even by crafting a request.
+3. A `BEFORE INSERT OR UPDATE OF coach_uid` trigger, `sync_assigned_coach()`,
+   then does two things in the database:
+   - refuses `coach_uid = uid` (nobody coaches themselves), and
+   - sets `is_leader = true` on the newly assigned coach, because an assigned
+     coach is a Team Leader by definition.
 
-> **Small inaccuracy to be aware of:** `supabasePromoteSelfToLeaderIfVerified`
-> returns `true` whenever the RPC call *doesn't error* (`src/supabaseDb.ts:96-104`).
-> The SQL function returns `void`, so a zero-row update is indistinguishable from
-> a successful one, and the UI may set `isLeader: true` optimistically. The
-> database is still correct — only the local state can be briefly wrong.
+Nobody nominates, nobody approves, and nobody accepts. The member sees their
+coach immediately, and the coach's data access changes at the same instant.
+
+The retired mechanism is still worth knowing about, because its leftovers are in
+the schema:
+
+| Retired | Replacement |
+|---|---|
+| Member nominates a coach (`coaching_requests` row, `status='pending'`) | Admin assigns `users.coach_uid` |
+| Admin approves the nomination | Nothing — the admin *is* the one assigning |
+| Coach accepts/declines the invitation | Nothing — the assignment is final until the admin changes it |
+| `promote_self_to_leader_if_verified()` RPC | `sync_assigned_coach()` trigger |
+| `is_coach_of()` reads `coaching_requests` | `is_coach_of()` reads `users.coach_uid` |
+
+> **What survives on purpose:** the `coaching_requests` table, its policies, and
+> the `trg_coaching_state_guard` trigger are retained so historical rows keep
+> their RLS behaviour and nothing is destroyed. The application no longer reads
+> or writes that table. Dropping it later is safe from the app's point of view.
 
 ---
 
@@ -305,7 +320,11 @@ Same three-way shape: `summaries_owner_all`, plus
 `summaries_coach_or_admin_select` and `summaries_coach_or_admin_update`, which
 allow an admin, whoever the row's `coach_uid` points at, or the verified coach.
 
-### `coaching_requests`
+### `coaching_requests` (retired — historical only)
+
+This table backed the old nomination workflow. **The app no longer reads or
+writes it.** It is kept so existing rows keep their access rules and nothing is
+destroyed; nothing depends on it for new behaviour.
 
 | Policy | Operation | Who |
 |---|---|---|
@@ -317,6 +336,10 @@ allow an admin, whoever the row's `coach_uid` points at, or the verified coach.
 
 Note there is **no** member UPDATE policy on purpose. The pending → approved →
 accepted state machine is protected by a trigger, not by a policy (see §10).
+
+> Because `is_coach_of()` no longer consults this table, its policies are now
+> effectively admin-only for live use. That is intentional: assignments flow
+> through `users.coach_uid` instead.
 
 ### `activity_logs`, `follow_up_tasks`, `meetings`
 
@@ -345,14 +368,14 @@ and one row per quarter, both seeded by the schema
 |---|---|---|
 | `is_admin_user()` | bool | The main admin check used by most policies. |
 | `is_admin_or_leader()` | bool | Admin **or** leader. |
-| `is_coach_of(member_uid)` | bool | Is the caller a verified coach of this person? Reads `coaching_requests`. |
+| `is_coach_of(member_uid)` | bool | Is the caller this person's assigned coach? Reads `users.coach_uid` — the single source of truth. |
 | `current_uid()` | text | The caller's uid. |
 | `__my_is_admin()` | bool | Security-definer read of the *caller's own* stored flag. |
 | `__my_is_leader()` | bool | Same, for `is_leader`. |
 | `__my_role()` | text | Same, for `role`. |
 | `__my_email()` | text | Same, for `email`. |
 | `__my_coach_uid()` | text | Same, for `coach_uid`. |
-| `promote_self_to_leader_if_verified()` | void | Self-promotion RPC, gated on a real coaching relationship. |
+| `sync_assigned_coach()` | trigger fn | `BEFORE INSERT OR UPDATE OF coach_uid` on `users`. Refuses self-coaching and promotes the assigned coach to `is_leader`. |
 | `bootstrap_first_admin()` | trigger | First-ever user becomes owner. |
 | `coaching_state_guard()` | trigger | Enforces the coaching state machine. |
 
@@ -367,7 +390,7 @@ itself trigger the policy, forever.
 
 `is_admin_user()` and `is_coach_of()` are `SECURITY DEFINER` for the same reason
 — they are called from inside policies on other tables but must read `users`
-and `coaching_requests`.
+(which is itself under RLS, so an ordinary read inside a policy would recurse).
 
 ### `set search_path = public`
 
@@ -387,9 +410,26 @@ Sets `is_admin = true`, `is_leader = true`, `role = 'Admin'` **only if the
 `users` table is currently empty**. Runs as the owner, so the client cannot
 influence it, and it cannot be replayed once a user exists.
 
+### `trg_sync_assigned_coach` — `BEFORE INSERT OR UPDATE OF coach_uid` on `users`
+
+This is the live coaching rule, and the only place coaching status changes:
+
+- Raises if `coach_uid` would equal the row's own `uid` — nobody is their own
+  coach, whoever is performing the write.
+- Sets `is_leader = true` on the assigned coach if they were not already a
+  leader. An assigned coach *is* a Team Leader.
+- Does **not** demote when a coach is cleared, because a leader may legitimately
+  lead without a coachee. `is_coach_of()` grants data access, so demotion would
+  not be needed for correctness even if we wanted it.
+
+It is `SECURITY DEFINER` because the person performing the write is an admin
+assigning *someone else's* row, which RLS would otherwise reject. The trigger
+only fires when `coach_uid` actually changes, so promoting the coach does not
+recurse.
+
 ### `trg_coaching_state_guard` — `BEFORE INSERT OR UPDATE` on `coaching_requests`
 
-This is the state machine. Roughly:
+Retained with the retired table. Roughly:
 
 - `status` may leave `'pending'` only if the actor is an admin.
 - `accepted_by_coach` may leave `'pending'` only if the actor is the nominated
@@ -397,24 +437,27 @@ This is the state machine. Roughly:
 - A non-admin may not set `coach_uid` to their own uid to then "accept" their
   own nomination.
 
-That last rule is why self-promotion cannot be forged: a member cannot write
-`approved` (admin only), and cannot make themselves the coach of their own
-request.
+That last rule is why self-promotion could not be forged in the old design. It
+is now defence-in-depth for historical rows.
 
 ### `coach_uid` on `users` vs `coach_requests` — two different things
 
-Worth stating explicitly, because it caused the bug fixed in the last change:
+Worth stating explicitly, because this duplication caused the confusion that
+led to the workflow being removed:
 
 | | `users.coach_uid` | `coaching_requests.coach_uid` |
 |---|---|---|
-| Set by | Admin, via the Team Members tab | The workflow (admin approves, coach accepts) |
+| Set by | Admin, via the Team Members tab | The retired workflow |
+| Read by RLS? | **Yes** — this is the live relationship | No |
+| Status | Authoritative | Historical |
 | Guard | `users_update_self` + `users_admin_update` | `coaching_state_guard` trigger |
-| Used by the app for | Showing "who is my coach" | Deciding who can see whose data |
+| Used by the app for | Everything: showing "who is my coach" *and* deciding who can see whose data | Nothing |
 
-**No RLS policy reads `users.coach_uid`.** All access control runs through
-`coaching_requests` via `is_coach_of()`. That is why this column is a
-convenience/display field rather than a security boundary — and why it needed a
-policy guard of its own.
+**Every RLS policy now reads `users.coach_uid`, through `is_coach_of()`.** The
+app derives the same relationship from the same column, so the UI and the
+database cannot disagree about who coaches whom. The `users_update_self` policy
+pins the column, `users_admin_update` lets admins set it, and
+`sync_assigned_coach()` keeps `is_leader` and self-coaching consistent.
 
 ---
 
@@ -563,7 +606,7 @@ know before you rely on a behaviour.
 | Bypass mode has no environment guard | Full admin UI is public. No data exposure (see §12). |
 | `users_select_authenticated` uses `USING (true)` | Any signed-in user can read every name, email, and role flag in `users`. Intentional, but it is real PII exposure. |
 | `supabaseGetUser` returns `null` on any error | A permission failure is indistinguishable from a missing row, so the app logs you in as a fabricated unprivileged profile instead of showing an error. |
-| `promote_self_to_leader_if_verified()` returns `void` | The client cannot tell a real promotion from a no-op, so `isLeader` can be briefly wrong in state. The database stays correct. |
+| Leader promotion happens in a trigger, not a client call | The client cannot grant itself leadership, and cannot fake a promotion. `src/App.tsx` re-reads its own row from the live staff list so the new `is_leader` shows up without a reload. |
 | Two empty `catch` blocks (`src/App.tsx:522`, `:741`) | A rejected profile write is completely silent. |
 | Activity-log failures only reach the console | The UI can report success while the audit trail write was denied. |
 | Realtime disabled in this project | ~30s update lag instead of live updates. |

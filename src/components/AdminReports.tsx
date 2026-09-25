@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { UserProfile, DevelopmentReview, QuarterlySummary, CoachingRequest } from "../types";
+import { UserProfile, DevelopmentReview, QuarterlySummary } from "../types";
 import { 
   Users, 
   TrendingUp, 
@@ -31,7 +31,6 @@ interface AdminReportsProps {
   registeredUsers: UserProfile[];
   allReviews: DevelopmentReview[];
   allSummaries: QuarterlySummary[];
-  coachingRequests: CoachingRequest[];
   currentQuarter: "1st" | "2nd" | "3rd";
   currentYear: string;
   onViewStaffFollowUp?: (staffUid: string) => void;
@@ -41,7 +40,6 @@ export default function AdminReports({
   registeredUsers,
   allReviews,
   allSummaries,
-  coachingRequests,
   currentQuarter,
   currentYear,
   onViewStaffFollowUp
@@ -86,10 +84,12 @@ export default function AdminReports({
         s => s.userId === staff.uid && s.quarter === reportQuarter && s.year === reportYear && !s.coachUid
       );
 
-      // Check coaching relationship
-      const coachingRel = coachingRequests.find(
-        req => req.memberId === staff.uid && req.status === "approved" && req.acceptedByCoach === "accepted"
-      );
+      // Coaching relationship: an admin assigns the coach directly, so the
+      // authoritative link is `users.coach_uid` (the same column is_coach_of()
+      // reads in the database). Displayed name is resolved from that uid.
+      const assignedCoach = staff.coachUid
+        ? registeredUsers.find(u => u.uid === staff.coachUid)
+        : undefined;
 
       // Find any completed evaluation (submitted by coach or self)
       const allMemberSummaries = allSummaries.filter(
@@ -120,11 +120,11 @@ export default function AdminReports({
         role: staff.role,
         status,
         hasSummary: !!summary,
-        coachName: coachingRel?.coachName || "No coach assigned",
+        coachName: assignedCoach?.name || "No coach assigned",
         updatedAt: summary?.updatedAt || staff.createdAt
       };
     });
-  }, [registeredUsers, allSummaries, coachingRequests, reportQuarter, reportYear]);
+  }, [registeredUsers, allSummaries, reportQuarter, reportYear]);
 
   // Filtered lists
   const filteredStaff = useMemo(() => {

@@ -327,7 +327,10 @@ Here are the main tables. I'll use "shape" notation (id, fields) so you can pict
 
 ### Other tables
 - `activity_logs` — an **audit trail**: who changed what, and when.
-- `coaching_requests` — the "staff asks someone to be their coach" workflow.
+- `coaching_requests` — **retired**. It backed the old "staff nominates, admin
+  approves, coach accepts" workflow. The app no longer reads or writes it; the
+  table is kept only so historical rows keep their access rules. Live coach
+  assignments live in `users.coach_uid` instead.
 - `follow_up_tasks`, `meetings`, `requirement_settings` — supporting data.
 
 Be careful: keep the **table names** (`quarterly_summaries`, `development_reviews`)
@@ -359,13 +362,16 @@ the whole product does.
 - The **coach** fills the TL Evaluation section.
 - Has a status that moves through a workflow: `Draft → Submitted → CoachSubmitted → Declined`.
 
-**Important:** the staff member does **not** have to wait for their coach to be confirmed
-before they start their Quarterly Summary. As long as a quarter is *unlocked* (by the
-admin), they can open the form, fill it in, and **save as a draft** at any time. The only
-step that requires a confirmed coach (admin-approved **and** coach-accepted) is the final
-**"Submit to Coach"** button — until then they can keep drafting and saving freely. In the
-code this is the `myHasVerifiedCoach` flag in `App.tsx`, passed into `SummaryFormEditor.tsx`
-as `hasVerifiedCoach`.
+**Important:** the staff member does **not** have to wait for a coach before they start
+their Quarterly Summary. As long as a quarter is *unlocked* (by the admin), they can open
+the form, fill it in, and **save as a draft** at any time. The only step that needs a coach
+is the final **"Submit to Coach"** button — until then they can keep drafting and saving
+freely.
+
+A coach exists as soon as an **admin assigns one** in the Team Members tab. There is no
+nomination, no approval, and no acceptance step. In the code this is the
+`myHasVerifiedCoach` flag in `App.tsx`, which is simply "does `users.coach_uid` point at
+me?", passed into `SummaryFormEditor.tsx` as `hasVerifiedCoach`.
 
 The word **"status"** here is powerful — it's a **state machine**: the form can only be
 in certain states, and only certain transitions are allowed. This is a real software
@@ -426,8 +432,15 @@ There are **two layers of permission**, and both matter:
    layer that actually *enforces* the rules.
 
 Role flags:
-- `isLeader` on a user → unlocks coach/leader features.
+- `isLeader` on a user → unlocks coach/leader features. Set automatically when an
+  admin assigns that person as somebody's coach.
 - `isAdmin` on a user → unlocks admin features. **Only the database decides this.**
+
+And the relationship itself:
+- `coachUid` on a user → **who coaches this person.** This single column is the
+  source of truth: the database's `is_coach_of()` reads it for RLS, and the app
+  reads it to decide who can see whose data. Assign a coach in Team Members and
+  that person's access changes immediately.
 
 Here is the key lesson:
 
@@ -630,11 +643,9 @@ staff-review-platform/
 │   │   ├── ReviewFormEditor.tsx   ← Development Review form (4 quadrants)
 │   │   ├── SummaryFormEditor.tsx  ← Quarterly Summary form (6 tabs)
 │   │   ├── AdminReports.tsx       ← admin reports
-│   │   ├── AdminCoachingPanel.tsx ← admin coaching oversight
 │   │   ├── ActivityLog.tsx        ← audit trail view
-│   │   ├── CoachingInvitations.tsx← coach accept/reject
-│   │   ├── CoachingNominations.tsx← staff nominate coaches
-│   │   └── UserManagement.tsx     ← admin role management
+│   │   └── UserManagement.tsx     ← admin roles + assign a staff member's coach
+│   │                                (the ONLY way a coaching relationship starts)
 │   └── utils/
 │       └── pdfExport.ts           ← PDF generation (lazy-loaded)
 ├── server.ts                      ← Express dev server (Vite + static file serving)

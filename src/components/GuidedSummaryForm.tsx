@@ -434,8 +434,8 @@ export default function GuidedSummaryForm({
             <>
               <Field label={t("How is this area going?")}>
                 <div className="space-y-3">
-                  <ChoiceButtons id="Outstanding" active={rating === "o"} onPick={() => setPDPRating(cat.key, "o")} />
                   <ChoiceButtons id="Satisfactory" active={rating === "s"} onPick={() => setPDPRating(cat.key, "s")} />
+                  <ChoiceButtons id="Outstanding" active={rating === "o"} onPick={() => setPDPRating(cat.key, "o")} />
                   <ChoiceButtons id="Needs improvement" active={rating === "ni"} onPick={() => setPDPRating(cat.key, "ni")} />
                 </div>
               </Field>
@@ -475,8 +475,8 @@ export default function GuidedSummaryForm({
       const rating = getRating(formData.cmo[i] || {});
       return (
         <div className="space-y-3">
-          <ChoiceButtons id="Outstanding" active={rating === "o"} onPick={() => setCMORating(i, "o")} />
           <ChoiceButtons id="Satisfactory" active={rating === "s"} onPick={() => setCMORating(i, "s")} />
+          <ChoiceButtons id="Outstanding" active={rating === "o"} onPick={() => setCMORating(i, "o")} />
           <ChoiceButtons id="Needs improvement" active={rating === "ni"} onPick={() => setCMORating(i, "ni")} />
         </div>
       );

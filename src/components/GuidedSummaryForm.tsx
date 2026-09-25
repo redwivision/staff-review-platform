@@ -453,7 +453,7 @@ export default function GuidedSummaryForm({
       const i = cmoIdx(step)!;
       return (
         <div className="space-y-1">
-          <div className="mb-3 bg-slate-50 rounded-2xl p-4 text-sm text-slate-600">{DEVELOPMENT_REVIEW_SECTIONS.ministryEffectiveness.bullets[0]}</div>
+          <div className="mb-3 bg-slate-50 rounded-2xl p-4 text-sm text-slate-600">{t(DEVELOPMENT_REVIEW_SECTIONS.ministryEffectiveness.bullets[0])}</div>
           <BigTextarea value={formData.cmo[i]?.objective || ""} onChange={(v) => updateCMO(i, "objective", v)} placeholder={t("Write your goal")} />
         </div>
       );

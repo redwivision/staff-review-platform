@@ -474,13 +474,13 @@ export default function ReviewFormEditor({
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 bg-slate-50 rounded-xl p-6 border border-slate-150">
                 <div className="lg:col-span-5 space-y-3.5">
                   <h3 className="font-sans font-bold text-slate-800 text-base border-b border-slate-200 pb-2">
-                    {currentSectionData.title}
+                    {t(currentSectionData.title)}
                   </h3>
                   <ul className="space-y-2 text-sm text-slate-600">
                     {currentSectionData.bullets.map((b, i) => (
                       <li key={i} className="flex items-start gap-2">
                         <span className="text-slate-400 font-mono text-xs mt-0.5">{i + 1}.</span>
-                        <span>{b}</span>
+                        <span>{t(b)}</span>
                       </li>
                     ))}
                   </ul>
@@ -494,7 +494,7 @@ export default function ReviewFormEditor({
                   <div className="space-y-2.5 text-sm text-slate-700">
                     {currentSectionData.questions.map((q, i) => (
                       <p key={i} className="leading-relaxed pl-3 border-l-2 border-slate-300">
-                        {q}
+                        {t(q)}
                       </p>
                     ))}
                   </div>
@@ -650,7 +650,7 @@ export default function ReviewFormEditor({
                   </p>
                   <div>
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-2">
-                      {t("Feedback for")} {currentSectionData.title}
+                      {t("Feedback for")} {t(currentSectionData.title)}
                     </label>
                     <textarea
                       id={`leader-comment-${currentSectionKey}`}

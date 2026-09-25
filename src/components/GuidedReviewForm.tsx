@@ -94,9 +94,9 @@ export default function GuidedReviewForm({
     QUADRANTS.forEach(q => {
       const sec = DEVELOPMENT_REVIEW_SECTIONS[q.key];
       for (let idx = 0; idx < 3; idx++) {
-        list.push({ id: `${q.key}-s${idx}`, heading: `${t(q.label)} · ${t("Strength")} ${idx + 1}`, helper: sec ? sec.questions[0] : undefined });
-        list.push({ id: `${q.key}-n${idx}`, heading: `${t(q.label)} · ${t("Needs Improvement")} ${idx + 1}`, helper: sec ? sec.questions[1] : undefined });
-        list.push({ id: `${q.key}-a${idx}`, heading: `${t(q.label)} · ${t("Action Point")} ${idx + 1}`, helper: sec ? sec.questions[2] : undefined });
+        list.push({ id: `${q.key}-s${idx}`, heading: `${t(q.label)} · ${t("Strength")} ${idx + 1}`, helper: sec && sec.questions[0] ? t(sec.questions[0]) : undefined });
+        list.push({ id: `${q.key}-n${idx}`, heading: `${t(q.label)} · ${t("Needs Improvement")} ${idx + 1}`, helper: sec && sec.questions[1] ? t(sec.questions[1]) : undefined });
+        list.push({ id: `${q.key}-a${idx}`, heading: `${t(q.label)} · ${t("Action Point")} ${idx + 1}`, helper: sec && sec.questions[2] ? t(sec.questions[2]) : undefined });
       }
     });
 

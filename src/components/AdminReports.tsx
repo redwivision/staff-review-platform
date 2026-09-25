@@ -668,11 +668,11 @@ export default function AdminReports({
                             <div className="bg-white/80 dark:bg-slate-900/60 rounded-lg p-2 border border-slate-150 dark:border-slate-800 text-[10px] space-y-1.5 leading-normal">
                               <div>
                                 <span className="font-bold text-slate-500 dark:text-slate-400 font-mono text-[9px] uppercase tracking-wider block">{t("Core Focus:")}</span>
-                                <span className="text-slate-600 dark:text-slate-350">{DEVELOPMENT_REVIEW_SECTIONS[cat].bullets.join(", ")}</span>
+                                <span className="text-slate-600 dark:text-slate-350">{DEVELOPMENT_REVIEW_SECTIONS[cat].bullets.map(b => t(b)).join(", ")}</span>
                               </div>
                               <div className="pt-1 border-t border-slate-100 dark:border-slate-800">
                                 <span className="font-bold text-slate-500 dark:text-slate-400 font-mono text-[9px] uppercase tracking-wider block">{t("Reflection Guide:")}</span>
-                                <span className="text-slate-600 dark:text-slate-350 italic">"{DEVELOPMENT_REVIEW_SECTIONS[cat].questions.join(" • ")}"</span>
+                                <span className="text-slate-600 dark:text-slate-350 italic">"{DEVELOPMENT_REVIEW_SECTIONS[cat].questions.map(q => t(q)).join(" • ")}"</span>
                               </div>
                             </div>
                           )}

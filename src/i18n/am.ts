@@ -3,6 +3,46 @@
 // Strings not present here fall back to English so the UI never shows a blank.
 export const amharicDictionary: Record<string, string> = {
 
+  // --- Development Review focus areas & self-reflection prompts ---
+  // Not present in the summary-form PDFs; translated from the English source
+  // text in src/constants.ts for use by both the summary and review forms.
+  "WALK WITH GOD (walk with God and character growth)": "ከእግዚአብሔር ጋር መራመድ (ከእግዚአብሔር ጋር መራመድና የባህል ገንባት)",
+  "Demonstrates a Growing intimacy with God": "ከእግዚአብሔር ጋር የሚያድግ አንቀሳቃሽነትን ያሳያል",
+  "Walking in Spirit (Spirit-filled life), Faith and Obedience": "በመንፈስ መራመድ (በመንፈስ የተሞላ ሕይወት፣ እምነትና ክብደት)",
+  "Self-feeding from the Word": "ከመጽሐፍ ቅዱስ በራሱ የሚያገኝ",
+  "Demonstrates integrity, honesty and perseverance.": "ርኅምናነት፣ ታማኝነትና ቀጣይነትን ያሳያል።",
+  "In what ways have I demonstrated a close walk with the Lord?": "ከእግዚአብሔር ጋር በቅርበት ለመራመድ በምን መልካም አሳሳር።",
+  "How am I demonstrating moment-by-moment dependence upon the Holy Spirit in my life and ministry?": "በሕይወቴና በአገልግሎቴ ላይ በእያንዳንዱ ጊዜ ላይ በመናጠር የሩቅ መንፈስን በምን እንደምታለለኝ አሳሳር።",
+  "In what ways is the Bible presently your source of spiritual sustenance and influence as you care for others in practical ways?": "ሌሎችን በተግባራዊ መንገድ ስለማወከብ በአሁኑ መጽሐፍ ቅዱስ በምን መልካም የመንፈስ አማራጭና ተጽዕኖ እንደሆነው እየማጠበቅ ነው?",
+  "PERSONAL LIFE (personal maturity/ leadership)": "የግል ሕይወት (የግል ብስለትና አመራር)",
+  "Growing emotionally and intellectually": "ስሜታዊና የማኅሰባዊ ብስለት በመገንባት ላይ",
+  "Good steward of time, finances and health": "ጊዜ፣ ገንዘብና ጤና በጥሞ የሚሆን አስተዳዳሪ",
+  "Basic management skills": "መሠረታዊ የአስተዳደር ክህሎቶች",
+  "Developing financial support": "የገንዘብ ድጋፍ ማሳደግ",
+  "What am I doing to ensure continuous intellectual growth?": "የቀጥላ የማኅሰብ ብስለትን ለማረጋገጥ ምን እየደረግክ ነው?",
+  "How do I process and handle my emotions appropriately for emotional growth?": "ስሜታዊ ብስለት ለመገንባት ስሜታቼን በተገቢው መንገድ እንዴት እያስተከበርና እያስተዳደርክ ነው?",
+  "How am I personally organised and managing my finances, developing financial support and maintaining good physical health?": "በግል በመተባበር፣ በገንዘብ አስተዳደር፣ የገንዘብ ድጋፍ ማሳደግና ጥሩ የአካል ጤና ማጠበቅ ላይ እንዴት ነው?",
+  "In what ways does my work ethic honour God?": "የሥራ ስነ-ምግባርዬ እግዚአብሔርን በምን መልካም ያከብራል?",
+  "RELATIONAL LIFE (relates well with others)": "የግንኙነት ሕይወት (ከሌሎች ጋር በጥምቅ የሚያለግብር)",
+  "Connects well with others – initiates": "ከሌሎች ጋር በጥምቅ ይገናኛል – አስጀምሮናል",
+  "Relationship skills": "የግንኙነት ክህሎቶች",
+  "Serves others": "ሌሎችን ያገልገዳል",
+  "Good team member": "ጥሩ የቡድን አባል",
+  "Healthy family relationships (a. Spouse, b. Children, c. Extended family)": "ጥሩ የቤተሰብ ግንኙነት (አ. ባለትና ሢ. ልጆች ማ. የቤተሰብ አባላት)",
+  "How do I evaluate my work on my team? What strengths/contributions do I bring to the team?": "በቡድኔ ውስጥ የሥራዬን እንዴት እወዳለሁ? ወደ ቡድኑ የምጣለቸው ጥንካሬዎችና ስምጭቶች ምንነት ናቸው?",
+  "How do I exercise and/or respond to authority?": "ባለስልጣንነትን እንዴት እፈጥራለሁ እና/ወይም ለባለስልጣንነት እንዴት እመልሳለሁ?",
+  "What is my attitude to change?": "ለለውጥ ምን ስሜታዊ ነው?",
+  "On a scale of 1-10, what is the quality of the relationship with my family? (1 Lowest, 10 Highest)": "በ1-10 ምልክት ላይ የቤተሰብዎን ግንኙነት ጥራት ምንነት ናለው? (1 ዝቅተኛው፣ 10 ከፍተኛው)",
+  "MINISTRY IMPACT": "የአገልግሎት ውጤት",
+  "Owns mission, vision, values.": "ተልዕኮ፣ ምልከታና እሴቶችን ያስያጃል።",
+  "Currently in a suitable assignment.": "በአሁኑ በሚመችዎት ምዕራፍ ላይ ነው።",
+  "Passionate about connecting with the lost and evangelising, while also developing and empowering believers into multiplying leaders.": "ምልስናተኛዎችን በመገናኘትና በማስረጃት በጥሞ ሆኖ፣ እምነትን የሚያሳድጉ አገልጋይዎችን በማዳበርና በማበርታት ላይ ተሳትፎ አለው።",
+  "Able to oversee and invest wisely the resources God has entrusted to him/her ('Steward').": "እግዚአብሔር ያስረከበውን መሣሪያዎችን በጥሞ ማስተዳደርና በተገቢው መንገድ ማስከረከር ይችላል (‘አስተዳዳሪ’)።",
+  "How clear and achievable are my team's goals, and how does my personal vision align with our mission and values?": "የቡድኔ ግቦች ለማን በግልጽነትና በሆነት ላይ የሆኑ ምንነት ናቸው? የግል ምልከታዬ ከተልዩ ተልዕኮና እሴቶች ጋር በምን ይጣጣማል?",
+  "How aligned are my strengths, skills, and passion with my role?": "የእኔ ጥንካሬዎች፣ ክህሎቶችና ተሳትፎ ከሚናዬ ጋር በምን ይጣጣማል?",
+  "On a scale of 1-10, how passionate am I about reaching the lost and effectively sharing the gospel while helping others grow in their faith and training spiritual leaders? (1 Lowest, 10 Highest)": "በ1-10 ምልክት ላይ ምልስናተኛዎችን ለመድረስና ወራቱን በተገቢው መንገድ ለማጋራት በመረዳታት፣ ሌሎችን በእምነታቸው እንዲያድጉ በማረዳታትና የመንፈስ አመራሮችን በማስፈልግ ላይ የተሳትፎዬ ምንነት ናለው? (1 ዝቅተኛው፣ 10 ከፍተኛው)",
+  "How effective am I in leading, empowering others, and managing resources with integrity and prayerfulness?": "በመመሪያ፣ ሌሎችን በማበርታትና መሣሪያዎችን በርኅምናነትና በጸሎት መንገድ በመያዘት ለማመራት፣ ለማበርታትና ለማስተዳደር በፍጹም ልምድ ነው?",
+
 
   // ===== App shell / navigation / login =====
   "My Reviews": "የእኔ ግምገማዎች",

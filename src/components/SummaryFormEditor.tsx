@@ -709,7 +709,7 @@ export default function SummaryFormEditor({
                             {DEVELOPMENT_REVIEW_SECTIONS[category].bullets.map((b, idx) => (
                               <li key={idx} className="flex items-start gap-1.5">
                                 <span className="text-indigo-400 dark:text-indigo-500 font-mono text-[10px] mt-0.5">{idx + 1}.</span>
-                                <span className="leading-relaxed">{b}</span>
+                                <span className="leading-relaxed">{t(b)}</span>
                               </li>
                             ))}
                           </ul>
@@ -723,7 +723,7 @@ export default function SummaryFormEditor({
                           <div className="space-y-2 text-slate-700 dark:text-slate-300">
                             {DEVELOPMENT_REVIEW_SECTIONS[category].questions.map((q, idx) => (
                               <p key={idx} className="leading-relaxed pl-2.5 border-l-2 border-slate-200 dark:border-slate-800">
-                                {q}
+                                {t(q)}
                               </p>
                             ))}
                           </div>
@@ -887,7 +887,7 @@ export default function SummaryFormEditor({
                     {DEVELOPMENT_REVIEW_SECTIONS.ministryEffectiveness.bullets.map((b, i) => (
                       <li key={i} className="flex items-start gap-2">
                         <span className="text-indigo-400 font-mono text-[10px] mt-0.5">{i + 1}.</span>
-                        <span>{b}</span>
+                        <span>{t(b)}</span>
                       </li>
                     ))}
                   </ul>
@@ -899,7 +899,7 @@ export default function SummaryFormEditor({
                   <div className="space-y-1.5 text-xs text-slate-700">
                     {DEVELOPMENT_REVIEW_SECTIONS.ministryEffectiveness.questions.map((q, i) => (
                       <p key={i} className="leading-relaxed pl-3 border-l-2 border-indigo-200">
-                        {q}
+                        {t(q)}
                       </p>
                     ))}
                   </div>

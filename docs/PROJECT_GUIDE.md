@@ -647,7 +647,8 @@ staff-review-platform/
 │   │   └── UserManagement.tsx     ← admin roles + assign a staff member's coach
 │   │                                (the ONLY way a coaching relationship starts)
 │   └── utils/
-│       └── pdfExport.ts           ← PDF generation (lazy-loaded)
+│       ├── pdfExport.ts           ← PDF generation (lazy-loaded)
+│       └── session.ts             ← session lifetime guard (idle + browser-restart)
 ├── server.ts                      ← Express dev server (Vite + static file serving)
 ├── index.html                     ← single HTML shell
 ├── supabase-schema.sql            ← database blueprint + security rules
@@ -817,11 +818,21 @@ A good engineer is honest about what's not done yet. These are the current gaps:
 - **Offline mode** is dev-only, not real offline support.
 - **PDF** uses a static template (no custom branding/logos).
 - **Web-only** — no native mobile app yet.
-- **Coach matching is manual** (admins approve one by one).
+- **Coach matching is manual** (an admin assigns each coach in Team Members).
+- **Session lifetime is capped at 8 hours.** If a tab is left alone overnight, or the
+  browser is closed/restarted, the next visit starts at the login screen instead of
+  resuming where the user was. The limit is a single constant,
+  `IDLE_LIMIT_MS` in `src/utils/session.ts`.
+  *Consequence to be aware of:* opening the app in a **second tab** also counts as a
+  fresh browser session, so that tab returns to login (and clears the shared session,
+  which signs the first tab out too). This is deliberate — the data is sensitive —
+  but it is stricter than strictly necessary.
 - **Automated test tooling** (Playwright/Cypress/k6) isn't installed yet.
 - **A normal user can type into the leader/coach section of their own form** — a small
   data-integrity gap (not a security hole). Planned fix.
 - **Lists don't paginate results yet** for very large datasets.
+- **Exported PDFs are always English**, even when the app is set to Amharic:
+  `src/utils/pdfExport.ts` takes no language parameter.
 
 ---
 

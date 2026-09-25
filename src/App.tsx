@@ -19,6 +19,7 @@ import {
 } from "./supabaseDb";
 import { UserProfile, DevelopmentReview, QuarterlySummary, FollowUpTask, ReviewRequirementSettings, ActivityLog } from "./types";
 import { createNewReview, createNewSummary, getPdfDefaultTasks, calculateReviewProgress } from "./utils";
+import { shouldRequireLogin, markSessionLive, markSessionActive, startActivityTracking, clearSessionMarkers } from "./utils/session";
 import type { PDFExportOptions } from "./utils/pdfExport";
 import { QUARTER_INFO } from "./constants";
 import {
@@ -457,6 +458,24 @@ export default function App() {
       sessionStorage.setItem("has_init_session", "true");
     }
 
+    // Never resume a session the user did not walk away from on purpose. If
+    // the browser was restarted or they have been idle too long, drop the
+    // stored session and make them sign in again.
+    const mustLogIn = shouldRequireLogin();
+    if (mustLogIn) {
+      clearSessionMarkers();
+      localStorage.removeItem("staff_review_bypass_user");
+      // Fire-and-forget: the effect must stay synchronous so it can still
+      // return its unsubscribe cleanup on the normal path below.
+      if (hasSupabaseConfig && supabase) supabaseSignOut().catch(() => {});
+      setUser(null);
+      setLoading(false);
+      return;
+    }
+
+    // Same sitting as last time, so treat the session as live from here on.
+    markSessionLive();
+
     // Check local storage first for bypass mode user (works in all environments)
     const savedLocalUser = localStorage.getItem("staff_review_bypass_user");
     if (savedLocalUser) {
@@ -539,6 +558,15 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+
+  // Keep the "still here" timestamp fresh while a user is signed in, so the
+  // boot guard above can tell an active tab from an abandoned one.
+  useEffect(() => {
+    if (!user) return;
+    markSessionActive(true);
+    return startActivityTracking();
+  }, [user]);
 
 
   // Listen to Dynamic Database updates when Logged In
@@ -1342,6 +1370,8 @@ export default function App() {
     await supabaseSignOut();
     setUser(null);
     setCurrentTab("my-reviews");
+    // Signing out on purpose must not look like an abandoned session.
+    markSessionLive();
   };
 
   // Create or retrieve existing Development Review form
@@ -2154,11 +2184,14 @@ export default function App() {
   // LOGIN / SIGN UP LAYOUT
   if (!user) {
     return (
-      <div id="auth-page" className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 flex flex-col items-center justify-center p-6 transition-colors duration-200 relative pt-16">
-        <div className="w-full bg-amber-500 text-slate-950 font-bold text-center py-2 text-xs md:text-sm tracking-wide shadow-sm flex items-center justify-center gap-1.5 px-4 absolute top-0 left-0 z-50">
+      <div id="auth-page" className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-100 to-slate-200 dark:from-slate-950 dark:via-slate-950 dark:to-slate-900 flex flex-col transition-colors duration-200 relative">
+        {/* Kept in normal flow, like the banner in the signed-in shell, so it
+            can never overlap the language and theme toggles below it. */}
+        <div className="w-full shrink-0 bg-amber-500 text-slate-950 font-bold text-center py-2 text-xs md:text-sm tracking-wide shadow-sm flex items-center justify-center gap-1.5 px-4">
           <span>{t("⚠️ DEMO MODE: This is a demo and is meant to show the idea not the functionalities")}</span>
         </div>
-        <div className="absolute top-4 right-4 flex items-center gap-2">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 relative">
+        <div className="absolute top-4 right-4 z-10 flex items-center gap-2">
           <button
             id="auth-lang-toggle-btn"
             onClick={() => setLang(lang === "am" ? "en" : "am")}
@@ -2381,6 +2414,7 @@ export default function App() {
               </button>
             </div>
           </div>
+        </div>
         </div>
       </div>
     );

@@ -154,6 +154,21 @@ Finally, confirm access actually moved:
 
 ---
 
+## Step 8c: Check the session does not come back on its own
+
+1. Log in with any account (or a bypass button)
+2. Reload the page — you should **stay** signed in
+3. Leave the tab alone, or close the browser tab entirely, then come back and reload
+4. You should land on the **login screen**, not back in the workspace
+
+Also confirm the toggle buttons are reachable:
+
+- [ ] On the login screen the language and theme buttons sit **below** the amber demo banner, not under it
+- [ ] Both buttons are clickable (the banner does not cover them)
+- [ ] The amber banner is still visible at the very top of the page
+
+---
+
 ## Step 9: Check the Labels Are Consistent
 
 Search the entire app for these old jargon words — they should NOT appear anywhere in the UI:

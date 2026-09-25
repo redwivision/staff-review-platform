@@ -8,7 +8,22 @@ A web application for managing quarterly staff reviews, coaching workflows, and 
 
 Asseso provides a structured framework for staff self-reflection, coach-led evaluations, and administrative oversight across three recurring review cycles per year. It is designed for ministry teams who need a simple, auditable process for tracking personal, relational, and professional growth.
 
-**Live deployment:** [https://redwivision.github.io/staff-review-platform/](https://redwivision.github.io/staff-review-platform/)
+**Live deployment:** [https://staff-review-platform.vercel.app/](https://staff-review-platform.vercel.app/)
+
+---
+
+## Documentation
+
+All documentation lives in [`docs/`](./docs):
+
+| Document | What it's for |
+|---|---|
+| [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | **Start here for how it works.** Auth, sessions, storage, cookies, the database, and every RLS policy — with file/line references so you can verify any claim. Also documents the known gaps. |
+| [docs/PROJECT_GUIDE.md](./docs/PROJECT_GUIDE.md) | A guided tour of the codebase and the engineering process, written as a learning curriculum. Read this first if you're new to the project. |
+| [docs/TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) | How to test each role and form locally, plus a pre-push checklist. |
+
+> `docs/` also holds the client's private reference PDFs. Those are deliberately
+> kept out of git — see `.gitignore`.
 
 ---
 
@@ -21,7 +36,7 @@ Asseso provides a structured framework for staff self-reflection, coach-led eval
 - **Coaching Requests** — any member can nominate a coach; coaches accept or decline, and become leaders on acceptance
 - **Flexible quarterly form** — fill and save your Quarterly Summary as soon as it's unlocked; you only *submit* it to your coach once they've confirmed the coaching relationship
 - **Role-based access** — roles: Staff, Coach/Leader, and Admin
-- **Bypass / Demo Mode** — instant one-click login as any role (Platform Owner, Team Leader, or Member) with optional seeded mock data, so you can test any workflow without setting up accounts. Available in all environments (dev and production).
+- **Bypass / Demo Mode** — instant one-click login as any role (Platform Owner, Team Leader, or Member) with optional seeded mock data, so you can test any workflow without setting up accounts. Available in all environments (dev and production) with no environment guard. It opens the full interface but returns **no data**, because every read still passes through RLS and no matching row exists in the database. See [ARCHITECTURE.md § 12](./docs/ARCHITECTURE.md#12-bypass--demo-mode).
 
 ---
 
@@ -32,10 +47,14 @@ Asseso provides a structured framework for staff self-reflection, coach-led eval
 | Frontend | React 19, TypeScript, Vite, Tailwind CSS |
 | Backend / Auth | Supabase (PostgreSQL + Auth) |
 | Database | Supabase PostgreSQL |
-| PDF Export | jsPDF, html2canvas |
-| Animations | Framer Motion |
-| Testing | Playwright (E2E), K6 (load) |
-| Hosting | Vercel |
+| PDF Export | jsPDF |
+| Animations | Motion (`motion/react`) |
+| Hosting | Vercel (deploys on every push to `main`) |
+
+There is no custom backend server. `server.ts` only serves static files and runs
+Vite in development — all auth and data access goes through Supabase.
+See [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) for how auth, sessions and database
+policies fit together.
 
 ---
 
@@ -94,6 +113,16 @@ Run once on your Supabase project:
 
 This creates all 9 tables (users, development reviews, summaries, follow-up tasks, settings, schedules, activity logs, coaching requests, meetings), indexes, and Row-Level Security policies.
 
+**The file is safe to re-run at any time** — every object uses `IF NOT EXISTS`,
+`IF EXISTS` or `CREATE OR REPLACE`, so it doubles as the migration path when the
+schema changes.
+
+> **Important for schema changes:** `CREATE TABLE IF NOT EXISTS` does nothing if
+> the table already exists. Any column you add to this file must *also* be added
+> as an idempotent `alter table ... add column if not exists ...` — otherwise
+> existing databases silently keep the old shape and the app breaks on a missing
+> column. See [ARCHITECTURE.md § 13](./docs/ARCHITECTURE.md#13-applying-schema-changes).
+
 ### Environment Variables
 
 Create a `.env` file in the project root:
@@ -130,28 +159,35 @@ npm run preview
 
 **The quarterly form and your coach:** you don't need to wait for your coach to start working. As soon as a quarter is unlocked, you can open your Quarterly Summary, fill it in, and save it as a draft at any time. The **"Submit to Coach"** step is the only thing that requires a confirmed coach (admin-approved **and** coach-accepted) — until then you can keep drafting and saving freely.
 
-The email `lewikb13@gmail.com` is auto-promoted to Admin on signup. Any member who accepts a coaching invitation is automatically promoted to Coach/Leader. Admins can promote/demote roles from the **Team Members** tab.
+The **first person to register** (while the `users` table is still empty) is
+automatically promoted to Admin by a database trigger — no email address is
+special-cased. After that, admins grant roles from the **Team Members** tab
+(write access is enforced by the `users_admin_update` RLS policy), and a member
+who has an admin-approved coaching request accepted by them is promoted to
+Coach/Leader by the `promote_self_to_leader_if_verified()` RPC.
 
 ---
 
 ## Testing
 
+Type checking is the only automated check currently wired up:
+
 ```bash
-# Unit and integration
-npm run lint
-
-# E2E (Playwright)
-npx playwright test
-
-# Load test (K6)
-k6 run load-test.js
+npm run lint    # tsc --noEmit
 ```
+
+Config and test files for Playwright, Cypress and K6 exist in the repository
+(`playwright.config.ts`, `cypress/e2e`, `tests/`, `load-test.js`) but those tools
+are **not installed as dependencies**, so those commands will not run until you
+add them. The app has otherwise been verified by manual testing — see
+[docs/TESTING_GUIDE.md](./docs/TESTING_GUIDE.md).
 
 ---
 
 ## Deployment
 
-The application is deployed via Vercel on every push to `main`.
+Deployed to Vercel at **https://staff-review-platform.vercel.app/**, on every
+push to `main`.
 
 Set the following environment variables in **Vercel → Settings → Environment Variables**:
 
@@ -161,6 +197,16 @@ Set the following environment variables in **Vercel → Settings → Environment
 | `VITE_SUPABASE_ANON_KEY` | Your Supabase anon/public key |
 
 No server-side database setup is required on Vercel — Supabase is fully cloud-hosted.
+
+Because both variables are `VITE_`-prefixed, they are compiled into the public
+JavaScript bundle. That is expected and safe: the anon key is designed to be
+public, and all real protection lives in the database's RLS policies. Never put
+the Supabase **service_role** key or any other secret into a `VITE_` variable.
+
+> **Before a deploy lands:** if you changed `supabase-schema.sql`, apply it to
+> your Supabase project first (see [docs/PROJECT_GUIDE.md Appendix C](./docs/PROJECT_GUIDE.md#appendix-c-the-one-thing-only-you-can-do)).
+> The app reads the database at runtime, so a new build will use the old schema
+> until you do.
 
 ---
 

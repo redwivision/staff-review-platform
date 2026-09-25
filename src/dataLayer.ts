@@ -107,8 +107,10 @@ export async function dataUpdateUserProfile(uid: string, updates: Partial<{ isLe
   if (error) throw error;
 }
 
-// Assigns (or clears) the coach linked to a staff member. Gate: admins only
-// (the users_admin_update RLS policy is the source of truth).
+// Assigns (or clears) the coach linked to a staff member. Two RLS policies
+// enforce this server-side: users_admin_update lets an admin change any row's
+// coach_uid, and users_update_self pins coach_uid to its current value so a
+// non-admin cannot change their own. Do not rely on a client-side check here.
 export async function dataUpdateAssignedCoach(uid: string, coachUid: string | null) {
   const { supabase } = await import("./supabase");
   if (!supabase) return;

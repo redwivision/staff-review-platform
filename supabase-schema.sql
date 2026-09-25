@@ -21,199 +21,7 @@
 drop extension if exists pgcrypto; -- (optional) for gen_random_uuid if needed
 
 -- ============================================================
--- 2. SECURITY-DEFINER HELPER FUNCTIONS
---    (These bypass RLS internally so they can read the users table safely.)
--- ============================================================
-
--- Returns TRUE if the current caller is a registered admin.
-create or replace function public.is_admin_user()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select coalesce((
-    select u.is_admin
-    from public.users u
-    where u.uid = auth.uid()::text
-  ), false);
-$$;
-
--- Returns TRUE if the current caller is a registered admin or leader/coach.
-create or replace function public.is_admin_or_leader()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select coalesce((
-    select (u.is_admin or u.is_leader)
-    from public.users u
-    where u.uid = auth.uid()::text
-  ), false);
-$$;
-
--- Returns TRUE if the current caller is the designated coach/leader of `member_uid`.
-create or replace function public.is_coach_of(member_uid text)
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select exists (
-    select 1
-    from public.coaching_requests cr
-    where cr.member_id = member_uid
-      and cr.status = 'approved'
-      and cr.accepted_by_coach = 'accepted'
-      and cr.coach_uid = auth.uid()::text
-  );
-$$;
-
--- Returns TRUE if the current caller is a coach to ANY member.
-create or replace function public.current_uid()
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select auth.uid()::text;
-$$;
-
--- Returns the caller's stored is_admin flag. Security-definer so it can read
--- the users table without tripping RLS recursion inside the users policies.
-create or replace function public.__my_is_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select coalesce((select u.is_admin from public.users u where u.uid = auth.uid()::text), false);
-$$;
-
--- Returns the caller's stored is_leader flag.
-create or replace function public.__my_is_leader()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select coalesce((select u.is_leader from public.users u where u.uid = auth.uid()::text), false);
-$$;
-
--- Returns the caller's stored role text.
-create or replace function public.__my_role()
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select (select u.role from public.users u where u.uid = auth.uid()::text);
-$$;
-
--- Returns the caller's stored email (constant, cannot be changed by self).
-create or replace function public.__my_email()
-returns text
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  select (select u.email from public.users u where u.uid = auth.uid()::text);
-$$;
-
--- SAFE SELF-PROMOTION: A user may become a leader ONLY if there exists a
--- coaching request where they are the approved+accepted coach (i.e. someone
--- ELSE nominated them and admin approved). The `member_id <> u.uid` guard
--- prevents a user from nominating THEMSELVES and then "accepting" to promote
--- themselves. Never grant privileges from the client.
-create or replace function public.promote_self_to_leader_if_verified()
-returns void
-language plpgsql
-security definer
-set search_path = public
-as $$
-begin
-  update public.users u
-  set is_leader = true
-  where u.uid = auth.uid()::text
-    and u.is_leader = false
-    and exists (
-      select 1
-      from public.coaching_requests cr
-      where cr.coach_uid = u.uid
-        and cr.member_id <> u.uid              -- a real, other-person request
-        and cr.status = 'approved'
-        and cr.accepted_by_coach = 'accepted'
-    );
-end;
-$$;
-
--- Coaching-request state machine guard.
--- The member who made a request must never be able to forge an "approved" or
--- "accepted" state (that is what would let them self-promote). This security-
--- definer trigger re-validates every INSERT/UPDATE regardless of any RLS policy
--- or direct client call:
---   * `status` can leave 'pending' only when the actor is an admin.
---   * `accepted_by_coach` can leave 'pending' only when the actor is the
---     assigned coach (coach_uid = auth.uid()) or an admin.
---   * `coach_uid` can only be set/changed by an admin (or left unchanged by the
---     original nominating member on INSERT / a coach confirming their identity).
--- A member can therefore never manufacture an approved+accepted request.
-create or replace function public.coaching_state_guard()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  actor_is_admin boolean := public.is_admin_user();
-  actor_is_coach boolean := (new.coach_uid is not null and new.coach_uid = auth.uid()::text);
-begin
-  if tg_op = 'INSERT' then
-    -- A brand-new request that any (non-admin) member creates cannot start in a
-    -- forged "approved"/"accepted" state. Force safe defaults and never let the
-    -- requester point the request at themselves.
-    if not actor_is_admin then
-      new.status := 'pending';
-      new.accepted_by_coach := 'pending';
-      new.coach_reject_reason := null;
-      if new.coach_uid = auth.uid()::text then
-        new.coach_uid := null;
-      end if;
-    end if;
-    return new;
-  end if;
-
-  -- UPDATE path: OLD is valid here.
-  -- status transitions: only an admin may approve/reject.
-  if new.status in ('approved', 'rejected') and not actor_is_admin then
-    new.status := old.status;
-  end if;
-
-  -- coach acceptance: only the assigned coach (or admin) may set accepted/rejected.
-  if new.accepted_by_coach in ('accepted', 'rejected') and not (actor_is_admin or actor_is_coach) then
-    new.accepted_by_coach := old.accepted_by_coach;
-  end if;
-
-  -- A non-admin may not assign themselves as coach to then "accept" the request.
-  if not actor_is_admin and new.coach_uid = auth.uid()::text and (old.coach_uid is null or old.coach_uid <> auth.uid()::text) then
-    new.coach_uid := old.coach_uid;
-  end if;
-
-  return new;
-end;
-$$;
-
--- ============================================================
--- 3. TABLES
+-- 2. TABLES
 -- ============================================================
 
 -- 1. Users table
@@ -227,6 +35,13 @@ CREATE TABLE IF NOT EXISTS users (
   coach_uid TEXT,
   created_at BIGINT NOT NULL DEFAULT (extract(epoch from now()) * 1000)
 );
+
+-- Idempotent column backfill. `CREATE TABLE IF NOT EXISTS` above is a no-op when
+-- the table already exists, so any column added to this file later must also be
+-- added here with ALTER TABLE -- otherwise existing databases silently keep the
+-- old shape and the app breaks on a missing column. Adding a column is safe to
+-- re-run and does not touch existing rows.
+alter table public.users add column if not exists coach_uid text;
 
 -- 2. Development Reviews
 CREATE TABLE IF NOT EXISTS development_reviews (
@@ -356,6 +171,214 @@ CREATE TABLE IF NOT EXISTS meetings (
 );
 
 -- ============================================================
+-- 3. SECURITY-DEFINER HELPER FUNCTIONS
+--    (These bypass RLS internally so they can read the users table safely.)
+-- ============================================================
+
+-- Returns TRUE if the current caller is a registered admin.
+create or replace function public.is_admin_user()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((
+    select u.is_admin
+    from public.users u
+    where u.uid = auth.uid()::text
+  ), false);
+$$;
+
+-- Returns TRUE if the current caller is a registered admin or leader/coach.
+create or replace function public.is_admin_or_leader()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((
+    select (u.is_admin or u.is_leader)
+    from public.users u
+    where u.uid = auth.uid()::text
+  ), false);
+$$;
+
+-- Returns TRUE if the current caller is the designated coach/leader of `member_uid`.
+create or replace function public.is_coach_of(member_uid text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select exists (
+    select 1
+    from public.coaching_requests cr
+    where cr.member_id = member_uid
+      and cr.status = 'approved'
+      and cr.accepted_by_coach = 'accepted'
+      and cr.coach_uid = auth.uid()::text
+  );
+$$;
+
+-- Returns TRUE if the current caller is a coach to ANY member.
+create or replace function public.current_uid()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select auth.uid()::text;
+$$;
+
+-- Returns the caller's stored is_admin flag. Security-definer so it can read
+-- the users table without tripping RLS recursion inside the users policies.
+create or replace function public.__my_is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((select u.is_admin from public.users u where u.uid = auth.uid()::text), false);
+$$;
+
+-- Returns the caller's stored is_leader flag.
+create or replace function public.__my_is_leader()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select coalesce((select u.is_leader from public.users u where u.uid = auth.uid()::text), false);
+$$;
+
+-- Returns the caller's stored role text.
+create or replace function public.__my_role()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select (select u.role from public.users u where u.uid = auth.uid()::text);
+$$;
+
+-- Returns the caller's stored email (constant, cannot be changed by self).
+create or replace function public.__my_email()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select (select u.email from public.users u where u.uid = auth.uid()::text);
+$$;
+
+-- Returns the caller's stored coach_uid. Pinned inside users_update_self so a
+-- non-admin cannot self-assign a coach: only the admins-only users_admin_update
+-- policy may change it. IS NOT DISTINCT FROM (not =) is required because
+-- coach_uid is nullable -- with `=`, a NULL value would make the check evaluate
+-- to NULL instead of true and reject every self-update.
+create or replace function public.__my_coach_uid()
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select (select u.coach_uid from public.users u where u.uid = auth.uid()::text);
+$$;
+
+-- SAFE SELF-PROMOTION: A user may become a leader ONLY if there exists a
+-- coaching request where they are the approved+accepted coach (i.e. someone
+-- ELSE nominated them and admin approved). The `member_id <> u.uid` guard
+-- prevents a user from nominating THEMSELVES and then "accepting" to promote
+-- themselves. Never grant privileges from the client.
+create or replace function public.promote_self_to_leader_if_verified()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  update public.users u
+  set is_leader = true
+  where u.uid = auth.uid()::text
+    and u.is_leader = false
+    and exists (
+      select 1
+      from public.coaching_requests cr
+      where cr.coach_uid = u.uid
+        and cr.member_id <> u.uid              -- a real, other-person request
+        and cr.status = 'approved'
+        and cr.accepted_by_coach = 'accepted'
+    );
+end;
+$$;
+
+-- Coaching-request state machine guard.
+-- The member who made a request must never be able to forge an "approved" or
+-- "accepted" state (that is what would let them self-promote). This security-
+-- definer trigger re-validates every INSERT/UPDATE regardless of any RLS policy
+-- or direct client call:
+--   * `status` can leave 'pending' only when the actor is an admin.
+--   * `accepted_by_coach` can leave 'pending' only when the actor is the
+--     assigned coach (coach_uid = auth.uid()) or an admin.
+--   * `coach_uid` can only be set/changed by an admin (or left unchanged by the
+--     original nominating member on INSERT / a coach confirming their identity).
+-- A member can therefore never manufacture an approved+accepted request.
+create or replace function public.coaching_state_guard()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  actor_is_admin boolean := public.is_admin_user();
+  actor_is_coach boolean := (new.coach_uid is not null and new.coach_uid = auth.uid()::text);
+begin
+  if tg_op = 'INSERT' then
+    -- A brand-new request that any (non-admin) member creates cannot start in a
+    -- forged "approved"/"accepted" state. Force safe defaults and never let the
+    -- requester point the request at themselves.
+    if not actor_is_admin then
+      new.status := 'pending';
+      new.accepted_by_coach := 'pending';
+      new.coach_reject_reason := null;
+      if new.coach_uid = auth.uid()::text then
+        new.coach_uid := null;
+      end if;
+    end if;
+    return new;
+  end if;
+
+  -- UPDATE path: OLD is valid here.
+  -- status transitions: only an admin may approve/reject.
+  if new.status in ('approved', 'rejected') and not actor_is_admin then
+    new.status := old.status;
+  end if;
+
+  -- coach acceptance: only the assigned coach (or admin) may set accepted/rejected.
+  if new.accepted_by_coach in ('accepted', 'rejected') and not (actor_is_admin or actor_is_coach) then
+    new.accepted_by_coach := old.accepted_by_coach;
+  end if;
+
+  -- A non-admin may not assign themselves as coach to then "accept" the request.
+  if not actor_is_admin and new.coach_uid = auth.uid()::text and (old.coach_uid is null or old.coach_uid <> auth.uid()::text) then
+    new.coach_uid := old.coach_uid;
+  end if;
+
+  return new;
+end;
+$$;
+
+
+-- ============================================================
 -- 4. INDEXES
 -- ============================================================
 CREATE INDEX IF NOT EXISTS idx_reviews_user_id ON development_reviews(user_id);
@@ -419,8 +442,11 @@ CREATE POLICY "users_insert_self"
   );
 
 -- Users can update ONLY their own row, and may NOT change is_admin / is_leader /
--- role/email/uid. Admin promotion is done by a privileged server role; leadership
--- is granted only via public.promote_self_to_leader_if_verified().
+-- role/email/uid/coach_uid. Admin promotion is done by a privileged server role;
+-- leadership is granted only via public.promote_self_to_leader_if_verified();
+-- coach assignment only via the admins-only policy below. Each column is
+-- compared against a SECURITY DEFINER helper that reads the row as it was
+-- BEFORE this statement ran, so "unchanged" is enforced server-side.
 CREATE POLICY "users_update_self"
   ON users FOR UPDATE TO authenticated
   USING (uid = auth.uid()::text)
@@ -430,6 +456,7 @@ CREATE POLICY "users_update_self"
     AND is_leader = public.__my_is_leader()
     AND coalesce(role, '') = coalesce(public.__my_role(), '')
     AND email = public.__my_email()
+    AND coach_uid IS NOT DISTINCT FROM public.__my_coach_uid()
   );
 
 -- Admins may update any user's row (role management). They still cannot set

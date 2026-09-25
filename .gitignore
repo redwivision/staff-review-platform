@@ -7,4 +7,13 @@ coverage/
 .env*
 !.env.example
 .antigravity/
-docs/
+
+# docs/ holds the project's documentation (tracked) alongside the client's
+# private reference PDFs (must never be pushed to a public repo). Ignore the
+# directory's contents, then re-include only the documentation by name.
+# Note: `docs/` cannot be used here -- git will not descend into an excluded
+# directory, so the negations below would have no effect.
+docs/*
+!docs/ARCHITECTURE.md
+!docs/PROJECT_GUIDE.md
+!docs/TESTING_GUIDE.md

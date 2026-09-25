@@ -38,7 +38,7 @@ real HR vocabulary. Don't be scared of the words; they're just labels on forms.
 
 **Part C — Inside This Codebase (a guided tour)**
 - [C1. Reading a project folder](#c1-reading-a-project-folder)
-- [C2. The main file (App.tsx)](#c2-the-main-file-aptsx)
+- [C2. The main file (App.tsx)](#c2-the-main-file-apptsx)
 - [C3. The database design](#c3-the-database-design)
 - [C4. The two important forms](#c4-the-two-important-forms)
 - [C5. How authentication works](#c5-how-authentication-works)
@@ -682,6 +682,13 @@ git push origin main    # upload → triggers deploy
 
 If you get a red error, copy the red message and send it back — we'll fix it.
 
+**One thing to know about the file's structure:** it creates the **tables first,
+then the helper functions**, and that order is deliberate. The functions read the
+`users` table, and Postgres checks a function's code the moment you create it. If
+the functions came first, the whole script would fail on a brand-new project with
+`relation "public.users" does not exist`. If you ever reorganise the file, keep
+tables above functions.
+
 **Optional but recommended:** enable Realtime for faster updates:
 1. Supabase → **"Database"** → **"Replication"**.
 2. Click **"Enable Realtime"**.
@@ -689,6 +696,81 @@ If you get a red error, copy the red message and send it back — we'll fix it.
    `quarterly_summaries`, `coaching_requests`, `meetings`, `follow_up_tasks`,
    `activity_logs`, `requirement_settings`, `review_schedules`.
    If skipped, the app still works (it just falls back to checking every ~30s).
+
+## Appendix C2. The trap that will bite you later
+
+> This is the single most common way to break a live app with this project. Read
+> it before you add a column to the schema.
+
+**The problem.** `CREATE TABLE IF NOT EXISTS users (...)` is a **no-op** if the
+table already exists. Look closely at that word — `IF NOT EXISTS`. Postgres
+checks "does a table called `users` exist?", finds one, and moves on. It does
+**not** read the column list and add anything.
+
+So imagine you add a new column:
+
+```sql
+CREATE TABLE IF NOT EXISTS users (
+  uid TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  brand_new_column TEXT      -- <-- you added this
+);
+```
+
+You paste the file into the SQL Editor, it says **"Success. No rows returned."**,
+and you walk away happy. But your database still has the old `users` table with
+no `brand_new_column`. The app then fails at runtime with:
+
+```
+column "brand_new_column" of relation "users" does not exist
+```
+
+...and because some of those failures are swallowed by empty `catch` blocks in
+the UI, you may not even see an error. The data just quietly stops saving.
+
+**This is not hypothetical.** It is exactly what happened with `users.coach_uid`.
+
+**The rule.** Every new column needs **two** lines: one inside the
+`CREATE TABLE` block (for brand-new databases) and one `ALTER TABLE` beside it
+(for databases that already exist):
+
+```sql
+-- inside the CREATE TABLE block, for fresh databases:
+CREATE TABLE IF NOT EXISTS users (
+  ...
+  coach_uid TEXT,
+  ...
+);
+
+-- right below it, for databases that already exist:
+alter table public.users add column if not exists coach_uid text;
+```
+
+`add column if not exists` is safe to run on a database that already has the
+column (it does nothing) and safe on one that doesn't (it adds it). Existing
+rows get `NULL`, which is what you want.
+
+**How to check whether the database actually has it.** Run this read-only query
+in the SQL Editor — it never changes anything:
+
+```sql
+select table_name, column_name, data_type
+from information_schema.columns
+where table_schema = 'public'
+order by table_name, ordinal_position;
+```
+
+Compare the result against the tables in `supabase-schema.sql`. Anything missing
+is a change that never reached your database.
+
+**The habit to build:** after any schema change, re-run the whole file, then run
+the query above and confirm. It takes twenty seconds and it is the difference
+between "I think I deployed it" and "I verified it deployed".
+
+**One more thing to know.** If RLS is enabled and the script dies partway
+through, your policies may be left dropped. That is *fail-closed* — nobody gets
+access, including you — rather than fail-open, so it is annoying but not
+dangerous. Read any red error message rather than assuming it worked.
 
 ## Appendix D. Common issues & fixes
 

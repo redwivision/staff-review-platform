@@ -202,12 +202,15 @@ export default function SummaryFormEditor({
               {QUARTER_INFO[quarter].name}{t(" Summary for ")}{staffName}
             </h2>
             <p className="text-xs text-indigo-200/80 font-mono mt-1">
-              {t("Coverage Period: ")}{QUARTER_INFO[quarter].months}{t(" • ")}{
-                isAdmin ? t("Admin Mode (Full Access)") :
-                isCoachOrAdmin ? t("Coach Mode (Evaluation Access)") :
-                isOwner ? t("Staff Member Mode (Summary Access)") :
-                t("View Only Mode")
-              }
+              {t("Coverage Period: ")}
+              {QUARTER_INFO[quarter].months} •{" "}
+              {isAdmin
+                ? t("Admin Mode (Full Access)")
+                : isCoachOrAdmin
+                ? t("Coach Mode (Evaluation Access)")
+                : isOwner
+                ? t("Staff Member Mode (Summary Access)")
+                : t("View Only Mode")}
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">

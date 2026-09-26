@@ -3,6 +3,23 @@
 // Strings not present here fall back to English so the UI never shows a blank.
 export const amharicDictionary: Record<string, string> = {
 
+  "Done": "ተጠናቋል",
+  // --- Coach assignment board ---
+  "The database rejected that change. Please try again.": "ዳታቤዝው ለውጥ ልህትን አልተቀበለም። እባክዎ እንደገና ይሞክሩ።",
+  "Your coach: assigned by an admin": "የእርስዎ አሰልጣኝ፦ በአስተዳደር ተመድቧል",
+  "Coach Assignments": "የአሰልጣኝ ምደቦች",
+  "Assign a coach to each staff member. The person you pick is made a Coach automatically.": "ለእያንዳንዱ የአገልጋይ አሰልጣኝ ይመድብሩ። የምመረጡት ሰው በራሱ አሰልጣኝ ይሆናል።",
+  "All staff have a coach": "ሁሉም አገልጋይዎች አሰልጣኝ አላቸውም",
+  "{count} still need a coach": "{count} አገልጋይዎች እየተቀሩ አሰልጣኝ ይፈልጋሉ",
+  "A person cannot be their own coach.": "ሰው ራሱን አሰልጣኝ ሊሆን አይችልም።",
+  "Coach: {name}": "አሰልጣኝ፦ {name}",
+  "Nobody is coaching this person yet": "ይህን ሰው እስካሁን አሰልጣኝ የለም",
+  "No staff members to assign yet.": "አሰልጣኝ የለባት አገልጋይ የለም።",
+  "Loading coach assignments...": "የአሰልጣኝ ምደቦች በመጫን ላይ...",
+  "Need to change roles or admin access too? Those live in the Team Members tab.": "ምልክቶችን ወይም የአስተዳደር መብትንም ለመቀየር ይፈልጋሉ? እነዚህ በየቡድኑ አባላት ትሮት ውስጥ ናቸው።",
+  " — Coach": " — አሰልጣኝ",
+
+
   // --- Development Review focus areas & self-reflection prompts ---
   // Not present in the summary-form PDFs; translated from the English source
   // text in src/constants.ts for use by both the summary and review forms.
@@ -87,6 +104,7 @@ export const amharicDictionary: Record<string, string> = {
 
   // ===== Dashboard / Next Step panel =====
   "Your next step": "የሚቀጥለው እርምጃዎ",
+  "Your coach:": "የእርስዎ ኮች:",
   "Great job — it's with your coach": "ጥሩ ስራ — በአሰልጣኝዎ እጅ ነው",
   "Your quarterly form is submitted to your coach. They'll add their evaluation and send it to Admin.": "የሩብ ዓመት ቅጽዎ ለአሰልጣኝዎ ቀርቧል። ግምገማቸውን ጨምረው ወደ አስተዳዳሪ ይልካሉ።",
   "View Coach": "አሰልጣኝን ይመልከቱ",
@@ -167,6 +185,7 @@ export const amharicDictionary: Record<string, string> = {
   // ===== Quarterly Summary Form (SummaryFormEditor / GuidedSummaryForm) =====
   "Quarterly Review Summary Form": "የሩብ ዓመት የግምገማ ማጠቃለያ ቅጽ",
   "Summary for ": "ማጠቃለያ ለ ",
+  " Summary for ": " ማጠቃለያ ለ",
   "Coverage Period: ": "የሽፋን ጊዜ፡ ",
   "Admin Mode (Full Access)": "የአስተዳዳሪ ሁነታ (ሙሉ መዳረሻ)",
   "Coach Mode (Evaluation Access)": "የአሰልጣኝ ሁነታ (የግምገማ መዳረሻ)",

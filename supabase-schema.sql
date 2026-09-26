@@ -43,6 +43,22 @@ CREATE TABLE IF NOT EXISTS users (
 -- re-run and does not touch existing rows.
 alter table public.users add column if not exists coach_uid text;
 
+-- Defence in depth: the sync_assigned_coach() trigger already refuses
+-- self-coaching, but a table-level CHECK means the invariant holds even for
+-- writes that bypass the trigger (a disabled trigger, a maintenance script, or
+-- a future column added by someone who has not read the trigger). Named so the
+-- constraint is identifiable in pg_constraint and safe to re-run.
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'users_coach_not_self'
+  ) THEN
+    ALTER TABLE public.users
+      ADD CONSTRAINT users_coach_not_self
+      CHECK (coach_uid IS NULL OR coach_uid <> uid);
+  END IF;
+END $$;
+
 -- 2. Development Reviews
 CREATE TABLE IF NOT EXISTS development_reviews (
   id TEXT PRIMARY KEY,

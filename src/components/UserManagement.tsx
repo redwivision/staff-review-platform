@@ -155,10 +155,14 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
     // reflect that immediately instead of leaving a stale "Team Member" badge
     // until the next reload. Clearing a coach does not demote, so isLeader is
     // left alone in that case.
-    const patch = (u: UserProfile): UserProfile =>
-      u.uid === targetUser.uid
-        ? { ...u, coachUid, ...(coachUid ? { isLeader: true } : {}) }
-        : u;
+    const patch = (u: UserProfile): UserProfile => {
+      if (u.uid === targetUser.uid) return { ...u, coachUid };
+      // The badge that goes stale is the *coach's*, not the member's: the
+      // trigger marks the newly assigned coach a Team Leader. Marking the
+      // member instead would promote the wrong person.
+      if (coachUid && u.uid === coachUid) return { ...u, isLeader: true };
+      return u;
+    };
 
     try {
       // Local bypass mode keeps everything in localStorage.

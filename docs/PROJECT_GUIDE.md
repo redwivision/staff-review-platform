@@ -368,10 +368,26 @@ the form, fill it in, and **save as a draft** at any time. The only step that ne
 is the final **"Submit to Coach"** button — until then they can keep drafting and saving
 freely.
 
-A coach exists as soon as an **admin assigns one** in the Team Members tab. There is no
-nomination, no approval, and no acceptance step. In the code this is the
-`myHasVerifiedCoach` flag in `App.tsx`, which is simply "does `users.coach_uid` point at
-me?", passed into `SummaryFormEditor.tsx` as `hasVerifiedCoach`.
+A coach exists as soon as an **admin assigns one**. There is no nomination, no approval,
+and no acceptance step.
+
+Admins can assign coaches from two places, both of which write the same `users.coach_uid`
+column:
+
+| Where | What it is for |
+|---|---|
+| **Admin Dashboard → Coach Assignments** (the default tab) | Answering "who still needs a coach?". Lists every staff member with their current coach, a count of unassigned people, and an inline dropdown to assign or clear. |
+| **Admin Dashboard → Team Members** | The full access-control table, which also covers roles and admin permissions. |
+
+The Coach Assignments board lives in `src/components/CoachAssignmentBoard.tsx`. In the
+code the "do I have a coach" test is the `myHasVerifiedCoach` flag in `App.tsx`, which is
+simply "does `users.coach_uid` point at me?", passed into `SummaryFormEditor.tsx` as
+`hasVerifiedCoach`.
+
+The database enforces the invariant that nobody coaches themselves in two independent
+places: the `trg_sync_assigned_coach` trigger, and the `users_coach_not_self` table-level
+`CHECK` constraint. The trigger also promotes a newly assigned coach to leader. The
+`CHECK` exists as defence in depth for writers that never fire the trigger.
 
 The word **"status"** here is powerful — it's a **state machine**: the form can only be
 in certain states, and only certain transitions are allowed. This is a real software

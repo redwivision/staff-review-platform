@@ -35,6 +35,7 @@ import {
 const ReviewFormEditor = lazy(() => import("./components/ReviewFormEditor") as unknown as Promise<{ default: React.ComponentType<any> }>);
 const SummaryFormEditor = lazy(() => import("./components/SummaryFormEditor") as unknown as Promise<{ default: React.ComponentType<any> }>);
 const UserManagement = lazy(() => import("./components/UserManagement") as unknown as Promise<{ default: React.ComponentType<any> }>);
+const CoachAssignmentBoard = lazy(() => import("./components/CoachAssignmentBoard") as unknown as Promise<{ default: React.ComponentType<any> }>);
 const ActivityLogList = lazy(() => import("./components/ActivityLog") as unknown as Promise<{ default: React.ComponentType<any> }>);
 const AdminReports = lazy(() => import("./components/AdminReports") as unknown as Promise<{ default: React.ComponentType<any> }>);
 import { 
@@ -73,6 +74,7 @@ import {
   BellRing,
   Database,
   HeartHandshake,
+  UserCog,
   ClipboardList,
   ArrowRight,
   Mail
@@ -181,7 +183,7 @@ export default function App() {
 
   // Navigation / UI active states
   const [currentTab, setCurrentTab] = useState<"my-reviews" | "team-reviews" | "admin" | "meetings">("my-reviews");
-  const [adminSubTab, setAdminSubTab] = useState<"tracking" | "control" | "users">("tracking");
+  const [adminSubTab, setAdminSubTab] = useState<"coaches" | "tracking" | "control" | "users">("coaches");
   const [selectedQuarter, setSelectedQuarter] = useState<"1st" | "2nd" | "3rd">("1st");
   // Canonical year format is "YYYY/YYYY" (slash) — the same format persisted in
   // the database and used by every save/query path. It is never stored/selected
@@ -262,9 +264,6 @@ export default function App() {
   const [overviewViewMode, setOverviewViewMode] = useState<"matrix" | "evaluations">("evaluations");
   const [overviewSortBy, setOverviewSortBy] = useState<"rating" | "name" | "date">("name");
   const [activeTLEvaluation, setActiveTLEvaluation] = useState<{ member: UserProfile; quarter: "1st" | "2nd" | "3rd"; summary?: QuarterlySummary } | null>(null);
-  const [modalSearchName, setModalSearchName] = useState("");
-  const [showModalSuggestions, setShowModalSuggestions] = useState(false);
-  const [modalError, setModalError] = useState("");
   const [scheduleStaffUid, setScheduleStaffUid] = useState("");
   const [scheduleQuarter, setScheduleQuarter] = useState<"1st" | "2nd" | "3rd">("1st");
   const [scheduleDate, setScheduleDate] = useState("");
@@ -399,9 +398,17 @@ export default function App() {
       );
       const unlockedQ = quarters.find(q => !mySummaries.some(ss => ss.quarter === q) && isQuarterlyUnlockedForUser(q));
 
-      // Already submitted to their coach → keep it with the coach.
-      if (mySummaries.some(s => s.status === "Submitted" || s.status === "CoachSubmitted")) {
-        return { type: "wait" as const, quarter: null, label: t("Great job — it's with your coach"), description: t("Your quarterly form is submitted to your coach. They'll add their evaluation and send it to Admin."), btn: t("View Coach") };
+      // Already submitted to their coach → keep it with the coach, but let them
+      // open the form and read it (and see the coach's evaluation once it lands).
+      const submitted = mySummaries.find(s => s.status === "Submitted" || s.status === "CoachSubmitted");
+      if (submitted) {
+        return {
+          type: "wait" as const,
+          quarter: submitted.quarter,
+          label: t("Great job — it's with your coach"),
+          description: t("Your quarterly form is submitted to your coach. They'll add their evaluation and send it to Admin."),
+          btn: t("View Form")
+        };
       }
 
       // As long as a quarter is unlocked, the form is always open to fill &
@@ -421,11 +428,26 @@ export default function App() {
         };
       }
 
-      // No unlocked quarter yet → surface the coach step so it's clear what's next.
+      // Nothing to fill yet. There is no action the member can take here, so the
+      // card must not offer one — it just states who their coach is and who
+      // assigns it. (This used to render a "View Coach" button that scrolled to
+      // the old nomination card, which no longer exists.)
       if (!hasVerifiedCoach) {
-        return { type: "nominate" as const, quarter: null, label: t("Waiting for your coach"), description: t("An admin assigns your coach for you. Your quarterly form will open here as soon as it's unlocked — and you can fill it in as soon as you have one."), btn: t("View Coach") };
+        return {
+          type: "awaiting-coach" as const,
+          quarter: null,
+          label: t("Waiting for your coach"),
+          description: t("An admin assigns your coach for you. Your quarterly form will open here as soon as it's unlocked — and you can fill it in as soon as you have one."),
+          btn: null
+        };
       }
-      return { type: "nominate" as const, quarter: null, label: t("Your coach is ready"), description: t("Your coach is confirmed. Your form will open here once it's unlocked for you to fill in."), btn: t("View Coach") };
+      return {
+        type: "awaiting-coach" as const,
+        quarter: null,
+        label: t("Your coach is ready"),
+        description: t("Your coach is confirmed. Your form will open here once it's unlocked for you to fill in."),
+        btn: null
+      };
     }
 
     // TEAM REVIEWS — coach/leader evaluates their staff's summaries
@@ -2283,7 +2305,7 @@ export default function App() {
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl pl-10 pr-4 py-3 text-base bg-slate-50/50 focus:outline-none focus:ring-2 focus:ring-slate-800/20 transition-shadow"
-                  placeholder={t("you@example.com")}
+                  placeholder="you@example.com"
                   required
                 />
               </div>
@@ -2439,7 +2461,7 @@ export default function App() {
 
       {/* GLOBAL NAVBAR */}
       <nav className="bg-slate-950 text-white border-b border-slate-800 sticky top-0 z-40 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16 items-center">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 bg-white rounded-xl flex items-center justify-center overflow-hidden border border-slate-800 shadow-sm">
@@ -2507,7 +2529,7 @@ export default function App() {
       </nav>
 
       {/* CORE VIEWPORT */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="flex-1 max-w-[1800px] w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Editor Modals */}
         {activeReview && (
           <div className="animate-fade-in">
@@ -2607,7 +2629,7 @@ export default function App() {
 
             {/* Persistent tab-aware "Next Step" guidance panel */}
             {myNextStep && (
-              <div className="bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-500 text-white rounded-2xl p-6 shadow-sm relative overflow-hidden">
+              <div className="bg-gradient-to-r from-indigo-600 via-indigo-500 to-violet-500 text-white rounded-2xl p-6 shadow-sm relative overflow-hidden max-w-4xl">
                 <div className="absolute -right-8 -top-8 w-40 h-40 bg-white/10 rounded-full" />
                 <div className="absolute -right-2 -top-2 w-20 h-20 bg-white/10 rounded-full" />
                 <div className="flex flex-col sm:flex-row sm:items-center gap-4 relative">
@@ -2616,7 +2638,7 @@ export default function App() {
                       <CheckCircle2 className="w-7 h-7" />
                     ) : myNextStep.type === "admin" || myNextStep.type === "leader" ? (
                       <ShieldCheck className="w-7 h-7" />
-                    ) : myNextStep.type === "nominate" ? (
+                    ) : myNextStep.type === "awaiting-coach" ? (
                       <HeartHandshake className="w-7 h-7" />
                     ) : myNextStep.type === "meeting" ? (
                       <Calendar className="w-7 h-7" />
@@ -2628,29 +2650,41 @@ export default function App() {
                     <span className="text-[10px] font-bold uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full">{t("Your next step")}</span>
                     <h4 className="text-lg font-sans font-extrabold mt-1.5">{myNextStep.label}</h4>
                     <p className="text-xs text-indigo-100 mt-0.5">{myNextStep.description}</p>
+                    {myNextStep.type === "awaiting-coach" && (
+                      <p className="text-xs text-white/90 mt-1.5 font-semibold flex items-center gap-1.5">
+                        <UserCog className="w-3.5 h-3.5 shrink-0" />
+                        {myAssignedCoach
+                          ? <>{t("Your coach:")} <span className="font-extrabold">{myAssignedCoach.name}</span></>
+                          : t("Your coach: assigned by an admin")}
+                      </p>
+                    )}
                   </div>
-                  <button
-                    onClick={() => {
-                      if (myNextStep.type === "fill-summary" && myNextStep.quarter && user) {
-                        handleSelectStaffSummary(user, myNextStep.quarter);
-                      } else if (myNextStep.type === "nominate" || myNextStep.type === "wait") {
-                        document.getElementById("my-coach-card")?.scrollIntoView({ behavior: "smooth" });
-                      } else if (myNextStep.type === "leader") {
-                        setCurrentTab("team-reviews");
-                      } else if (myNextStep.type === "admin") {
-                        setCurrentTab("admin");
-                      } else if (myNextStep.type === "meeting") {
-                        if (filteredStaffProfiles.length > 0) {
-                          setScheduleStaffUid(filteredStaffProfiles[0].uid);
-                          setShowScheduler(true);
+                  {myNextStep.btn && (
+                    <button
+                      onClick={() => {
+                        if (myNextStep.type === "fill-summary" && myNextStep.quarter && user) {
+                          handleSelectStaffSummary(user, myNextStep.quarter);
+                        } else if (myNextStep.type === "wait" && myNextStep.quarter && user) {
+                          // "View Form" on a submitted summary: show them their own
+                          // work instead of a scroll to nowhere.
+                          handleSelectStaffSummary(user, myNextStep.quarter);
+                        } else if (myNextStep.type === "leader") {
+                          setCurrentTab("team-reviews");
+                        } else if (myNextStep.type === "admin") {
+                          setCurrentTab("admin");
+                        } else if (myNextStep.type === "meeting") {
+                          if (filteredStaffProfiles.length > 0) {
+                            setScheduleStaffUid(filteredStaffProfiles[0].uid);
+                            setShowScheduler(true);
+                          }
                         }
-                      }
-                    }}
-                    className="shrink-0 inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-indigo-700 text-sm font-bold rounded-xl shadow transition-transform hover:scale-[1.02]"
-                  >
-                    {myNextStep.btn}
-                    <ArrowRight className="w-4 h-4" />
-                  </button>
+                      }}
+                      className="shrink-0 inline-flex items-center justify-center gap-2 px-6 py-3 bg-white text-indigo-700 text-sm font-bold rounded-xl shadow transition-transform hover:scale-[1.02]"
+                    >
+                      {myNextStep.btn}
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -2716,7 +2750,7 @@ export default function App() {
                       <Clock className="w-5 h-5 text-indigo-600" />
                       {t("Upcoming Feedback Meetings")}
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
                       {meetings.filter(m => m.userId === user.uid).map(m => (
                         <div key={m.id} className="bg-white rounded-xl p-5 border border-indigo-200/50 shadow-sm flex flex-col justify-between gap-4">
                           <div>
@@ -2792,7 +2826,7 @@ export default function App() {
                 })}
 
                 {/* Quarter Progress Matrix */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 2xl:gap-8">
                   {(["1st", "2nd", "3rd"] as const).map(qKey => {
                     const review = myReviews.find(r => r.quarter === qKey);
                     const summary = mySummaries.find(s => s.quarter === qKey);
@@ -2977,7 +3011,7 @@ export default function App() {
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-4">
                             {[
                               { key: "heart", label: t("❤️ Walk with God") },
                               { key: "personalLife", label: t("🌱 Personal Life") },
@@ -4129,6 +4163,17 @@ export default function App() {
                 {/* Admin Subtabs Bar */}
                 <div className="border-b border-slate-200 dark:border-slate-800 pb-px flex gap-4">
                   <button
+                    id="admin-subtab-coaches"
+                    onClick={() => setAdminSubTab("coaches")}
+                    className={`pb-3 text-sm font-bold border-b-2 transition-all ${
+                      adminSubTab === "coaches"
+                        ? "border-amber-500 text-amber-600 dark:text-amber-400"
+                        : "border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                    }`}
+                  >
+                    {t("Coach Assignments")}
+                  </button>
+                  <button
                     id="admin-subtab-tracking"
                     onClick={() => setAdminSubTab("tracking")}
                     className={`pb-3 text-sm font-bold border-b-2 transition-all ${
@@ -4162,6 +4207,23 @@ export default function App() {
                     {t("Team Members")}
                   </button>
                 </div>
+
+                {adminSubTab === "coaches" && (
+                  <div className="space-y-4 animate-fade-in">
+                    <Suspense
+                      fallback={
+                        <div className="p-10 text-center text-slate-400 text-xs font-mono">
+                          {t("Loading coach assignments...")}
+                        </div>
+                      }
+                    >
+                      <CoachAssignmentBoard currentUser={user} staff={staffProfiles} />
+                    </Suspense>
+                    <p className="text-xs text-slate-400 dark:text-slate-500 px-1">
+                      {t("Need to change roles or admin access too? Those live in the Team Members tab.")}
+                    </p>
+                  </div>
+                )}
 
                 {adminSubTab === "tracking" && (
                   <div className="space-y-4 animate-fade-in">
@@ -4657,15 +4719,11 @@ export default function App() {
               </span>
               <button
                 type="button"
-                onClick={() => {
-                  setShowPostSubmitCoachingModal(false);
-                  setModalSearchName("");
-                  setModalError("");
-                }}
+                onClick={() => setShowPostSubmitCoachingModal(false)}
                 className="w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer"
               >
                 <CheckCircle2 className="w-4 h-4" />
-                Done
+                {t("Done")}
               </button>
             </div>
           </div>

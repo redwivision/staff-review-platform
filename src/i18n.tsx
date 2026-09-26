@@ -6,7 +6,7 @@ export type Language = "en" | "am";
 export interface LanguageContextValue {
   lang: Language;
   setLang: (l: Language) => void;
-  t: (key: string) => string;
+  t: (key: string, vars?: Record<string, string | number>) => string;
   isAmharic: boolean;
 }
 
@@ -38,11 +38,16 @@ export function LanguageProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem(STORAGE_KEY, l);
   };
 
+  // Substitutes {placeholders} from vars into the resolved string. Untranslated
+  // keys fall back to the English key, and a key with no vars is returned
+  // untouched, so this is a no-op for the common case.
   const t = useMemo(
-    () => (key: string) => {
-      if (lang === "en") return key;
-      const entry = translations[key];
-      return entry ? entry.am : key;
+    () => (key: string, vars?: Record<string, string | number>) => {
+      const template = lang === "en" ? key : translations[key]?.am ?? key;
+      if (!vars) return template;
+      return template.replace(/\{(\w+)\}/g, (match, name: string) =>
+        name in vars ? String(vars[name]) : match
+      );
     },
     [lang]
   );

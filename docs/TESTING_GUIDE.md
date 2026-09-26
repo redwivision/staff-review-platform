@@ -126,15 +126,19 @@ What to check:
 
 ## Step 8b: Assign a Coach (the only way a coaching relationship starts)
 
-1. Still logged in as **Lewis KB**, click the **Team Members** sub-tab
-2. Find **John Staff** and look at the **"Assigned Coach"** column
-3. Open the dropdown — it should list the other staff members, not be empty
-4. Pick **Sarah Leader**, then press **F5** to refresh
+1. Log in as **Lewis KB** (admin). You should land on the **Coach Assignments** tab
+2. Check the banner: it should read "All staff have a coach", or count how many are missing
+3. Everyone in the list shows their coach in the dropdown, or "No Coach Assigned"
+4. Assign Sarah Leader to John Staff from the board, then press **F5** to refresh
+5. Repeat the same assignment from the **Team Members** tab — it is the same control
 
 What to check:
+- [ ] The **Coach Assignments** tab is the default tab an admin lands on
+- [ ] The unassigned count drops as you assign, and reaches "All staff have a coach"
 - [ ] The dropdown lists every *other* staff member (a person is never offered as their own coach)
-- [ ] Choosing "No Coach" clears the assignment
+- [ ] Choosing "No Coach Assigned" clears the assignment
 - [ ] Sarah Leader now shows **Coach / Leader** in her own Access Level, even if she was a plain member before
+- [ ] The same change made from Team Members shows up on the Coach Assignments board
 
 Now log out, log back in as **Sarah Leader**, and check the flip side:
 
@@ -201,6 +205,51 @@ npm run build
 ```
 
 Both should complete without errors.
+
+---
+
+## Step 11: Database Security Checks (optional, needs local Postgres)
+
+These run `supabase-schema.sql` against a throwaway database on your own machine
+and prove the coaching rules hold in the database, not just in the UI. You do
+**not** need a Supabase account or a connection string — everything is local and
+the test database is dropped at the end.
+
+```bash
+# 1. Create a scratch database, plus the auth stand-in the schema needs.
+#    This also creates the anon/authenticated/service_role roles if missing.
+createdb sr_check_test
+psql -v ON_ERROR_STOP=1 -q -d sr_check_test -f test/auth-stub.sql
+
+# 2. Apply the schema, then apply it twice more — it must be safe to re-run
+psql -v ON_ERROR_STOP=1 -d sr_check_test -f supabase-schema.sql
+psql -v ON_ERROR_STOP=1 -d sr_check_test -f supabase-schema.sql
+
+# 3. Behaviour of the assignment trigger
+psql -q -d sr_check_test -f test/self-assignment-check.sql
+
+# 4. Self-assignment is rejected even with the trigger disabled
+psql -q -d sr_check_test -f test/self-assignment-check-direct.sql
+
+# 5. Clean up
+dropdb sr_check_test
+```
+
+What to check:
+- [ ] Both schema applications exit 0 (no errors, only `NOTICE` lines)
+- [ ] `users_coach_not_self` appears exactly once in `pg_constraint`
+- [ ] Every self-assignment case reports `violates check constraint "users_coach_not_self"`
+- [ ] A legal assignment (`coach_uid <> uid`) and clearing a coach both succeed
+- [ ] The trigger promotes a newly assigned coach to `is_leader` and does not demote them when the assignment is cleared
+
+There is also a translation audit that needs no database:
+
+```bash
+python3 test/audit_i18n.py
+```
+
+It reports duplicate dictionary keys, any non-Ethiopic characters that crept
+into the Amharic file, and any `t("...")` key in `src/` with no translation.
 
 ---
 

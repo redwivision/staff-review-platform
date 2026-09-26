@@ -447,10 +447,10 @@ led to the workflow being removed:
 
 | | `users.coach_uid` | `coaching_requests.coach_uid` |
 |---|---|---|
-| Set by | Admin, via the Team Members tab | The retired workflow |
+| Set by | Admin, via the **Coach Assignments** board or the **Team Members** table | The retired workflow |
 | Read by RLS? | **Yes** — this is the live relationship | No |
 | Status | Authoritative | Historical |
-| Guard | `users_update_self` + `users_admin_update` | `coaching_state_guard` trigger |
+| Guard | `users_update_self` + `users_admin_update` policies, the `trg_sync_assigned_coach` trigger, and the `users_coach_not_self` CHECK constraint | `coaching_state_guard` trigger |
 | Used by the app for | Everything: showing "who is my coach" *and* deciding who can see whose data | Nothing |
 
 **Every RLS policy now reads `users.coach_uid`, through `is_coach_of()`.** The
@@ -458,6 +458,13 @@ app derives the same relationship from the same column, so the UI and the
 database cannot disagree about who coaches whom. The `users_update_self` policy
 pins the column, `users_admin_update` lets admins set it, and
 `sync_assigned_coach()` keeps `is_leader` and self-coaching consistent.
+
+Self-coaching is blocked twice over. The `trg_sync_assigned_coach` trigger
+rejects it and promotes the newly assigned coach to leader; the
+`users_coach_not_self` table-level `CHECK (coach_uid IS NULL OR coach_uid <> uid)`
+rejects it again for any writer that never fires the trigger. The constraint is
+added inside an idempotent `DO` block so the schema file can be re-run against
+an existing database without error.
 
 ---
 

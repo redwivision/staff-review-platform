@@ -21,6 +21,7 @@ All documentation lives in [`docs/`](./docs):
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | **Start here for how it works.** Auth, sessions, storage, cookies, the database, and every RLS policy — with file/line references so you can verify any claim. Also documents the known gaps. |
 | [docs/PROJECT_GUIDE.md](./docs/PROJECT_GUIDE.md) | A guided tour of the codebase and the engineering process, written as a learning curriculum. Read this first if you're new to the project. |
 | [docs/TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) | How to test each role and form locally, plus a pre-push checklist. |
+| [docs/REALTIME_GUIDE.md](./docs/REALTIME_GUIDE.md) | How to turn on Supabase Realtime, what the dashboard's 3 Settings steps mean, and how to verify live updates are actually flowing. |
 
 > `docs/` also holds the client's private reference PDFs. Those are deliberately
 > kept out of git — see `.gitignore`.

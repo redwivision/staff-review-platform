@@ -657,6 +657,66 @@ CREATE POLICY "schedules_admin_write"
   WITH CHECK (public.is_admin_user());
 
 -- ============================================================
+-- 6b. REALTIME (Postgres Changes)
+-- ============================================================
+-- Without this, live updates silently never arrive.
+--
+-- Postgres does not stream table changes to Supabase Realtime by default. A
+-- table has to be explicitly ADDED to the `supabase_realtime` publication. If
+-- it isn't, the websocket connects, the client reports SUBSCRIBED, and then
+-- nothing is ever delivered -- a silent failure that looks like "realtime is
+-- just slow".
+--
+-- This was previously done by hand in the Dashboard, which meant a fresh
+-- database built from this file had no live updates until someone noticed.
+-- Doing it here keeps "run this file" as the only setup step.
+--
+-- Only tables the app actually subscribes to belong in here (see
+-- subscribeStaff/subscribeReviews/... in src/supabaseDb.ts). Every table added
+-- is streamed to every connected client, so this list is a performance and
+-- privacy decision, not a formality.
+--
+-- The DO block keeps this re-runnable: plain `alter publication ... add table`
+-- errors with "table is already member of publication" on the second run.
+DO $$
+DECLARE
+  t text;
+  watched text[] := ARRAY[
+    'users',                 -- subscribeStaff
+    'development_reviews',   -- subscribeReviews
+    'quarterly_summaries',   -- subscribeSummaries
+    'activity_logs',         -- subscribeActivityLogs
+    'meetings',              -- subscribeMeetings
+    'follow_up_tasks',       -- subscribeFollowUpTasks
+    'requirement_settings',  -- subscribeRequirementSettings
+    'review_schedules'       -- subscribeReviewSchedules
+  ];
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    CREATE PUBLICATION supabase_realtime;
+  END IF;
+
+  FOREACH t IN ARRAY watched LOOP
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_publication_tables
+      WHERE pubname = 'supabase_realtime' AND schemaname = 'public' AND tablename = t
+    ) THEN
+      EXECUTE format('ALTER PUBLICATION supabase_realtime ADD TABLE public.%I', t);
+    END IF;
+  END LOOP;
+END $$;
+
+-- Postgres Changes sends the NEW row on UPDATE. The app's handlers refetch
+-- rather than patching state from the payload, so the old values are not
+-- needed -- and 'full' would ship every column of every changed row to every
+-- client. Left at the default 'f' deliberately.
+
+-- Realtime Authorization (RLS policies on realtime.messages) applies to
+-- Broadcast and Presence channels only. This app uses Postgres Changes, where
+-- delivery is governed by each table's own RLS policies instead -- see the
+-- users_select_authenticated policy above.
+
+-- ============================================================
 -- 7. DEFAULT DATA
 -- ============================================================
 INSERT INTO requirement_settings (id, heart_required, personal_life_required, relational_life_required, ministry_effectiveness_required)

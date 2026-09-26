@@ -17,3 +17,4 @@ docs/*
 !docs/ARCHITECTURE.md
 !docs/PROJECT_GUIDE.md
 !docs/TESTING_GUIDE.md
+!docs/REALTIME_GUIDE.md

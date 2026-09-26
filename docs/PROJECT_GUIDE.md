@@ -934,13 +934,74 @@ the next thing to fix, and it needs a real decision:
 people are in the database, it belongs in a `useMemo`, a `Map`/`Set`, or on the
 server. Never in the render path.
 
-### The three questions to answer before 5,000 real users
+### The three decisions to make before 5,000 real users
 
-1. **Who is allowed to see the full roster?** (RLS + a `users_directory` view or a
-   `search_users` RPC with server-side paging.)
-2. **Should members see their coach's name only, or the whole coaching tree?**
-3. **What is the live-load ceiling?** One admin reviewing 5,000 people at once is a
-   different problem from 5,000 people each reviewing one report.
+These are product decisions, not engineering ones, so they're yours to make.
+Each one is written as a choice with a recommendation, because picking wrong is
+expensive to undo once 5,000 people have the app open.
+
+---
+
+#### Decision 1 — Who can see the whole roster?
+
+Today: `users_select_authenticated` is `USING (true)`, so every signed-in person
+can read all 5,000 profiles, including `is_admin`, `is_leader`, and who reports
+to whom.
+
+| Option | What members see | Effort | Honest downside |
+|---|---|---|---|
+| **A. Everyone sees all** (today) | Full directory | None | Any member can read the admin list and the reporting lines. Fine for a trusted team of 20, uncomfortable at 5,000. |
+| **B. Self + own coach** | Just themselves and their coach | Small | Coaches/leaders lose their team list. |
+| **C. Self + own tree; admins get paginated search** | Members see their line; admins can search anyone | **Large** | The right answer eventually. Needs a `search_users` RPC and new queries. |
+
+**Recommendation: C, but ship B first.** B is a small, safe change that closes
+the privacy hole today. C is the destination and is the expensive one.
+
+The thing that makes C necessary: with a full roster readable by every client,
+any fix that isn't server-side is cosmetic. RLS is the only thing that can
+actually withhold rows — a client-side `if (isAdmin)` hides the UI, not the data.
+
+---
+
+#### Decision 2 — Is a member's directory view their own coaching line, or the whole org?
+
+| Option | Shape |
+|---|---|
+| **A. Own line only** — me, my coach, my direct reports | A small, fast page. Scales to any size. |
+| **B. Whole org** | Needs server-side search + paging (Decision 1C) or a 5,000-row download per member. |
+
+This one is really "does anyone need to browse the org chart?" If the answer is
+no — and for a coaching app the answer is usually no — pick A and the scale
+problem largely disappears. **Recommendation: A.**
+
+---
+
+#### Decision 3 — What does "5,000 users" actually mean?
+
+These are three different products with three different fixes:
+
+| Shape | Load | Is it a problem today? |
+|---|---|---|
+| **A. 5,000 people, each reviewing ~1 report** | 5,000 occasional users | **No.** Each user's queries are already scoped to their own rows. This is the likely case. |
+| **B. One admin reviewing all 5,000 at once** | ~15,000 derived rows in one browser | **Yes.** Needs server-side paging/aggregation. Pagination already stops the browser freezing. |
+| **C. Thousands connected simultaneously, live** | Every `users` change refetches the roster for every client | **Yes, and it gets worse as users grow.** Needs targeted refreshes or Broadcast instead of Postgres Changes. |
+
+**Recommendation: confirm it's mostly A.** If it is, the remaining work is
+Decision 1 plus targeted realtime refreshes — not a rewrite. If it's B or C, the
+data layer needs server-side pagination and this becomes a larger project.
+
+**How to answer it:** how many people will be using this app *at the same time*,
+and will any single admin need to see all 5,000 rows on one screen? That one
+question determines the size of the remaining job.
+
+---
+
+#### Not a decision, just a known limitation
+
+`localStorage` bypass/demo mode stores a copy of the roster (~5 MB at 5,000
+users, rewritten on every assignment). It's a development feature and shouldn't
+reach real users as-is. Whether to disable it in production is a config choice,
+not a design one.
 
 ---
 

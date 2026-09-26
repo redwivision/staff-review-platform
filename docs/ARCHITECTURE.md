@@ -29,7 +29,8 @@ is filtered by Postgres Row Level Security (RLS) before it happens.
 11. [How data reaches the screen](#11-how-data-reaches-the-screen)
 12. [Bypass / Demo mode](#12-bypass--demo-mode)
 13. [Applying schema changes](#13-applying-schema-changes)
-14. [Known gaps](#14-known-gaps)
+14. [Realtime](#14-realtime)
+15. [Known gaps](#15-known-gaps)
 
 ---
 
@@ -603,7 +604,107 @@ read any red error rather than assuming it worked.
 
 ---
 
-## 14. Known gaps
+## 14. Realtime
+
+### The rule that isn't optional
+
+**Postgres does not stream table changes to Supabase Realtime by default.** A
+table must be explicitly added to the `supabase_realtime` *publication*. Miss
+that and the failure is silent and nasty:
+
+- the websocket connects fine,
+- the client reports `SUBSCRIBED`,
+- and then **nothing is ever delivered**.
+
+There is no error to notice. The app just looks "slow". Supabase's own
+troubleshooting docs call this the most commonly overlooked step, and warn that
+creating a table and enabling realtime on it are **two separate steps**.
+
+### Where it's configured
+
+`supabase-schema.sql` **§6b**, a `DO` block that creates the publication and
+adds the 8 tables the app subscribes to. It checks `pg_publication_tables`
+before each `ALTER PUBLICATION`, so re-running the schema is safe (plain
+`ALTER PUBLICATION ... ADD TABLE` errors on the second run with "table is
+already member of publication").
+
+The 8 tables map 1:1 to the `subscribe*` functions in `src/supabaseDb.ts`:
+
+| Table | Subscription |
+|---|---|
+| `users` | `subscribeStaff` |
+| `development_reviews` | `subscribeReviews` |
+| `quarterly_summaries` | `subscribeSummaries` |
+| `activity_logs` | `subscribeActivityLogs` |
+| `meetings` | `subscribeMeetings` |
+| `follow_up_tasks` | `subscribeFollowUpTasks` |
+| `requirement_settings` | `subscribeRequirementSettings` |
+| `review_schedules` | `subscribeReviewSchedules` |
+
+`coaching_requests` is deliberately **absent**: the direct-assignment refactor
+removed it as a source of truth (`users.coach_uid` replaced it), so nothing
+subscribes to it. Don't add it back without a reason — every table in the
+publication is streamed to every connected client.
+
+Verify it any time:
+
+```sql
+select tablename from pg_publication_tables
+where pubname = 'supabase_realtime' order by tablename;
+```
+
+### Dashboard location (as of 2026)
+
+Publication management moved out of the database section. It's now under
+**Realtime → Event filtering**. Older dashboard versions label the same screen
+**Database → Publications** or **Database → Replication**. Same thing.
+
+Full walkthrough, including the three Settings toggles and which ones this app
+actually needs: [REALTIME_GUIDE.md](./REALTIME_GUIDE.md).
+
+### How the app subscribes
+
+All 8 subscriptions go through one wrapper, `subscribeRealtimeOrPoll()`
+(`src/supabaseDb.ts`):
+
+1. **Initial fetch** — always, on mount.
+2. **`postgres_changes` subscription** for that table, `event: "*"`.
+3. **Any change → full refetch.** The handler deliberately ignores
+   `payload.new`/`payload.old` and re-runs the query instead. Costs a little
+   more network; removes a whole class of subtly-wrong-UI bugs.
+4. **Fallback:** on `CHANNEL_ERROR` or `TIMED_OUT`, poll every
+   `POLL_INTERVAL_MS` (30s).
+
+Channels are named `realtime:{table}:{filter}`. The bare name `realtime` is
+reserved by Supabase; a prefixed name is fine.
+
+### Three things that bite
+
+- **RLS gates delivery.** For Postgres Changes, a client only receives rows it
+  could `SELECT`. Test as the real signed-in role — the SQL Editor runs as
+  `postgres` and bypasses RLS, so it will lie to you.
+- **DELETE events aren't RLS-filtered**, because Postgres can't check access to
+  a row that's already gone.
+- **`users` refetches the whole roster on any change to any row.** One coach
+  reassignment re-downloads every profile for every connected client. At 5,000
+  users this is the dominant realtime cost. See
+  [PROJECT_GUIDE.md Appendix F](./PROJECT_GUIDE.md#appendix-f-scaling-to-a-large-roster-5000-users).
+
+### Not used: Realtime Authorization
+
+`realtime.messages` RLS policies govern **Broadcast** and **Presence** channels
+only. This app uses Postgres Changes, where each table's own RLS policies apply.
+No `realtime.messages` policies are needed, and "Allow public access to
+channels" can be left at its default.
+
+Supabase now recommends Broadcast over Postgres Changes for most use cases as
+you scale. That's a larger change (trigger + `realtime.messages` policies +
+`config: { private: true }` per channel) and isn't justified until there's a
+measured problem.
+
+---
+
+## 15. Known gaps
 
 Honest list. None of these are secrets about the code; they are the things to
 know before you rely on a behaviour.

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { ActivityLog, UserProfile } from "../types";
 import { Clock, Search, Filter, FileText, CheckCircle2, User, RefreshCw, Trash2, Calendar } from "lucide-react";
 import { useLanguage } from "../i18n";
+import StaffPicker from "./StaffPicker";
 
 interface ActivityLogProps {
   logs: ActivityLog[];
@@ -134,16 +135,15 @@ export default function ActivityLogList({ logs, staffProfiles, isLeader, onClear
 
         <div className="md:col-span-4 flex items-center gap-2">
           <Filter className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-          <select
-            value={selectedStaff}
-            onChange={(e) => handleStaffChange(e.target.value)}
-            className="w-full p-2 border border-slate-200 rounded-xl text-xs bg-slate-50/50"
-          >
-            <option value="all">{t("All Staff Members")}</option>
-            {staffProfiles.map(staff => (
-              <option key={staff.uid} value={staff.uid}>{staff.name}</option>
-            ))}
-          </select>
+          <StaffPicker
+            id="activity-log-staff-filter"
+            people={staffProfiles}
+            value={selectedStaff === "all" ? null : selectedStaff}
+            onChange={uid => handleStaffChange(uid ?? "all")}
+            placeholder={t("All Staff Members")}
+            clearLabel={t("All Staff Members")}
+            describe={p => p.role}
+          />
         </div>
 
         <div className="md:col-span-3">

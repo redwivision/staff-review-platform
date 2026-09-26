@@ -437,6 +437,18 @@ CREATE INDEX IF NOT EXISTS idx_coaching_requests_member_id ON coaching_requests(
 CREATE INDEX IF NOT EXISTS idx_coaching_requests_coach_uid ON coaching_requests(coach_uid);
 CREATE INDEX IF NOT EXISTS idx_meetings_staff_uid ON meetings(staff_uid);
 
+-- The `users` table had no indexes at all, yet it is re-read in full on every
+-- realtime event and every poll tick (see subscribeStaff/getAllStaff). With a
+-- few thousand staff that ORDER BY was a full sort per client per tick.
+-- `coach_uid` is the column every client-side coaching filter keys on, and
+-- is_coach_of() is called from RLS policies on every read of a child table.
+CREATE INDEX IF NOT EXISTS idx_users_created_at ON users(created_at);
+CREATE INDEX IF NOT EXISTS idx_users_coach_uid ON users(coach_uid);
+CREATE INDEX IF NOT EXISTS idx_users_name_lower ON users(lower(name));
+-- Supports the "is anyone still unassigned?" coverage count the admin Coach
+-- Assignments board shows, without scanning the table.
+CREATE INDEX IF NOT EXISTS idx_users_coach_uid_null ON users(coach_uid) WHERE coach_uid IS NULL;
+
 -- ============================================================
 -- 5. ROW LEVEL SECURITY — enable + drop old permissive policies
 -- ============================================================

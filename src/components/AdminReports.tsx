@@ -26,6 +26,8 @@ import {
 
 import { DEVELOPMENT_REVIEW_SECTIONS } from "../constants";
 import { useLanguage } from "../i18n";
+import { normalizeForSearch, useDebouncedValue, usePagination } from "../utils/search";
+import Pagination from "./Pagination";
 
 interface AdminReportsProps {
   registeredUsers: UserProfile[];
@@ -49,6 +51,8 @@ export default function AdminReports({
   const [reportQuarter, setReportQuarter] = useState<"1st" | "2nd" | "3rd">(currentQuarter);
   const [reportYear, setReportYear] = useState<string>(currentYear);
   const [staffSearch, setStaffSearch] = useState("");
+  // Debounced so a keystroke does not re-filter the whole roster.
+  const debouncedStaffSearch = useDebouncedValue(staffSearch, 200);
   const [coachSearch, setCoachSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
@@ -78,25 +82,36 @@ export default function AdminReports({
 
   // 1. STAFF REPORT DATA GENERATION (Focus on Quarterly Summary Form)
   const staffReportData = useMemo(() => {
+    // The body below used to run allSummaries.find() and registeredUsers.find()
+    // once PER staff member, which is O(staff x summaries). At a few thousand
+    // staff that is hundreds of millions of comparisons, and it re-ran on every
+    // summaries poll tick. Index once into two maps, then only look things up.
+    const profileByUid = new Map(registeredUsers.map(u => [u.uid, u]));
+
+    // Keyed by user, holding only this quarter/year's summaries, split into the
+    // member's own copy and the coach's copies.
+    const memberCopy = new Map<string, QuarterlySummary>();
+    const coachCopies = new Map<string, QuarterlySummary[]>();
+    for (const s of allSummaries) {
+      if (s.quarter !== reportQuarter || s.year !== reportYear) continue;
+      if (s.coachUid) {
+        const list = coachCopies.get(s.userId);
+        if (list) list.push(s);
+        else coachCopies.set(s.userId, [s]);
+      } else if (!memberCopy.has(s.userId)) {
+        memberCopy.set(s.userId, s);
+      }
+    }
+
     return registeredUsers.map(staff => {
-      // Find summary PDP for the current quarter and year
-      const summary = allSummaries.find(
-        s => s.userId === staff.uid && s.quarter === reportQuarter && s.year === reportYear && !s.coachUid
-      );
+      const summary = memberCopy.get(staff.uid);
 
       // Coaching relationship: an admin assigns the coach directly, so the
       // authoritative link is `users.coach_uid` (the same column is_coach_of()
       // reads in the database). Displayed name is resolved from that uid.
-      const assignedCoach = staff.coachUid
-        ? registeredUsers.find(u => u.uid === staff.coachUid)
-        : undefined;
+      const assignedCoach = staff.coachUid ? profileByUid.get(staff.coachUid) : undefined;
 
-      // Find any completed evaluation (submitted by coach or self)
-      const allMemberSummaries = allSummaries.filter(
-        s => s.userId === staff.uid && s.quarter === reportQuarter && s.year === reportYear
-      );
-      
-      const coachSummaries = allMemberSummaries.filter(s => !!s.coachUid);
+      const coachSummaries = coachCopies.get(staff.uid) ?? [];
       const coachSubmitted = coachSummaries.find(s => s.status === "CoachSubmitted");
       const approved = coachSummaries.find(s => s.evaluation?.formReviewedBy);
 
@@ -128,10 +143,15 @@ export default function AdminReports({
 
   // Filtered lists
   const filteredStaff = useMemo(() => {
+    const q = normalizeForSearch(debouncedStaffSearch);
     return staffReportData.filter(item => {
-      const matchesSearch = item.name.toLowerCase().includes(staffSearch.toLowerCase()) || 
-                            item.email.toLowerCase().includes(staffSearch.toLowerCase()) ||
-                            item.role.toLowerCase().includes(staffSearch.toLowerCase());
+      // Normalized once per item and the needle hoisted out of the callback;
+      // the old version lowercased both sides three times per row per keystroke.
+      const matchesSearch =
+        !q ||
+        normalizeForSearch(item.name).includes(q) ||
+        normalizeForSearch(item.email).includes(q) ||
+        normalizeForSearch(item.role).includes(q);
       
       const matchesStatus = statusFilter === "all" || 
                             (statusFilter === "approved" && item.status === "Approved") ||
@@ -142,7 +162,11 @@ export default function AdminReports({
       
       return matchesSearch && matchesStatus;
     });
-  }, [staffReportData, staffSearch, statusFilter]);
+  }, [staffReportData, debouncedStaffSearch, statusFilter]);
+
+  // This table cannot render a full roster: every row can expand into a drawer
+  // that itself scans summaries. 25 at a time keeps it responsive.
+  const reportPager = usePagination(filteredStaff, 25);
 
   // Bento Statistics Calculations
   const stats = useMemo(() => {
@@ -340,7 +364,7 @@ export default function AdminReports({
                     </td>
                   </tr>
                 ) : (
-                  filteredStaff.map((item) => {
+                  reportPager.pageItems.map((item) => {
                     const isExpanded = expandedRow === item.uid;
                     return (
                       <React.Fragment key={item.uid}>
@@ -604,6 +628,17 @@ export default function AdminReports({
                 )}
               </tbody>
             </table>
+            <div className="px-6 py-3 border-t border-slate-150 dark:border-slate-850">
+              <Pagination
+                page={reportPager.page}
+                totalPages={reportPager.totalPages}
+                totalItems={reportPager.totalItems}
+                rangeStart={reportPager.rangeStart}
+                rangeEnd={reportPager.rangeEnd}
+                onPrev={reportPager.prev}
+                onNext={reportPager.next}
+              />
+            </div>
           </div>
         </div>
       </div>

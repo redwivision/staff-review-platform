@@ -57,6 +57,7 @@ real HR vocabulary. Don't be scared of the words; they're just labels on forms.
 - [Appendix C. The ONE thing only you can do](#appendix-c-the-one-thing-only-you-can-do)
 - [Appendix D. Common issues & fixes](#appendix-d-common-issues--fixes)
 - [Appendix E. Known limitations (honest review)](#appendix-e-known-limitations-honest-review)
+- [Appendix F. Scaling to a large roster (5,000 users)](#appendix-f-scaling-to-a-large-roster-5000-users)
 
 ---
 
@@ -843,12 +844,103 @@ A good engineer is honest about what's not done yet. These are the current gaps:
   fresh browser session, so that tab returns to login (and clears the shared session,
   which signs the first tab out too). This is deliberate — the data is sensitive —
   but it is stricter than strictly necessary.
-- **Automated test tooling** (Playwright/Cypress/k6) isn't installed yet.
+- **Automated test tooling** (Playwright/Cypress/k6) isn't installed yet. The
+  search helpers do have real unit tests (`test/search.test.ts`, run with
+  `npx tsx test/search.test.ts`) and the database rules have SQL tests — but
+  there is no browser automation yet.
+- **`npm audit` reports 5 dependency advisories** (2 high, 3 moderate) inherited
+  from the Vite/React toolchain. They are in build-time dependencies, not in the
+  code this app ships to browsers, so they are not an exploitable runtime risk
+  today — but they should be cleared by a dependency bump, and the fix should be
+  tested because a major Vite bump can break the build.
 - **A normal user can type into the leader/coach section of their own form** — a small
   data-integrity gap (not a security hole). Planned fix.
-- **Lists don't paginate results yet** for very large datasets.
 - **Exported PDFs are always English**, even when the app is set to Amharic:
   `src/utils/pdfExport.ts` takes no language parameter.
+
+---
+
+## Appendix F. Scaling to a large roster (5,000 users)
+
+The app is now built on the assumption that the `users` table holds **several
+thousand** people, not fifty. Everything below came from measuring what actually
+breaks, not from guessing.
+
+### What we changed
+
+**1. Nobody can pick a coach from a dropdown any more.**
+A `<select>` with 5,000 `<option>`s inside it is unusable *and* slow: the browser
+has to build 5,000 DOM nodes, and once the page had 25 of those rows on it, the
+tab locked up. Four places did this — the coach board, the Team Members table,
+the meeting scheduler, and the activity log filter. All four now use
+`src/components/StaffPicker.tsx`: type a few letters, get a ranked list.
+
+The picker deliberately **shows at most 60 matches at a time**
+(`SEARCH_RESULT_CAP` in `src/utils/search.ts`) and then tells you how many it
+didn't show. Rendering 5,000 rows is the bug, not the solution.
+
+**2. Every big list is paginated.** 25 rows per page, with range numbers, via
+`src/components/Pagination.tsx`. This covers the coach board, Team Members, the
+coach directory, and the admin reports table.
+
+**3. Search is debounced.** Typing a name used to re-filter the entire roster on
+*every keystroke*. Now there's a short pause (`useDebouncedValue`) before the
+filter runs, so you can finish typing the name first.
+
+**4. We deleted some accidental O(n²) loops.** These were the real performance
+killers, and they were easy to miss:
+- Rendering a coach's name was a `.find()` **inside a `.map()`** — 25 × 5,000.
+  Now a single `Map` is built once and read O(1).
+- "Is this person already assigned?" was `array.includes()` inside a loop. Now a
+  `Set`.
+- The admin export and the bulk-decline buttons were calling `.find()` on the
+  whole summaries array per user. Now one keyed `Map`.
+- `AdminReports` was scanning every summary for every staff member
+  (5,000 × 30,000). Now one indexed pass.
+
+**5. `users` finally has indexes.** The table had *no indexes at all*, and it was
+re-sorted in full on every realtime event. Added in `supabase-schema.sql`:
+`created_at`, `coach_uid`, `lower(name)`, and a partial index on unassigned
+staff (`WHERE coach_uid IS NULL`) for the coverage count.
+
+**6. `getAllStaff()` no longer does `select("*")`.** It names the eight columns
+it maps. Cheaper, and a future column can't leak into every browser by accident.
+
+### What is still a real limitation (be honest about this)
+
+The fixes above are **client-side**. The roster is still downloaded whole, in
+one request, into every browser. That's fine for a few thousand rows, but it's
+the next thing to fix, and it needs a real decision:
+
+- **Privacy first.** The `users_select_authenticated` RLS policy is
+  `USING (true)`, so *every* signed-in user can read *every* profile — including
+  `is_admin`, `is_leader`, and who reports to whom. For 5,000 people that's the
+  whole company directory in everyone's browser, for a regular member who only
+  needs their own data. This should become self-only for members, with admin
+  access via a server-side, paginated search.
+- **Realtime is a full refetch.** `subscribeStaff()` re-runs the whole roster
+  query on *any* change to *any* `users` row. With thousands of staff, one
+  permission change re-downloads the roster for every connected client. It needs
+  to be narrowed to the columns that matter, or moved to targeted refreshes.
+- **Reviews and summaries are still fetched in bulk.** An admin evaluation
+  matrix can build ~15,000 derived rows in memory. Pagination hides the DOM cost
+  but not the download and the derivation. This wants server-side pagination
+  and aggregation, or an index/view.
+- **`localStorage` bypass mode doesn't scale.** The offline bypass stores a copy
+  of the roster in `localStorage` (~5 MB at 5,000 users, rewritten on every
+  assignment). It's a development feature and should be treated as one.
+
+**Rule of thumb for this codebase:** if a loop's length depends on how many
+people are in the database, it belongs in a `useMemo`, a `Map`/`Set`, or on the
+server. Never in the render path.
+
+### The three questions to answer before 5,000 real users
+
+1. **Who is allowed to see the full roster?** (RLS + a `users_directory` view or a
+   `search_users` RPC with server-side paging.)
+2. **Should members see their coach's name only, or the whole coaching tree?**
+3. **What is the live-load ceiling?** One admin reviewing 5,000 people at once is a
+   different problem from 5,000 people each reviewing one report.
 
 ---
 

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { supabase, hasSupabaseConfig } from "./supabase";
 import { useLanguage } from "./i18n";
+import { normalizeForSearch, searchPeople, useDebouncedValue, usePagination } from "./utils/search";
 import {
   supabaseSignUp,
   supabaseSignIn,
@@ -36,6 +37,8 @@ const ReviewFormEditor = lazy(() => import("./components/ReviewFormEditor") as u
 const SummaryFormEditor = lazy(() => import("./components/SummaryFormEditor") as unknown as Promise<{ default: React.ComponentType<any> }>);
 const UserManagement = lazy(() => import("./components/UserManagement") as unknown as Promise<{ default: React.ComponentType<any> }>);
 const CoachAssignmentBoard = lazy(() => import("./components/CoachAssignmentBoard") as unknown as Promise<{ default: React.ComponentType<any> }>);
+const StaffPicker = lazy(() => import("./components/StaffPicker") as unknown as Promise<{ default: React.ComponentType<any> }>);
+const Pagination = lazy(() => import("./components/Pagination") as unknown as Promise<{ default: React.ComponentType<any> }>);
 const ActivityLogList = lazy(() => import("./components/ActivityLog") as unknown as Promise<{ default: React.ComponentType<any> }>);
 const AdminReports = lazy(() => import("./components/AdminReports") as unknown as Promise<{ default: React.ComponentType<any> }>);
 import { 
@@ -170,15 +173,23 @@ export default function App() {
   // `users.coach_uid` (the same column is_coach_of() reads in the database, so
   // what the UI shows and what RLS allows can't drift apart). Replaces the old
   // coaching_requests lookup, which no longer holds live assignment data.
+  // uid -> profile, built once. The previous version called .find() inside
+  // .forEach(), which is quadratic in the roster; this is two linear passes.
+  const profileByUid = useMemo(() => {
+    const m = new Map<string, UserProfile>();
+    staffProfiles.forEach(p => m.set(p.uid, p));
+    return m;
+  }, [staffProfiles]);
+
   const coachNameByMemberUid = useMemo(() => {
     const map = new Map<string, string>();
-    staffProfiles.forEach(s => {
-      if (!s.coachUid) return;
-      const coach = staffProfiles.find(c => c.uid === s.coachUid);
-      if (coach) map.set(s.uid, coach.name);
-    });
+    for (const member of staffProfiles) {
+      if (!member.coachUid) continue;
+      const coach = profileByUid.get(member.coachUid);
+      if (coach) map.set(member.uid, coach.name);
+    }
     return map;
-  }, [staffProfiles]);
+  }, [staffProfiles, profileByUid]);
 
 
   // Navigation / UI active states
@@ -257,6 +268,9 @@ export default function App() {
   const [showScheduler, setShowScheduler] = useState(false);
   const [showPostSubmitCoachingModal, setShowPostSubmitCoachingModal] = useState(false);
   const [evaluationCenterSubTab, setEvaluationCenterSubTab] = useState<"manage" | "overview">("overview");
+  // A coach with a large caseload needs to find one person in the directory
+  // without scrolling past thousands of buttons.
+  const [directorySearch, setDirectorySearch] = useState("");
   const [overviewSearch, setOverviewSearch] = useState("");
   const [overviewQuarter, setOverviewQuarter] = useState<"All" | "1st" | "2nd" | "3rd">("All");
   const [overviewEffectiveness, setOverviewEffectiveness] = useState<"All" | "One of the best" | "Satisfactory" | "Ineffective" | "Pending">("All");
@@ -336,37 +350,45 @@ export default function App() {
   // Assigned coach for the signed-in user. Resolved from the realtime-updated
   // staff list so an admin assignment shows up without a reload.
   const myAssignedCoachUid = user
-    ? (staffProfiles.find(s => s.uid === user.uid)?.coachUid || user.coachUid || null)
+    ? (profileByUid.get(user.uid)?.coachUid || user.coachUid || null)
     : null;
   const myAssignedCoach = myAssignedCoachUid
-    ? staffProfiles.find(s => s.uid === myAssignedCoachUid)
+    ? profileByUid.get(myAssignedCoachUid) ?? null
     : null;
 
   // People this user actually coaches. Derived from `users.coach_uid`, which is
   // the single source of truth: an admin assigns a coach in Team Members and
   // this list -- plus every RLS policy that calls is_coach_of() -- follows
   // immediately. There is no separate nomination/acceptance state to reconcile.
-  const myActiveCoachedUids = user
-    ? staffProfiles.filter(s => s.coachUid && s.coachUid === user.uid).map(s => s.uid)
-    : [];
+  // A Set, not an array: this was .includes() inside .filter() at six call
+  // sites, which is O(coached) per row scanned. A coach with 2000 assigns made
+  // every roster pass do millions of comparisons. It is also memoised so the
+  // identity is stable instead of a fresh array on every render.
+  const myActiveCoachedUids = useMemo(
+    () =>
+      user
+        ? new Set(staffProfiles.filter(s => s.coachUid && s.coachUid === user.uid).map(s => s.uid))
+        : new Set<string>(),
+    [staffProfiles, user]
+  );
 
-  const filteredStaffProfiles = user
-    ? (isAdmin
-        ? staffProfiles.filter(s => s.uid !== user.uid)
-        : staffProfiles.filter(s => myActiveCoachedUids.includes(s.uid) && s.uid !== user.uid))
-    : [];
+  const filteredStaffProfiles = useMemo(() => {
+    if (!user) return [];
+    return isAdmin
+      ? staffProfiles.filter(s => s.uid !== user.uid)
+      : staffProfiles.filter(s => myActiveCoachedUids.has(s.uid) && s.uid !== user.uid);
+  }, [staffProfiles, user, isAdmin, myActiveCoachedUids]);
 
-  const visibleReviews = user
-    ? (isAdmin
-        ? allReviews
-        : allReviews.filter(r => myActiveCoachedUids.includes(r.userId) || r.userId === user.uid))
-    : [];
+  // Search inputs drive full-roster re-filters, so they are debounced: one scan
+  // per word typed rather than one per character.
+  const debouncedDirectorySearch = useDebouncedValue(directorySearch, 200);
+  const debouncedOverviewSearch = useDebouncedValue(overviewSearch, 200);
 
-  const visibleSummaries = user
-    ? (isAdmin
-        ? allSummaries
-        : allSummaries.filter(s => myActiveCoachedUids.includes(s.userId) || s.userId === user.uid))
-    : [];
+  const directoryMatches = useMemo(
+    () => searchPeople(filteredStaffProfiles, debouncedDirectorySearch, 5000).results,
+    [filteredStaffProfiles, debouncedDirectorySearch]
+  );
+  const directoryPager = usePagination(directoryMatches, 25);
 
   // A member has a confirmed coach as soon as an admin assigns one. That is the
   // only gate on the final "Submit to Coach" step; filling and saving a draft
@@ -377,7 +399,7 @@ export default function App() {
   // via myActiveCoachedUids, so a coach keeps their Team Reviews access even if
   // an admin later clears their is_leader flag.
   const isLeaderOrCoach = user
-    ? (user.isLeader || myActiveCoachedUids.length > 0 || isAdmin)
+    ? (user.isLeader || myActiveCoachedUids.size > 0 || isAdmin)
     : false;
 
   // Tab-aware "Next Step" panel — walks the user through what to do on the
@@ -738,7 +760,7 @@ export default function App() {
   // already-live staff list closes that gap without another subscription.
   useEffect(() => {
     if (!user) return;
-    const fresh = staffProfiles.find(p => p.uid === user.uid);
+    const fresh = profileByUid.get(user.uid);
     if (!fresh) return;
     if (
       fresh.isLeader !== user.isLeader ||
@@ -2132,7 +2154,7 @@ export default function App() {
     }
 
     const meetingId = `${scheduleStaffUid}_${scheduleQuarter}_2025-2026_meeting`;
-    const targetStaff = staffProfiles.find(s => s.uid === scheduleStaffUid);
+    const targetStaff = profileByUid.get(scheduleStaffUid);
     const meetingData = {
       id: meetingId,
       userId: scheduleStaffUid,
@@ -2537,8 +2559,8 @@ export default function App() {
               review={activeReview}
               onSave={handleSaveReview}
               onClose={() => setActiveReview(null)}
-              isLeaderView={user ? (isAdmin || myActiveCoachedUids.includes(activeReview.userId)) : false}
-              staffName={user && (isAdmin || myActiveCoachedUids.includes(activeReview.userId)) && activeReview.userId !== user.uid ? activeReview.staffMemberName : undefined}
+              isLeaderView={user ? (isAdmin || myActiveCoachedUids.has(activeReview.userId)) : false}
+              staffName={user && (isAdmin || myActiveCoachedUids.has(activeReview.userId)) && activeReview.userId !== user.uid ? activeReview.staffMemberName : undefined}
               requiredSettings={requirementSettings}
               isOwner={activeReview.userId === user?.uid}
             />
@@ -2554,7 +2576,7 @@ export default function App() {
               isLeaderView={isLeaderOrCoach}
               staffName={activeSummaryStaffName}
               isOwner={activeSummary.userId === user?.uid}
-              isCoachOrAdmin={user ? (isAdmin || myActiveCoachedUids.includes(activeSummary.userId)) : false}
+              isCoachOrAdmin={user ? (isAdmin || myActiveCoachedUids.has(activeSummary.userId)) : false}
               isAdmin={isAdmin}
               hasVerifiedCoach={activeSummary.userId === user?.uid ? myHasVerifiedCoach : true}
             />
@@ -3214,6 +3236,15 @@ export default function App() {
                           });
                         }).filter(item => item.isCompiled || item.hasReview);
 
+                        // Keyed lookup for the Export-PDFs and Decline counters
+                        // below. Those used to run allEvaluations.find() once per
+                        // selected key, which is quadratic: with "Select all" on a
+                        // few thousand staff that is ~450M comparisons per render.
+                        const evaluationByKey = new Map<string, (typeof allEvaluations)[number]>();
+                        for (const ev of allEvaluations) {
+                          evaluationByKey.set(`${ev.member.uid}_${ev.quarter}`, ev);
+                        }
+
                         // Filter by Search, Quarter, and Rating
                         const filteredEvaluations = allEvaluations.filter(item => {
                           // Quarter filter
@@ -3232,11 +3263,11 @@ export default function App() {
                           }
                           
                           // Search filter
-                          if (overviewSearch) {
-                            const q = overviewSearch.toLowerCase();
+                          if (debouncedOverviewSearch) {
+                            const q = debouncedOverviewSearch;
                             const coachNames = item.coachName;
-                            const matchesMember = item.member.name.toLowerCase().includes(q) || item.member.role.toLowerCase().includes(q);
-                            const matchesCoach = coachNames.toLowerCase().includes(q) || (item.summary?.evaluation.teamLeaderSignature || "").toLowerCase().includes(q);
+                            const matchesMember = normalizeForSearch(item.member.name).includes(q) || normalizeForSearch(item.member.role).includes(q);
+                            const matchesCoach = normalizeForSearch(coachNames).includes(q) || normalizeForSearch(item.summary?.evaluation.teamLeaderSignature || "").includes(q);
                             if (!matchesMember && !matchesCoach) {
                               return false;
                             }
@@ -3339,11 +3370,7 @@ export default function App() {
                                   >
                                     <Download className="w-3.5 h-3.5" />
                                     <span>{t("Export PDFs")} ({
-                                      selectedEvaluations.filter(k => {
-                                        const [uid, q] = k.split("_");
-                                        const ev = allEvaluations.find(e => e.member.uid === uid && e.quarter === q);
-                                        return !!ev?.isCompiled;
-                                      }).length
+                                      selectedEvaluations.filter(k => !!evaluationByKey.get(k)?.isCompiled).length
                                     })</span>
                                   </button>
                                   <button
@@ -3360,9 +3387,8 @@ export default function App() {
                                     <ShieldAlert className="w-3.5 h-3.5" />
                                     <span>{t("Decline Selected")} ({
                                       selectedEvaluations.filter(k => {
-                                        const [uid, q] = k.split("_");
-                                        const ev = allEvaluations.find(e => e.member.uid === uid && e.quarter === q);
-                                        return ev?.summary && ev.summary.status !== "Declined";
+                                        const summary = evaluationByKey.get(k)?.summary;
+                                        return !!summary && summary.status !== "Declined";
                                       }).length
                                     })</span>
                                   </button>
@@ -3691,9 +3717,9 @@ export default function App() {
                           const coachNames = coachNameByMemberUid.get(member.uid) || "";
                           
                           // 1. Search filter
-                          if (overviewSearch) {
-                            const q = overviewSearch.toLowerCase();
-                            const matchesMember = member.name.toLowerCase().includes(q) || member.role.toLowerCase().includes(q);
+                          if (debouncedOverviewSearch) {
+                            const q = debouncedOverviewSearch;
+                            const matchesMember = normalizeForSearch(member.name).includes(q) || normalizeForSearch(member.role).includes(q);
                             const matchesCoach = coachNames.toLowerCase().includes(q);
                             if (!matchesMember && !matchesCoach) {
                               return false;
@@ -4003,10 +4029,22 @@ export default function App() {
                     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                       {/* List */}
                       <div className="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-150 dark:border-slate-800 p-4 space-y-2 h-fit transition-colors">
-                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 py-1 border-b border-slate-100 dark:border-slate-800 mb-2">
-                          {t("Staff Members")}
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 px-2 py-1 border-b border-slate-100 dark:border-slate-800 mb-2 flex items-center justify-between">
+                          <span>{t("Staff Members")}</span>
+                          <span className="font-mono normal-case text-[10px]">{filteredStaffProfiles.length}</span>
                         </h4>
-                        {filteredStaffProfiles.map(s => {
+                        <div className="relative px-2 pb-2">
+                          <Search className="w-3.5 h-3.5 text-slate-400 absolute left-4.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                          <input
+                            id="directory-search"
+                            value={directorySearch}
+                            onChange={e => setDirectorySearch(e.target.value)}
+                            placeholder={t("Search staff...")}
+                            aria-label={t("Search staff")}
+                            className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/30"
+                          />
+                        </div>
+                        {directoryPager.pageItems.map(s => {
                           const isSelected = selectedStaffUid === s.uid;
                           return (
                             <button
@@ -4027,6 +4065,22 @@ export default function App() {
                             </button>
                           );
                         })}
+                        {directoryMatches.length === 0 && (
+                          <p className="px-2 py-6 text-center text-xs text-slate-400">
+                            {t("No staff members match your search.")}
+                          </p>
+                        )}
+                        <div className="px-2 pt-2">
+                          <Pagination
+                            page={directoryPager.page}
+                            totalPages={directoryPager.totalPages}
+                            totalItems={directoryPager.totalItems}
+                            rangeStart={directoryPager.rangeStart}
+                            rangeEnd={directoryPager.rangeEnd}
+                            onPrev={directoryPager.prev}
+                            onNext={directoryPager.next}
+                          />
+                        </div>
                       </div>
 
                       {/* Details and review trigger panel */}
@@ -4534,16 +4588,14 @@ export default function App() {
             <form onSubmit={handleScheduleMeeting} className="p-6 space-y-4">
               <div>
                 <label className="block text-xs font-bold uppercase text-slate-400 font-mono mb-1">Select Staff Member</label>
-                <select
+                <StaffPicker
                   id="sched-staff-select"
-                  value={scheduleStaffUid}
-                  onChange={(e) => setScheduleStaffUid(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-slate-50"
-                >
-                  {staffProfiles.map(s => (
-                    <option key={s.uid} value={s.uid}>{s.name} ({s.role})</option>
-                  ))}
-                </select>
+                  people={staffProfiles}
+                  value={scheduleStaffUid || null}
+                  onChange={uid => setScheduleStaffUid(uid ?? "")}
+                  placeholder={t("Search for a staff member...")}
+                  describe={p => p.role}
+                />
               </div>
 
               <div>

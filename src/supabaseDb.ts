@@ -230,9 +230,16 @@ export async function getAllSummaries(): Promise<QuarterlySummary[]> {
   return (data || []).map(mapSummary);
 }
 
+// Named columns, not select("*"): this runs for every connected client on every
+// realtime event and poll tick, and the roster is expected to be several
+// thousand rows. Naming the columns keeps the payload to what the app maps
+// below, and keeps a future column (say an internal note) from leaking into
+// every browser.
+const STAFF_COLUMNS = "uid, name, role, email, is_leader, is_admin, coach_uid, created_at";
+
 export async function getAllStaff(): Promise<UserProfile[]> {
   if (!supabase) throw new Error("Supabase not configured");
-  const { data, error } = await supabase.from("users").select("*").order("created_at");
+  const { data, error } = await supabase.from("users").select(STAFF_COLUMNS).order("created_at");
   if (error) throw error;
   return (data || []).map((r) => ({
     uid: r.uid,

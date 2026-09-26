@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { getAllStaff } from "../supabaseDb";
 import { dataUpdateUserProfile, dataUpdateAssignedCoach } from "../dataLayer";
 import { UserProfile } from "../types";
-import { Users, UserX, Shield, ShieldCheck, Mail, Briefcase, RefreshCw, Star } from "lucide-react";
+import { Users, UserX, Shield, ShieldCheck, Mail, Briefcase, RefreshCw, Star, Search } from "lucide-react";
 import { useLanguage } from "../i18n";
+import StaffPicker from "./StaffPicker";
+import Pagination from "./Pagination";
+import { searchPeople, useDebouncedValue, usePagination } from "../utils/search";
 
 interface UserManagementProps {
   currentUser: UserProfile;
@@ -15,6 +18,11 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [updatingCoachId, setUpdatingCoachId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebouncedValue(search, 200);
+  const [roleFilter, setRoleFilter] = useState<"all" | "admin" | "coach" | "member">("all");
+
+  const PAGE_SIZE = 25;
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -196,10 +204,29 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
   // on a fresh install, where nobody is a leader yet, so the client appeared to
   // have no way to assign coaches at all. A person is never offered as their own
   // coach; existing leaders are simply listed first for convenience.
-  const coachOptionsFor = (memberUid: string) =>
-    users
-      .filter(c => c.uid !== memberUid)
-      .sort((a, b) => Number(b.isLeader) - Number(a.isLeader) || a.name.localeCompare(b.name));
+  // Sorted ONCE. The old version re-filtered and re-sorted the whole roster for
+  // every row, which at a few thousand staff meant an O(n log n) sort per row.
+  // Only the single self-reference differs per row, and StaffPicker filters
+  // that out itself via excludeUid.
+  const coachOptions = useMemo(
+    () =>
+      [...users].sort(
+        (a, b) => Number(b.isLeader) - Number(a.isLeader) || a.name.localeCompare(b.name)
+      ),
+    [users]
+  );
+
+  const visibleUsers = useMemo(() => {
+    const byRole = (u: UserProfile) => {
+      if (roleFilter === "admin") return u.isAdmin;
+      if (roleFilter === "coach") return !u.isAdmin && u.isLeader;
+      if (roleFilter === "member") return !u.isAdmin && !u.isLeader;
+      return true;
+    };
+    return searchPeople(users.filter(byRole), debouncedSearch, 5000).results;
+  }, [users, roleFilter, debouncedSearch]);
+
+  const pager = usePagination(visibleUsers, PAGE_SIZE);
 
   return (
     <div id="user-management-container" className="bg-white dark:bg-slate-900 rounded-xl shadow-md border border-slate-100 dark:border-slate-800 overflow-hidden transition-colors duration-200">
@@ -221,6 +248,36 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
           <RefreshCw className="w-3.5 h-3.5" />
           {t("Sync Users")}
         </button>
+      </div>
+
+      <div className="px-6 py-3 border-b border-slate-150 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="relative flex-1 min-w-0">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <input
+            id="user-directory-search"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder={t("Search staff by name or email...")}
+            aria-label={t("Search staff by name or email")}
+            className="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400"
+          />
+        </div>
+        <div className="flex items-center gap-1 shrink-0">
+          {(["all", "admin", "coach", "member"] as const).map(r => (
+            <button
+              key={r}
+              type="button"
+              onClick={() => setRoleFilter(r)}
+              className={`px-3 py-1.5 rounded-lg text-[11px] font-bold capitalize transition-colors ${
+                roleFilter === r
+                  ? "bg-indigo-600 text-white"
+                  : "bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+              }`}
+            >
+              {r === "all" ? t("All") : r === "admin" ? t("Admins") : r === "coach" ? t("Coaches") : t("Members")}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="overflow-x-auto">
@@ -246,7 +303,7 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
-              {users.map(u => {
+              {pager.pageItems.map(u => {
                 return (
                   <tr key={u.uid} className="hover:bg-slate-50/50 dark:hover:bg-slate-850/40 transition-colors">
                     <td className="px-6 py-4 font-medium text-slate-800 dark:text-slate-100 flex items-center gap-2">
@@ -284,20 +341,16 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      <select
+                      <StaffPicker
                         id={`coach-select-${u.uid}`}
-                        value={u.coachUid || ""}
+                        people={coachOptions}
+                        value={u.coachUid}
+                        onChange={uid => updateAssignedCoach(u, uid)}
+                        excludeUid={u.uid}
+                        clearLabel={t("No Coach")}
                         disabled={updatingCoachId === u.uid}
-                        onChange={(e) => updateAssignedCoach(u, e.target.value || null)}
-                        className="bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg py-1.5 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer"
-                      >
-                        <option value="">{t("No Coach")}</option>
-                        {coachOptionsFor(u.uid).map(c => (
-                          <option key={c.uid} value={c.uid}>
-                            {c.name}{c.isLeader ? ` (${t("Coach / Leader")})` : ""}
-                          </option>
-                        ))}
-                      </select>
+                        describe={p => (p.isLeader ? t("Coach / Leader") : p.role)}
+                      />
                     </td>
                     <td className="px-6 py-4 text-right">
                       {u.uid === currentUser.uid ? (
@@ -334,6 +387,20 @@ export default function UserManagement({ currentUser }: UserManagementProps) {
           </table>
         )}
       </div>
+
+      {!loading && users.length > 0 && (
+        <div className="px-6 py-3 border-t border-slate-150 dark:border-slate-800">
+          <Pagination
+            page={pager.page}
+            totalPages={pager.totalPages}
+            totalItems={pager.totalItems}
+            rangeStart={pager.rangeStart}
+            rangeEnd={pager.rangeEnd}
+            onPrev={pager.prev}
+            onNext={pager.next}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -35,7 +35,7 @@ Open **http://localhost:3000** in your browser.
 > leftover stub that renders `null` and is not imported anywhere — the real
 > guidance is a **"Your next step" card** built into the dashboard.
 
-1. On the login screen, click **Lewis KB** (the admin bypass button)
+1. On the login screen, click **Platform Owner (Lewis KB)**
 2. On the dashboard you should see a **"Your next step"** card telling you what
    to do first
 3. **Click its button.** It must actually open something — this was broken and
@@ -61,7 +61,8 @@ What to check:
 
 ## Step 5: Test the Monthly Form (Walk with God tab)
 
-1. On the **1st Quarter** card, click **Open Form** next to "Monthly Form"
+1. On the **1st Quarter** card, next to **"Monthly Form"**, click **Fill/Edit Form**
+   (it reads **View Form** once submitted)
 2. You should see the tab bar: **Getting Started | Walk with God | Personal Life | Relational Life | Ministry Impact**
 3. Click **Walk with God** tab
 4. You should see:
@@ -81,7 +82,9 @@ What to check:
 ## Step 6: Test the Quarterly Summary Form
 
 1. Go back to dashboard (click "My Reviews" tab)
-2. On the **1st Quarter** card, click **Open Form** next to "Quarterly Summary"
+2. On the **1st Quarter** card, next to **"Quarterly Form"**, click the summary
+   button — **Fill Summary (Required)**, or **Resume Summary (Required)** if you
+   have started, or **View Evaluation** after the coach has completed it
 3. You should see tab bar: **General & Suggestions | Personal Development Plan
    (PDP) | Critical Mission Objectives (CMO) | Key Deliverable Assignments (KDA) |
    Team Leader (TL) Evaluation**
@@ -98,10 +101,13 @@ What to check:
 
 ---
 
-## Step 7: Test as a Coach (Sarah Leader)
+> The names **Lewis KB**, **Sarah** and **John** come from the seeded mock
+> data (see the bypass buttons). They are test fixtures, not real people.
+
+## Step 7: Test as a Coach (Team Leader — Sarah)
 
 1. Go back to login page (click your name in top-right → Logout)
-2. Click **Sarah Leader** bypass button
+2. Click the **Team Leader (Sarah)** bypass button
 3. You should see the **"Team Reviews"** tab (not "Team Evaluation Center")
 4. Click **Team Reviews**
 5. You should see John Staff, Anna Coordinator, Peter Field Officer listed
@@ -115,9 +121,9 @@ What to check:
 
 ---
 
-## Step 8: Test as Admin (Lewis KB)
+## Step 8: Test as Admin (Platform Owner — Lewis KB)
 
-1. Log out, log in as **Lewis KB**
+1. Log out, log in as **Platform Owner (Lewis KB)**
 2. Click **"Admin Dashboard"** tab (not "Access Directory")
 3. You should see **four** sub-tabs: **Coach Assignments | Reports & Reviews |
    Settings | Team Members** — and you should land on **Coach Assignments**
@@ -135,10 +141,12 @@ What to check:
 
 ## Step 8b: Assign a Coach (the default admin screen)
 
-1. Log in as **Lewis KB** (admin). You should land on the **Coach Assignments** tab
+1. Log in as **Platform Owner (Lewis KB)** (admin). You should land on the **Coach Assignments** tab
 2. Check the banner: it should read "All staff have a coach", or count how many are missing
 3. Everyone in the list shows their coach, or "No Coach Assigned"
-4. Assign Sarah Leader to John Staff from the board, then press **F5** to refresh
+4. Assign **Sarah** as coach to **John** from the board. The board updates
+   live, so **do not press F5** — if you have to refresh to see it, realtime is
+   not working (see [REALTIME_GUIDE.md](./REALTIME_GUIDE.md))
 5. Repeat the same assignment from the **Team Members** tab — it is the same control
 
 What to check:
@@ -154,7 +162,7 @@ What to check:
 - [ ] Sarah Leader now shows **Coach / Leader** in her own Access Level, even if she was a plain member before
 - [ ] The same change made from Team Members shows up on the Coach Assignments board
 
-Now log out, log back in as **Sarah Leader**, and check the flip side:
+Now log out, log back in as **Team Leader (Sarah)**, and check the flip side:
 
 - [ ] Her **Team Reviews** tab is there
 - [ ] John Staff appears in it

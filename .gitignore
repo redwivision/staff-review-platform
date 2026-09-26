@@ -19,3 +19,5 @@ docs/*
 !docs/TESTING_GUIDE.md
 !docs/REALTIME_GUIDE.md
 !docs/CLIENT_QUESTIONS.md
+!docs/CLIENT_TOP_5.md
+!docs/STATUS.md

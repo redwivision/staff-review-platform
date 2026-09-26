@@ -724,17 +724,28 @@ measured problem.
 Honest list. None of these are secrets about the code; they are the things to
 know before you rely on a behaviour.
 
+**The authoritative, deduplicated list is [STATUS.md](./STATUS.md) §6** — every
+limitation in one place, grouped by kind, each linked to the client question that
+might close it. The security-critical ones are worth repeating here:
+
 | Gap | Impact |
 |---|---|
-| Bypass mode has no environment guard | Full admin UI is public. No data exposure (see §12). |
-| `users_select_authenticated` uses `USING (true)` | Any signed-in user can read every name, email, and role flag in `users`. Intentional, but it is real PII exposure. |
+| Bypass mode has no environment guard | Full admin UI is public. No data exposure (see §12), but it should be off on the live site. |
+| `users_select_authenticated` uses `USING (true)` | Any signed-in user can read every name, email, and role flag in `users`. **This does not match the access model the client confirmed** — see [STATUS.md L2](./STATUS.md#l2-everyone-can-read-every-profile). It is the top outstanding item. |
+| `follow_up_tasks` has no coach check | Any signed-in user can read the global coordination rows, not just admins and coaches. |
+| Follow-up tasks have no UI at all | Handlers exist but are never called; the feature is unreachable. Details in [STATUS.md L8](./STATUS.md#l8-follow-up-tasks-have-no-ui). |
 | `supabaseGetUser` returns `null` on any error | A permission failure is indistinguishable from a missing row, so the app logs you in as a fabricated unprivileged profile instead of showing an error. |
-| Leader promotion happens in a trigger, not a client call | The client cannot grant itself leadership, and cannot fake a promotion. `src/App.tsx` re-reads its own row from the live staff list so the new `is_leader` shows up without a reload. |
 | Two empty `catch` blocks (`src/App.tsx:564`, `:809`) | A rejected profile write is completely silent. |
 | Activity-log failures only reach the console | The UI can report success while the audit trail write was denied. |
 | Realtime unverified against the live project | The publication is set up by `supabase-schema.sql` §6b, but has not been confirmed end-to-end in a browser. Until it is, the app falls back to ~30s polling rather than breaking. |
+| Schema is ahead of the live database | The self-assignment CHECK, the `users` indexes and the publication are written but not applied. Re-run the schema; it is re-runnable. |
 | `App.tsx` is 5,482 lines | Hard to review; slow to change safely. |
 | `sessionStorage` key `has_init_session` | Read and written, but behaviourally inert — the real guard uses `staff_review_session_marker`. Effectively dead. |
+
+**A note on one row that is *not* a gap:** leader promotion happening in a
+database trigger rather than a client call is a *deliberate strength*. The client
+cannot grant itself leadership or fake a promotion, and `src/App.tsx` re-reads its
+own row from the live staff list so a new `is_leader` shows up without a reload.
 
 ---
 

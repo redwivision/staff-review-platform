@@ -21,7 +21,10 @@ All documentation lives in [`docs/`](./docs):
 | [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) | **Start here for how it works.** Auth, sessions, storage, cookies, the database, and every RLS policy — with file/line references so you can verify any claim. Also documents the known gaps. |
 | [docs/PROJECT_GUIDE.md](./docs/PROJECT_GUIDE.md) | A guided tour of the codebase and the engineering process, written as a learning curriculum. Read this first if you're new to the project. |
 | [docs/TESTING_GUIDE.md](./docs/TESTING_GUIDE.md) | How to test each role and form locally, plus a pre-push checklist. |
+| [docs/STATUS.md](./docs/STATUS.md) | **What state is the project in right now.** Every flow, every limitation in one deduplicated list, what's done and what isn't. Start here if you just want the state of play. |
 | [docs/REALTIME_GUIDE.md](./docs/REALTIME_GUIDE.md) | How to turn on Supabase Realtime, what the dashboard's 3 Settings steps mean, and how to verify live updates are actually flowing. |
+| [docs/CLIENT_TOP_5.md](./docs/CLIENT_TOP_5.md) | **The 5 questions to send the client now.** Copy-paste ready and phrased for a non-technical reader. |
+| [docs/CLIENT_QUESTIONS.md](./docs/CLIENT_QUESTIONS.md) | All 22 open questions for the client, ranked — for when the first five are answered. |
 
 > `docs/` also holds the client's private reference PDFs. Those are deliberately
 > kept out of git — see `.gitignore`.
@@ -33,7 +36,7 @@ All documentation lives in [`docs/`](./docs):
 - **Quarterly Development Review** — staff self-assess across four areas, shown in the UI as Walk with God, Personal Life, Relational Life, and Ministry Impact
 - **Quarterly Summary Form** — staff compile progress on PDP goals, Critical Mission Objectives, and Key Deliverable Assignments
 - **Coach Evaluation** — team leaders review and score submitted summaries; evaluations are routed to the admin for approval
-- **Admin Dashboard** — view all evaluations, export individual or bulk PDFs, and manage follow-up tasks
+- **Admin Dashboard** — view all evaluations, sign off or decline in bulk, export individual or bulk PDFs, and assign coaches
 - **Coach assignment** — an admin assigns a coach to any staff member. The **Coach Assignments** tab (the default admin tab) lists everyone with their current coach, flags who still has none, and assigns inline; the **Team Members** tab holds the same control alongside role and admin permissions. One action sets the coaching relationship everywhere at once: the member sees their coach, the coach immediately gains access to that person's data, and they are marked Coach/Leader automatically. There is no nomination, approval, or acceptance step.
 - **Flexible quarterly form** — fill and save your Quarterly Summary as soon as it's unlocked; you only *submit* it to your coach once an admin has assigned one to you
 - **Role-based access** — roles: Staff, Coach/Leader, and Admin
@@ -164,7 +167,7 @@ npm run start    # serves the built dist/ — there is no "preview" script
 |---|---|
 | **Staff** | Fill and submit own Development Reviews and Quarterly Summaries |
 | **Coach / Leader** | View coached staff, fill evaluation tab, approve summaries |
-| **Admin** | View all evaluations, export PDFs, manage tasks and user roles |
+| **Admin** | View all evaluations, bulk sign-off/decline, export PDFs, assign coaches, manage roles |
 
 **The quarterly form and your coach:** you don't need to wait for a coach to start working. As soon as a quarter is unlocked, you can open your Quarterly Summary, fill it in, and save it as a draft at any time. The **"Submit to Coach"** step is the only thing that requires a coach — until then you can keep drafting and saving freely. Your coach is assigned to you by an admin; there is nothing for you to request or approve.
 

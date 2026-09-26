@@ -867,46 +867,28 @@ dangerous. Read any red error message rather than assuming it worked.
 
 ## Appendix E. Known limitations (honest review)
 
-A good engineer is honest about what's not done yet. These are the current gaps:
+A good engineer is honest about what's not done yet.
 
-- **`App.tsx` is a very large single file.** It works, and we already lazy-loaded its
-  parts, but splitting it into smaller files would be cleaner for future developers.
-- **Monthly Development Review form** is de-prioritized; the guided flow focuses on the
-  Quarterly Summary.
-- **No email/push notifications.** (Planned: Supabase Edge Functions + SendGrid.)
-- **No file uploads.** (Planned: Supabase Storage.)
-- **Single role per user** — no hybrid staff+coach. (Planned: multi-role.)
-- **Hardcoded July–June fiscal quarters.** (Planned: admin-configurable.)
-- **Offline mode** is dev-only, not real offline support.
-- **PDF** uses a static template (no custom branding/logos).
-- **Web-only** — no native mobile app yet.
-- **Coach matching is manual** (an admin assigns each coach from the Coach
-  Assignments tab, which is the default admin screen; Team Members can also do it).
-- **Session lifetime is capped at 8 hours.** If a tab is left alone overnight, or the
-  browser is closed/restarted, the next visit starts at the login screen instead of
-  resuming where the user was. The limit is a single constant,
-  `IDLE_LIMIT_MS` in `src/utils/session.ts`.
-  *Consequence to be aware of:* opening the app in a **second tab** also counts as a
-  fresh browser session, so that tab returns to login (and clears the shared session,
-  which signs the first tab out too). This is deliberate — the data is sensitive —
-  but it is stricter than strictly necessary.
-- **Automated test tooling** (Playwright/Cypress/k6) isn't installed yet. The
-  search helpers do have real unit tests (`test/search.test.ts`, run with
-  `npx tsx test/search.test.ts`) and the database rules have SQL tests — but
-  there is no browser automation yet.
-- **`npm audit` reports 5 dependency advisories — 1 high, 4 moderate.**
-  Currently: `browserslist` (high — unbounded memory growth, build-time);
-  `express`, `body-parser`, `qs`, `baseline-browser-mapping` (moderate — the
-  `qs` chain reaches `express`, which is a **direct runtime dependency** of
-  `server.ts`, though it is not shipped to the browser). None of these are
-  reachable from code the browser executes, so this is not an exploitable
-  runtime risk today. Worth clearing, but test carefully: `express` is a
-  direct dependency, so `npm audit fix --force` would take a major version
-  bump and can break the dev server.
-- **A normal user can type into the leader/coach section of their own form** — a small
-  data-integrity gap (not a security hole). Planned fix.
-- **Exported PDFs are always English**, even when the app is set to Amharic:
-  `src/utils/pdfExport.ts` takes no language parameter.
+**That list now lives in one place: [STATUS.md](./STATUS.md) §6.** Keeping a
+second copy here is how two copies drift apart, so this section points there
+instead. It covers every known limitation grouped by kind, each one tagged and
+linked to the client question that might close it.
+
+The short version:
+
+- **Security** — any signed-in user can currently read every profile
+  ([L2](./STATUS.md#l2-everyone-can-read-every-profile)), and demo/bypass mode is
+  reachable in production
+  ([L1](./STATUS.md#l1-demo-bypass-mode-is-public-in-production)).
+- **Broken** — follow-up tasks have no UI at all
+  ([L8](./STATUS.md#l8-follow-up-tasks-have-no-ui)).
+- **Unverified** — realtime is configured but has never been confirmed working in
+  a browser ([L9](./STATUS.md#l9-realtime-is-configured-but-never-verified-in-a-browser)).
+- **Stale schema** — the live database is behind `supabase-schema.sql`
+  ([L10](./STATUS.md#l10-the-schema-is-ahead-of-the-live-database)).
+- **Not built** — notifications, file uploads, offline, native app, org chart.
+- **Not planned** — members choosing a coach, and coaches accepting one. Both are
+  deliberate; see [STATUS.md §7](./STATUS.md#7-deliberately-not-built).
 
 ---
 
@@ -989,7 +971,10 @@ staff (`WHERE coach_uid IS NULL`) for the coverage count.
 **6. `getAllStaff()` no longer does `select("*")`.** It names the eight columns
 it maps. Cheaper, and a future column can't leak into every browser by accident.
 
-### What is still a real limitation (be honest about this)
+### What is still a real limitation
+
+> The full, deduplicated list is **[STATUS.md §6](./STATUS.md#6-limitations)**.
+> What follows is kept here because the *reasoning* matters more than the item.
 
 The fixes above are **client-side**. The roster is still downloaded whole, in
 one request, into every browser. That's fine for a few thousand rows, but it's

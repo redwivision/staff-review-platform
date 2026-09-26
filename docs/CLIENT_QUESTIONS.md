@@ -1,4 +1,8 @@
-# Client Questions
+# Client questions
+
+> **In a hurry?** The five that actually block development are in
+> [CLIENT_TOP_5.md](./CLIENT_TOP_5.md) — send those first. This file is the full
+> list, for later.
 
 Open questions about the review platform, written so the client can answer in
 plain language. Each one says **why it matters** and **what changes depending on
@@ -125,11 +129,13 @@ before they can be assigned? If yes, the assignment board needs a pending state.
 
 ### Q10. NEEDED — Is "Coach submitted" the final step, or is there an approval?
 
-The current flow is: **member submits → coach completes → admin signs off.** The
-admin sign-off is stored as a reviewer name, not a status, which is a bit loose.
+The current flow is: **member submits → coach completes → admin signs off.** All
+three steps work, including decline-and-resubmit (the coach is shown the reason
+and the button becomes "Resubmit to Admin"). One loose end: "Approved" is
+*derived* from whether a reviewer name is stored, rather than being a real status.
 
 - **Is the admin sign-off required for every review, or only some?**
-- **Can an admin send a review back for changes?** (The app supports "decline".)
+- **Does a coach ever send it back, or only an admin?**
 - **Who is the named sign-off — the admin, or the admin's leader?**
 
 ### Q11. NEEDED — Can a review be reopened after it's final?
@@ -234,9 +240,14 @@ raising early even though the app itself works today.
 
 ### Q21. NEEDED — Who should be able to export data?
 
-The admin reports page can produce CSV-style summaries of everyone's reviews.
+The admin reports page can export **PDFs**, individually or in bulk (with a
+section picker). There is **no CSV/Excel export** — I checked, and none exists.
 Confirm that **admins are the only people who should be able to export**, and
-whether the export should be recorded in the audit log.
+whether exports should be recorded in the audit log. Right now they are not:
+the log is only written for sign-off, decline, and form saves.
+
+**Also worth asking:** if the client expects to open results in Excel, that is a
+real need and a small feature to add. Better to find out now than after launch.
 
 ### Q22. FYI — Emails and names are in the roster
 

@@ -319,8 +319,10 @@ Here are the main tables. I'll use "shape" notation (id, fields) so you can pict
 
 ### `development_reviews` — the self-review forms
 - `id`, `userId`, `quarter`, `year`, `status`
-- Then the four review areas: Heart, Personal Life, Relational Life, Ministry
-  Effectiveness. Each area has Strengths / Needs Improvement / Suggested Actions.
+- Then the four review areas, stored as `heart`, `personal_life`, `relational_life`,
+  `ministry_effectiveness` (shown in the UI as Walk with God, Personal Life,
+  Relational Life, Ministry Impact). Each area has Strengths / Needs Improvement /
+  Suggested Actions.
 
 ### `quarterly_summaries` — the coach evaluation forms
 - `id`, `userId`, `status`, `coachUid`, `coachName`, `quarter`, `year`
@@ -353,7 +355,9 @@ the whole product does.
 
 ### Development Review (self-review) — `ReviewFormEditor.tsx`
 - The **staff member** fills this out about themselves.
-- Organized into 4 tabs (Heart, Personal Life, Relational Life, Ministry Effectiveness).
+- Organized into **5 tabs** in the UI: Getting Started, Walk with God, Personal Life,
+  Relational Life, Ministry Impact. (The labels were reworded for clarity; the
+  underlying database columns are still `heart` and `ministry_effectiveness`.)
 - Shows a progress bar ("how much have you filled in?") — that's computed in code, not
   stored; the app counts filled fields.
 
@@ -377,7 +381,9 @@ column:
 
 | Where | What it is for |
 |---|---|
-| **Admin Dashboard → Coach Assignments** (the default tab) | Answering "who still needs a coach?". Lists every staff member with their current coach, a count of unassigned people, and an inline dropdown to assign or clear. |
+| **Admin Dashboard → Coach Assignments** (the default tab) | Answering "who still needs a coach?". Lists staff in pages of 25 with a **search box**, an "only unassigned" filter, and a
+**searchable picker** to assign or clear. (It is a typeahead, not a dropdown: a
+`<select>` holding 5,000 `<option>`s was the original scaling bug.) |
 | **Admin Dashboard → Team Members** | The full access-control table, which also covers roles and admin permissions. |
 
 The Coach Assignments board lives in `src/components/CoachAssignmentBoard.tsx`. In the
@@ -592,10 +598,15 @@ security review looks like. Here's what we found and what we did — in plain wo
 5. **Deletes by coaches were being thrown away.**
    → Now they're recorded so the audit trail (who changed what) actually works.
 
-The security rules all live in **`supabase-schema.sql`**. But here's the crucial
-honest bit: **these rules are written, but not yet applied to the live database.** That
-can only be done through the Supabase dashboard with an account that owns the project
-— which we explain, step by step, in **Appendix C**. Until that's done, the security
+The security rules all live in **`supabase-schema.sql`**. Applying them needs the
+Supabase dashboard, with an account that owns the project — see **Appendix C**.
+
+**The honest state of things:** the policies were audited against your live
+project once and looked right, but the schema has gained more since — the
+self-assignment check, the `users` indexes, and the Realtime publication setup.
+Those are **written but not yet applied**. Re-run the schema file to bring the
+live database up to date; it's re-runnable, so that's safe to do at any time.
+Until you do, the security
 rules are inert. This is a perfect real-world example of *the difference between
 "written" and "shipped."*
 
@@ -624,7 +635,9 @@ This is the one you (the user) specifically asked about. A huge app is painful o
 slow wifi. We cut the initial download by almost half:
 - **Before:** the whole app (including the PDF generator and every admin screen) was
   one ~1.34 MB file (371 KB when compressed).
-- **After:** the first screen only downloads ~735 KB (202 KB compressed). Everything
+- **After:** the first screen only downloads ~835 KB (233 KB compressed), measured
+  from the build on 2026-09-26. Treat that as a dated measurement, not a standing
+  fact — re-run `npm run build` for a current number. Everything
   else — PDFs, admin panels, forms — is **lazy-loaded**: it only downloads **when a
   user actually opens it**.
 
@@ -656,23 +669,48 @@ staff-review-platform/
 │   ├── constants.ts               ← review sections, quarter info
 │   ├── utils.ts                   ← helpers (create reviews, progress calc)
 │   ├── index.css                  ← global styles + Tailwind
+│   ├── i18n.tsx                   ← English/Amharic toggle, the t() translator
+│   ├── i18n/
+│   │   └── am.ts                  ← Amharic dictionary (831 entries)
 │   ├── components/
-│   │   ├── ReviewFormEditor.tsx   ← Development Review form (4 quadrants)
-│   │   ├── SummaryFormEditor.tsx  ← Quarterly Summary form (6 tabs)
+│   │   ├── ReviewFormEditor.tsx   ← Development Review form (5 tabs, 4 quadrants)
+│   │   ├── SummaryFormEditor.tsx  ← Quarterly Summary form (6 sections)
+│   │   ├── GuidedReviewForm.tsx   ← step-by-step guided version of the review
+│   │   ├── GuidedSummaryForm.tsx  ← step-by-step guided version of the summary
+│   │   ├── CoachAssignmentBoard.tsx ← assign coaches ★ THE DEFAULT ADMIN TAB
+│   │   ├── StaffPicker.tsx        ← searchable people picker (replaces huge <select>s)
+│   │   ├── Pagination.tsx         ← shared 25-per-page pager
 │   │   ├── AdminReports.tsx       ← admin reports
 │   │   ├── ActivityLog.tsx        ← audit trail view
-│   │   └── UserManagement.tsx     ← admin roles + assign a staff member's coach
-│   │                                (the ONLY way a coaching relationship starts)
+│   │   ├── UserManagement.tsx     ← admin roles + a second way to assign coaches
+│   │   └── OnboardingTour.tsx     ← DEAD STUB, renders null, not imported
 │   └── utils/
-│       ├── pdfExport.ts           ← PDF generation (lazy-loaded)
+│       ├── search.ts              ← search/debounce/pagination helpers + unit tests
+│       ├── pdfExport.ts           ← PDF generation (lazy-loaded, English-only)
 │       └── session.ts             ← session lifetime guard (idle + browser-restart)
+├── test/
+│   ├── search.test.ts             ← 25 assertions over src/utils/search.ts
+│   ├── audit_i18n.py              ← translation dictionary integrity check
+│   ├── auth-stub.sql              ← local anon/authenticated/service_role stand-in
+│   ├── self-assignment-check.sql          ← CHECK + trigger integration test
+│   └── self-assignment-check-direct.sql  ← 5 standalone CHECK cases
+├── docs/
+│   ├── ARCHITECTURE.md            ← how it works, with file:line references
+│   ├── PROJECT_GUIDE.md           ← this file
+│   ├── TESTING_GUIDE.md           ← how to test each role
+│   ├── REALTIME_GUIDE.md          ← Supabase Realtime setup and verification
+│   └── CLIENT_QUESTIONS.md        ← open questions for the client
 ├── server.ts                      ← Express dev server (Vite + static file serving)
 ├── index.html                     ← single HTML shell
-├── supabase-schema.sql            ← database blueprint + security rules
+├── supabase-schema.sql            ← database blueprint + security rules + realtime
 ├── package.json                   ← dependencies + scripts
 ├── vite.config.ts                 ← Vite build config
 ├── tsconfig.json                  ← TypeScript config
 └── .env.example                   ← environment variable template
+
+Not in the map: `playwright.config.ts`, `cypress/`, `tests/`, `load-test.js`,
+`public/`, `metadata.json`. Those are unconfigured scaffolding — the tools aren't
+installed, so those commands won't run (see [Appendix B](#appendix-b-commands-youll-use)).
 ```
 
 ## Appendix B. Commands you'll use
@@ -718,12 +756,19 @@ the functions came first, the whole script would fail on a brand-new project wit
 `relation "public.users" does not exist`. If you ever reorganise the file, keep
 tables above functions.
 
-**Optional but recommended:** enable Realtime for faster updates:
-1. Supabase → **"Database"** → **"Replication"**.
-2. Click **"Enable Realtime"**.
-3. Turn on the toggle for these tables: `users`, `development_reviews`,
-   `quarterly_summaries`, `coaching_requests`, `meetings`, `follow_up_tasks`,
-   `activity_logs`, `requirement_settings`, `review_schedules`.
+**Realtime needs no manual step.** The schema's section 6b creates the
+`supabase_realtime` publication and adds the 8 tables the app subscribes to, so
+running the file is enough. To check it worked:
+
+```sql
+select count(*) from pg_publication_tables where pubname = 'supabase_realtime';
+-- expect 8
+```
+
+`coaching_requests` is deliberately **not** included: direct assignment made it a
+non-source of truth. If live updates aren't arriving, see
+[REALTIME_GUIDE.md](./REALTIME_GUIDE.md) — the failure mode is silent, so "it
+looks slow" usually means "the publication is empty".
    If skipped, the app still works (it just falls back to checking every ~30s).
 
 ## Appendix C2. The trap that will bite you later
@@ -835,7 +880,8 @@ A good engineer is honest about what's not done yet. These are the current gaps:
 - **Offline mode** is dev-only, not real offline support.
 - **PDF** uses a static template (no custom branding/logos).
 - **Web-only** — no native mobile app yet.
-- **Coach matching is manual** (an admin assigns each coach in Team Members).
+- **Coach matching is manual** (an admin assigns each coach from the Coach
+  Assignments tab, which is the default admin screen; Team Members can also do it).
 - **Session lifetime is capped at 8 hours.** If a tab is left alone overnight, or the
   browser is closed/restarted, the next visit starts at the login screen instead of
   resuming where the user was. The limit is a single constant,
@@ -848,11 +894,15 @@ A good engineer is honest about what's not done yet. These are the current gaps:
   search helpers do have real unit tests (`test/search.test.ts`, run with
   `npx tsx test/search.test.ts`) and the database rules have SQL tests — but
   there is no browser automation yet.
-- **`npm audit` reports 5 dependency advisories** (2 high, 3 moderate) inherited
-  from the Vite/React toolchain. They are in build-time dependencies, not in the
-  code this app ships to browsers, so they are not an exploitable runtime risk
-  today — but they should be cleared by a dependency bump, and the fix should be
-  tested because a major Vite bump can break the build.
+- **`npm audit` reports 5 dependency advisories — 1 high, 4 moderate.**
+  Currently: `browserslist` (high — unbounded memory growth, build-time);
+  `express`, `body-parser`, `qs`, `baseline-browser-mapping` (moderate — the
+  `qs` chain reaches `express`, which is a **direct runtime dependency** of
+  `server.ts`, though it is not shipped to the browser). None of these are
+  reachable from code the browser executes, so this is not an exploitable
+  runtime risk today. Worth clearing, but test carefully: `express` is a
+  direct dependency, so `npm audit fix --force` would take a major version
+  bump and can break the dev server.
 - **A normal user can type into the leader/coach section of their own form** — a small
   data-integrity gap (not a security hole). Planned fix.
 - **Exported PDFs are always English**, even when the app is set to Amharic:
@@ -865,6 +915,39 @@ A good engineer is honest about what's not done yet. These are the current gaps:
 The app is now built on the assumption that the `users` table holds **several
 thousand** people, not fifty. Everything below came from measuring what actually
 breaks, not from guessing.
+
+### The confirmed access model
+
+The client has confirmed how the system is used. This is the single most useful
+fact for scale, because it means **almost nobody needs the whole roster**:
+
+| Role | What they actually see |
+|---|---|
+| **Administrator** | Everything. Runs the cycles, assigns coaches, approves, reports. |
+| **Coach** | **Only their own trainees'** submitted work and their own draft. |
+| **Member** | **Only their own** forms, and their own coach (to contact them). |
+| **Coach assignment** | **Fixed by the client.** Members do not choose and know they cannot. |
+
+**What this changes.** With that model, a member or coach downloading 5,000
+profiles is not merely wasteful — it is unnecessary and is a genuine privacy
+problem. The fix is to make the database do the filtering:
+
+| Instead of | Do this |
+|---|---|
+| Fetching the whole roster and filtering in JS | A `search_users` RPC that filters and pages **server-side** |
+| `users_select_authenticated` = `USING (true)` | Members read only themselves; coaches read themselves + their trainees; admins read all |
+| Refetching the roster on any `users` change | Only refetch the slice the viewer is allowed to see |
+| Client-side `if (isAdmin)` guards | RLS, which is the only thing that can actually withhold rows |
+
+**This is the recommended next piece of work.** It is a schema change, it needs
+the questions in [CLIENT_QUESTIONS.md](./CLIENT_QUESTIONS.md) answered (Q1–Q3
+above all), and it should be applied deliberately rather than rushed — the
+current broad policy is at least *honest about what it does*, whereas a
+half-tightened one that logs people out is worse.
+
+**Interim mitigation, if the client needs a fix before that work lands:** the
+roster is already paginated and searchable in the UI, so it behaves acceptably.
+The exposure is in what the browser *has*, not in what it shows.
 
 ### What we changed
 
@@ -934,19 +1017,24 @@ the next thing to fix, and it needs a real decision:
 people are in the database, it belongs in a `useMemo`, a `Map`/`Set`, or on the
 server. Never in the render path.
 
-### The three decisions to make before 5,000 real users
+### The three decisions before 5,000 real users
 
-These are product decisions, not engineering ones, so they're yours to make.
-Each one is written as a choice with a recommendation, because picking wrong is
-expensive to undo once 5,000 people have the app open.
+**Two are now answered** (the client confirmed the access model — see the top of
+this appendix). Only Decision 3 is still open, and it is the one that sets the
+size of the remaining work. The original options are kept below so the reasoning
+is on record.
 
 ---
 
-#### Decision 1 — Who can see the whole roster?
+#### Decision 1 — Who can see the whole roster? **ANSWERED: only admins**
 
-Today: `users_select_authenticated` is `USING (true)`, so every signed-in person
-can read all 5,000 profiles, including `is_admin`, `is_leader`, and who reports
-to whom.
+A member sees themselves and their own coach; a coach sees their own trainees; the
+coaching structure is fixed and members cannot change it.
+
+The database **does not enforce this yet** — `users_select_authenticated` is
+`USING (true)`, so every signed-in person can still read all 5,000 profiles,
+including `is_admin`, `is_leader`, and who reports to whom. That gap is the
+outstanding work, not an open question.
 
 | Option | What members see | Effort | Honest downside |
 |---|---|---|---|
@@ -954,8 +1042,9 @@ to whom.
 | **B. Self + own coach** | Just themselves and their coach | Small | Coaches/leaders lose their team list. |
 | **C. Self + own tree; admins get paginated search** | Members see their line; admins can search anyone | **Large** | The right answer eventually. Needs a `search_users` RPC and new queries. |
 
-**Recommendation: C, but ship B first.** B is a small, safe change that closes
-the privacy hole today. C is the destination and is the expensive one.
+**Where this lands: option C, but ship B first.** B (self + own coach) is a small,
+safe change that closes the privacy hole soonest. C (admins get paginated
+server-side search) is the destination, and is the expensive one.
 
 The thing that makes C necessary: with a full roster readable by every client,
 any fix that isn't server-side is cosmetic. RLS is the only thing that can
@@ -963,16 +1052,15 @@ actually withhold rows — a client-side `if (isAdmin)` hides the UI, not the da
 
 ---
 
-#### Decision 2 — Is a member's directory view their own coaching line, or the whole org?
+#### Decision 2 — Member directory view? **ANSWERED: own coaching line only**
 
 | Option | Shape |
 |---|---|
 | **A. Own line only** — me, my coach, my direct reports | A small, fast page. Scales to any size. |
 | **B. Whole org** | Needs server-side search + paging (Decision 1C) or a 5,000-row download per member. |
 
-This one is really "does anyone need to browse the org chart?" If the answer is
-no — and for a coaching app the answer is usually no — pick A and the scale
-problem largely disappears. **Recommendation: A.**
+This was really asking "does anyone need to browse the org chart?" The answer is
+no, so option A is confirmed and a 5,000-person tree never has to be rendered.
 
 ---
 

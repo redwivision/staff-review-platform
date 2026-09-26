@@ -29,16 +29,19 @@ Open **http://localhost:3000** in your browser.
 
 ---
 
-## Step 3: Test the Onboarding Tour (Staff View)
+## Step 3: Test the "Your next step" guidance (Staff View)
+
+> There is no pop-up onboarding tour. `src/components/OnboardingTour.tsx` is a
+> leftover stub that renders `null` and is not imported anywhere — the real
+> guidance is a **"Your next step" card** built into the dashboard.
 
 1. On the login screen, click **Lewis KB** (the admin bypass button)
-2. **The onboarding tour should appear automatically** — it walks you through:
-   - Welcome message
-   - "My Reviews" tab
-   - How the 3-step process works
-   - (If admin) "Admin Dashboard" tab
-3. Click **Got it!** to finish the tour
-4. **If the tour doesn't appear**: clear localStorage again (`localStorage.clear()` in console) and refresh
+2. On the dashboard you should see a **"Your next step"** card telling you what
+   to do first
+3. **Click its button.** It must actually open something — this was broken and
+   fixed in commit `fc5c775`, where the action pointed at a control that did
+   not exist. If it does nothing, that regression is back.
+4. If the card is missing, clear localStorage (`localStorage.clear()`) and refresh
 
 ---
 
@@ -46,7 +49,7 @@ Open **http://localhost:3000** in your browser.
 
 You should see:
 - **Tab bar**: "My Reviews" | "Team Reviews" | "Admin Dashboard" (no jargon)
-- **A guidance banner** at the top saying "Start by opening a quarter below"
+- **A "Your next step" card** near the top naming the specific action to take
 - **3 quarter cards** (1st, 2nd, 3rd) with status badges
 
 What to check:
@@ -79,14 +82,18 @@ What to check:
 
 1. Go back to dashboard (click "My Reviews" tab)
 2. On the **1st Quarter** card, click **Open Form** next to "Quarterly Summary"
-3. You should see tab bar: **General & Suggestions | My Growth Plan | My Key Goals | My Main Tasks | Coach's Review**
+3. You should see tab bar: **General & Suggestions | Personal Development Plan
+   (PDP) | Critical Mission Objectives (CMO) | Key Deliverable Assignments (KDA) |
+   Team Leader (TL) Evaluation**
 
 What to check:
-- [ ] Tab names use plain language (no "PDP", "CMO", "KDA", "TL Evaluation")
-- [ ] "My Growth Plan" shows 3 categories: Walk with God, Personal Life, Relational Life
-- [ ] "My Key Goals" shows the Ministry Impact bullets at the top (the context guide)
-- [ ] "My Main Tasks" shows assignment fields
-- [ ] "Coach's Review" shows the evaluation form (locked for staff)
+- [ ] All six sections render, with the abbreviations in brackets on the four
+      main tabs (the plain-language wording sits in the smaller sub-labels
+      beneath them)
+- [ ] "Personal Development Plan (PDP)" shows 3 categories: Walk with God, Personal Life, Relational Life
+- [ ] "Critical Mission Objectives (CMO)" shows the Ministry Impact bullets at the top (the context guide)
+- [ ] "Key Deliverable Assignments (KDA)" shows assignment fields
+- [ ] "Team Leader (TL) Evaluation" shows the evaluation form (locked for staff)
 - [ ] Banner says: "You are drafting your Quarterly Review Summary..."
 
 ---
@@ -112,31 +119,38 @@ What to check:
 
 1. Log out, log in as **Lewis KB**
 2. Click **"Admin Dashboard"** tab (not "Access Directory")
-3. You should see sub-tabs: **Reports & Reviews | Settings | Team Members**
+3. You should see **four** sub-tabs: **Coach Assignments | Reports & Reviews |
+   Settings | Team Members** — and you should land on **Coach Assignments**
 4. Click **Reports & Reviews**
-5. You should see all 3 staff members with their evaluation status
+5. You should see staff with their evaluation status
 
 What to check:
 - [ ] Tab says "Admin Dashboard" (not "Access Directory")
-- [ ] Sub-tabs say "Reports & Reviews", "Settings", "Team Members" (not "Oversight Compliance", "Deadlines", "User Management")
+- [ ] Four sub-tabs, starting on "Coach Assignments"
+- [ ] Sub-tabs say "Coach Assignments", "Reports & Reviews", "Settings", "Team Members" (not "Oversight Compliance", "Deadlines", "User Management")
 - [ ] Staff evaluations are visible
 - [ ] "Coaches' Feedback" section (not "Team Evaluation Center")
 
 ---
 
-## Step 8b: Assign a Coach (the only way a coaching relationship starts)
+## Step 8b: Assign a Coach (the default admin screen)
 
 1. Log in as **Lewis KB** (admin). You should land on the **Coach Assignments** tab
 2. Check the banner: it should read "All staff have a coach", or count how many are missing
-3. Everyone in the list shows their coach in the dropdown, or "No Coach Assigned"
+3. Everyone in the list shows their coach, or "No Coach Assigned"
 4. Assign Sarah Leader to John Staff from the board, then press **F5** to refresh
 5. Repeat the same assignment from the **Team Members** tab — it is the same control
 
 What to check:
 - [ ] The **Coach Assignments** tab is the default tab an admin lands on
 - [ ] The unassigned count drops as you assign, and reaches "All staff have a coach"
-- [ ] The dropdown lists every *other* staff member (a person is never offered as their own coach)
-- [ ] Choosing "No Coach Assigned" clears the assignment
+- [ ] Clicking a person opens a **search box** — type part of a name, and
+      matches appear. It is a typeahead, **not** a dropdown (a dropdown of
+      5,000 options is what made the old version unusable)
+- [ ] Search matches on name and email, and is debounced
+- [ ] A person is never offered as their own coach
+- [ ] The clear option ("No Coach Assigned" / Clear) removes the assignment
+- [ ] The list pages 25 at a time, and the "only unassigned" filter narrows it
 - [ ] Sarah Leader now shows **Coach / Leader** in her own Access Level, even if she was a plain member before
 - [ ] The same change made from Team Members shows up on the Coach Assignments board
 

@@ -30,14 +30,14 @@ All documentation lives in [`docs/`](./docs):
 
 ## Features
 
-- **Quarterly Development Review** — staff self-assess across four areas: Heart, Personal Life, Relational Life, and Ministry Effectiveness
+- **Quarterly Development Review** — staff self-assess across four areas, shown in the UI as Walk with God, Personal Life, Relational Life, and Ministry Impact
 - **Quarterly Summary Form** — staff compile progress on PDP goals, Critical Mission Objectives, and Key Deliverable Assignments
 - **Coach Evaluation** — team leaders review and score submitted summaries; evaluations are routed to the admin for approval
 - **Admin Dashboard** — view all evaluations, export individual or bulk PDFs, and manage follow-up tasks
 - **Coach assignment** — an admin assigns a coach to any staff member. The **Coach Assignments** tab (the default admin tab) lists everyone with their current coach, flags who still has none, and assigns inline; the **Team Members** tab holds the same control alongside role and admin permissions. One action sets the coaching relationship everywhere at once: the member sees their coach, the coach immediately gains access to that person's data, and they are marked Coach/Leader automatically. There is no nomination, approval, or acceptance step.
 - **Flexible quarterly form** — fill and save your Quarterly Summary as soon as it's unlocked; you only *submit* it to your coach once an admin has assigned one to you
 - **Role-based access** — roles: Staff, Coach/Leader, and Admin
-- **Bypass / Demo Mode** — instant one-click login as any role (Platform Owner, Team Leader, or Member) with optional seeded mock data, so you can test any workflow without setting up accounts. Available in all environments (dev and production) with no environment guard. It opens the full interface but returns **no data**, because every read still passes through RLS and no matching row exists in the database. See [ARCHITECTURE.md § 12](./docs/ARCHITECTURE.md#12-bypass--demo-mode).
+- **Bypass / Demo Mode** — instant one-click login as any role (Platform Owner, Team Leader, or Member) with optional seeded mock data, so you can test any workflow without setting up accounts. Available in all environments (dev and production) with no environment guard. It opens the full interface, but real database reads return **no data** — every read still passes through RLS and no matching row exists. With the **Mock Data** toggle on, screens are instead fully populated from localStorage seeded data. See [ARCHITECTURE.md § 12](./docs/ARCHITECTURE.md#12-bypass--demo-mode).
 
 ---
 
@@ -65,23 +65,34 @@ policies fit together.
 staff-review-platform/
 ├── src/
 │   ├── components/
-│   │   ├── ReviewFormEditor.tsx      # Monthly Development Review form
-│   │   ├── SummaryFormEditor.tsx     # Quarterly Summary form (PDP, CMO, KDA, Evaluation)
-│   │   ├── AdminReports.tsx          # Admin dashboard with controls and PDF export
-│   │   ├── UserManagement.tsx        # Admin role management + assign a staff member's coach
-│   │   └── ...
+│   │   ├── ReviewFormEditor.tsx        # Monthly Development Review form
+│   │   ├── SummaryFormEditor.tsx       # Quarterly Summary form (PDP, CMO, KDA, Evaluation)
+│   │   ├── GuidedReviewForm.tsx        # Step-by-step guided review
+│   │   ├── GuidedSummaryForm.tsx       # Step-by-step guided summary
+│   │   ├── CoachAssignmentBoard.tsx    # Assign coaches (the default admin tab)
+│   │   ├── StaffPicker.tsx             # Searchable people picker (replaces 5,000-option <select>s)
+│   │   ├── Pagination.tsx              # Shared 25-per-page pager
+│   │   ├── AdminReports.tsx            # Admin dashboard with controls and PDF export
+│   │   ├── ActivityLog.tsx             # Audit trail view
+│   │   └── UserManagement.tsx          # Admin role management + a second way to assign coaches
 │   ├── utils/
-│   │   ├── pdfExport.ts              # PDF generation logic
-│   │   └── ...
-│   ├── supabase.ts                   # Supabase client initialization
-│   ├── supabaseDb.ts                 # Data access layer (CRUD + polling subscriptions)
-│   ├── dataLayer.ts                  # Unified write layer for forms and actions
-│   ├── App.tsx                      # Root component, routing, auth state
-│   ├── types.ts                      # TypeScript interfaces
-│   └── constants.ts                  # Section definitions, quarter info
-├── supabase-schema.sql               # Database schema + RLS policies
-└── vite.config.ts                    # Vite build configuration
+│   │   ├── search.ts                  # Search, debounce, and pagination helpers
+│   │   ├── pdfExport.ts                # PDF generation logic (English-only)
+│   │   └── session.ts                  # Session lifetime guard
+│   ├── i18n.tsx / i18n/am.ts           # English/Amharic toggle and dictionary
+│   ├── supabase.ts                     # Supabase client initialization
+│   ├── supabaseDb.ts                   # Data access layer (CRUD + realtime/poll subscriptions)
+│   ├── dataLayer.ts                    # Unified write layer for forms and actions
+│   ├── App.tsx                         # Root component, routing, auth state
+│   ├── types.ts                        # TypeScript interfaces
+│   └── constants.ts                    # Section definitions, quarter info
+├── test/                               # Search unit tests, i18n audit, SQL rule tests
+├── supabase-schema.sql                 # Database schema + RLS policies + realtime publication
+└── vite.config.ts                      # Vite build configuration
 ```
+
+A fuller map, with what each file is for, is in
+[docs/PROJECT_GUIDE.md Appendix A](./docs/PROJECT_GUIDE.md#appendix-a-full-file-map).
 
 ---
 
@@ -142,7 +153,7 @@ npm run dev
 
 ```bash
 npm run build
-npm run preview
+npm run start    # serves the built dist/ — there is no "preview" script
 ```
 
 ---
@@ -169,17 +180,31 @@ and a person can never be set as their own coach.
 
 ## Testing
 
-Type checking is the only automated check currently wired up:
+```bash
+npm run lint                        # tsc --noEmit
+npx tsx test/search.test.ts         # 25 assertions over the search helpers
+python3 test/audit_i18n.py          # translation dictionary integrity
+```
+
+The database rules have their own tests, which need a local PostgreSQL:
 
 ```bash
-npm run lint    # tsc --noEmit
+createdb sr_test
+psql -v ON_ERROR_STOP=1 -d sr_test -f test/auth-stub.sql
+psql -v ON_ERROR_STOP=1 -d sr_test -f supabase-schema.sql
+psql -d sr_test -f test/self-assignment-check-direct.sql   # 5/5 pass
+psql -d sr_test -f test/self-assignment-check.sql           # trigger + CHECK
+dropdb sr_test
 ```
+
+Applying the schema twice in a row is expected to be clean — that is what makes
+it re-runnable on a live project.
 
 Config and test files for Playwright, Cypress and K6 exist in the repository
 (`playwright.config.ts`, `cypress/e2e`, `tests/`, `load-test.js`) but those tools
 are **not installed as dependencies**, so those commands will not run until you
-add them. The app has otherwise been verified by manual testing — see
-[docs/TESTING_GUIDE.md](./docs/TESTING_GUIDE.md).
+add them. Browser-level behaviour has otherwise been verified by manual testing —
+see [docs/TESTING_GUIDE.md](./docs/TESTING_GUIDE.md).
 
 ---
 

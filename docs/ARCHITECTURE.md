@@ -65,7 +65,7 @@ Vite in development — it contains **no** auth and **no** database code.
 | `src/supabase.ts` | Creates the single Supabase client. 16 lines. |
 | `src/supabaseDb.ts` | Every real database read/write. Converts snake_case rows into app-shaped objects. |
 | `src/dataLayer.ts` | Thin pass-through so components never import `supabaseDb` directly. |
-| `src/App.tsx` | 5,763 lines. All React state, all auth flow, all page logic. |
+| `src/App.tsx` | 5,482 lines. All React state, all auth flow, all page logic. |
 | `supabase-schema.sql` | Tables, RLS policies, functions, triggers. The authority on permissions. |
 | `server.ts` | Static file serving only. No logic. |
 
@@ -80,12 +80,12 @@ why the app still renders (in demo mode) with no backend at all.
 
 ### Sign up
 
-1. `supabaseSignUp()` (`src/supabaseDb.ts:14`) calls `supabase.auth.signUp()`.
+1. `supabaseSignUp()` (`src/supabaseDb.ts:13`) calls `supabase.auth.signUp()`.
    Supabase creates the auth user and returns an id.
 2. The app then inserts a row into the `users` table (`src/supabaseDb.ts:35-43`).
 3. **The client always sends `is_leader: false, is_admin: false`** (`:30-31`).
    This is deliberate — a browser must never be able to grant itself privileges.
-4. A Postgres trigger, `bootstrap_first_admin()` (`supabase-schema.sql:593-613`),
+4. A Postgres trigger, `bootstrap_first_admin()` (`supabase-schema.sql:738-753`),
    fires on insert. **If the `users` table was empty, this row becomes the
    platform owner** (`is_admin = true`).
 
@@ -99,30 +99,32 @@ why the app still renders (in demo mode) with no backend at all.
 1. `supabaseSignIn()` (`src/supabaseDb.ts:49`) → `signInWithPassword()`.
 2. The app calls `supabaseGetUser(uid)` (`src/supabaseDb.ts:61`) to read the
    matching `users` row and turn it into a `UserProfile`.
-3. That profile lands in React state (`setUser`, `src/App.tsx:730`).
+3. That profile lands in React state (`setUser`, `src/App.tsx:798`).
 
 If the `users` row is missing, the app builds an unprivileged fallback profile
 (`role: "Assigned Staff"`, no flags), tries to create the row, and carries on
-(`src/App.tsx:732-742`).
+(`src/App.tsx:800-810`).
 
 ### Sign out
 
-`handleLogout` (`src/App.tsx:1394-1399`) removes the bypass key from
+`handleLogout` (`src/App.tsx:1412-1419`) removes the bypass key from
 localStorage, calls `supabase.auth.signOut()`, and clears state. Note it does
 **not** clear seeded mock data from localStorage.
 
 ### On page load
 
-`src/App.tsx:475-562`, in this order:
+`src/App.tsx:499-604`, in this order:
 
-1. If `localStorage.staff_review_bypass_user` exists → load it and **return
-   early** (`:488`). Supabase is never consulted.
-2. If Supabase is unconfigured → stop (`:494-498`).
-3. `getSession()` → load the profile (`:501-546`).
-4. Register `onAuthStateChange` (`:548-559`).
+1. If `shouldRequireLogin()` says the session is stale (idle longer than
+   `IDLE_LIMIT_MS` = 8 hours, or the per-tab marker is gone) → require login.
+2. If `localStorage.staff_review_bypass_user` exists → load it and **return
+   early** (`:524`). Supabase is never consulted.
+3. If Supabase is unconfigured → stop (`:537-540`).
+4. `getSession()` → load the profile (`:543-588`).
+5. Register `onAuthStateChange` (`:590-601`).
 
 The event name from `onAuthStateChange` is **discarded** (it's `_event` at
-`:548`). Every event runs the same logic: *session present → load profile;
+`:590`). Every event runs the same logic: *session present → load profile;
 absent → clear user*. There is no special handling for `TOKEN_REFRESHED` or
 `SIGNED_OUT`.
 
@@ -135,10 +137,12 @@ Supabase stores the session **in the browser's localStorage**. Concretely:
 | Key | Written by | Purpose |
 |---|---|---|
 | `sb-<project-ref>-auth-token` | supabase-js (library default) | The real session: access token, refresh token, expiry. |
-| `staff_review_bypass_user` | `src/App.tsx:1390` | Fake profile for demo mode. |
-| `staff_review_use_mock_data` | `src/App.tsx:2553` | Mock-data toggle. |
-| `staff_development_theme` | `src/App.tsx:114` | Light/dark preference. |
-| `has_init_session` | `src/App.tsx:477-479` | **Dead code.** Written, never read. |
+| `staff_review_bypass_user` | `src/App.tsx:1408` | Fake profile for demo mode. |
+| `staff_review_use_mock_data` | `src/App.tsx:2398` | Mock-data toggle. |
+| `staff_development_theme` | `src/App.tsx:115` | Light/dark preference. |
+| `staff_review_session_marker` | `src/utils/session.ts:15` | sessionStorage. Its presence means "signed in **in this tab**". Deleting it forces the next load to the login screen. |
+| `staff_review_last_activity` | `src/utils/session.ts:16` | localStorage. Timestamp of last activity; drives the 8-hour idle limit. |
+| `has_init_session` | `src/App.tsx:501-502` | Read and written, but behaviourally inert — the real guard uses `staff_review_session_marker`. Effectively dead. |
 
 Note that `createClient()` is called with no options (`src/supabase.ts:11`), so
 the app never customises `persistSession`, `autoRefreshToken` or `storageKey`.
@@ -179,7 +183,7 @@ Two separate concepts that are easy to confuse:
 
 **Authorization is decided solely by `is_admin` and `is_leader`.** The client
 derives its admin flag from the database row and nowhere else
-(`src/App.tsx:333-337`):
+(`src/App.tsx:344-348`):
 
 ```ts
 // Admin is derived ONLY from the server-fetched profile (users.is_admin in the
@@ -244,8 +248,17 @@ App asks: "give me all quarterly_summaries"
 
 Two things make this the whole security model:
 
-1. **RLS is enabled on all 9 tables** (`supabase-schema.sql:390-398`). Verified
-   live: zero tables with RLS off.
+1. **RLS is enabled on all 9 tables** (`supabase-schema.sql:455-463`). A live
+   audit at the time of writing found zero tables with RLS off.
+
+   > **Read this before trusting the numbers below.** They were verified against
+   > a live project at an earlier commit. The schema has changed since — the
+   > self-assignment `CHECK` (`fc5c775`), the `users` indexes and
+   > `getAllStaff` change (`7d25877`), and the Realtime publication section
+   > (`26deb91`) are **not yet applied to your project**. Re-apply
+   > `supabase-schema.sql` to pick them up; the file is re-runnable. Until you
+   > do, the live database is behind the file, and the publication is still
+   > empty.
 2. **The anon key is not a secret.** It ships in the JavaScript bundle and is
    meant to be public. Safety comes from the policies, not from hiding the key.
 
@@ -269,15 +282,16 @@ denied. Access is never "accidentally open".
 
 ## 8. Every policy, table by table
 
-26 policies total. Verified live count matched exactly.
+26 policies total, which matched the live count at the time of audit — see the
+staleness note above.
 
 ### `users`
 
 | Policy | Operation | Who | Note |
 |---|---|---|---|
 | `users_select_authenticated` | SELECT | **Any signed-in user** | `USING (true)` — everyone can read the whole directory: names, emails, and both role flags. This is intentional so the UI can render pickers. |
-| `users_insert_self` | INSERT | Anyone | Only your own row, and only with `is_admin = false`, `is_leader = false`. |
-| `users_update_self` | UPDATE | Anyone | **Your own row only**, and you may not change `is_admin`, `is_leader`, `role`, `email`, `uid`, or `coach_uid` — each is compared to a helper that reads the row as it was *before* the statement ran. |
+| `users_insert_self` | INSERT | Any signed-in user | Only your own row, and only with `is_admin = false`, `is_leader = false`. |
+| `users_update_self` | UPDATE | Any signed-in user | **Your own row only**, and you may not change `is_admin`, `is_leader`, `role`, `email`, `uid`, or `coach_uid` — each is compared to a helper that reads the row as it was *before* the statement ran. |
 | `users_admin_update` | UPDATE | Admins | Any row, any value. This is the only path that can set `coach_uid` or change a role. |
 
 `users_update_self` is the single most important policy in the file. It is what
@@ -348,18 +362,19 @@ accepted state machine is protected by a trigger, not by a policy (see §10).
 |---|---|
 | `activity_logs_owner_select` | The member. |
 | `activity_logs_coach_or_admin_select` | Admin or actual coach. |
-| `activity_logs_insert` | Anyone, for their own row. |
+| `activity_logs_insert` | The member the log is about, **or that member's coach, or an admin** (`user_id = auth.uid()` OR `is_coach_of(user_id)` OR `is_admin_user()`). |
 | `activity_logs_admin_delete` | Admin only. |
-| `follow_up_select` | Admin or actual coach. |
-| `follow_up_owner_write` | The owner. |
-| `meetings_owner_all` | The owner, for their own row. |
+| `follow_up_select` | The task's owner, **or anyone for the global coordination rows** (`user_id IS NULL`), or an admin. There is **no** coach check — any signed-in user can read shared global tasks. |
+| `follow_up_owner_write` | The owner, or an admin. |
+| `meetings_owner_all` | The owner, or an admin. |
 
 ### Global tables
 
 `requirement_settings` and `review_schedules` each have a read-any-authenticated
 policy and an admin-only write policy. There is exactly one global settings row
-and one row per quarter, both seeded by the schema
-(`supabase-schema.sql:578-580`).
+and one row per quarter, seeded by the schema
+(`supabase-schema.sql:722-724`). Note `review_schedules` has **no** schema seed:
+its defaults come from the client, which writes rows on demand.
 
 ---
 
@@ -473,29 +488,29 @@ an existing database without error.
 
 ### Realtime first, polling as a fallback
 
-`subscribeRealtimeOrPoll()` (`src/supabaseDb.ts:548-596`) wraps every
+`subscribeRealtimeOrPoll()` (`src/supabaseDb.ts:485-533`) wraps every
 subscription:
 
 1. Fetch once immediately.
 2. Try to open a Realtime channel. If it reports `SUBSCRIBED`, updates arrive by
    push.
 3. If the channel reports `CHANNEL_ERROR` or `TIMED_OUT`, start a 30-second
-   `setInterval` instead (`POLL_INTERVAL_MS`, `:538`).
+   `setInterval` instead (`POLL_INTERVAL_MS`, `:475`).
 
-The app subscribes to **all 9 tables** (`src/App.tsx:676-703`). Two of those
+The app subscribes to **8 tables** (`src/App.tsx:722-748`). Two of those
 subscriptions are conditional: `allReviews` and `allSummaries` are only fetched
-if the user is a leader or admin (`:677-684`).
+if the user is a leader or admin (`:723-731`). `coaching_requests` is not
+subscribed to — the direct-assignment refactor made it a non-source of truth
+(see §10).
 
-> **Right now your project has Realtime switched off** — `REALTIME TABLES` came
-> back `none` from the audit query. The app works, but every screen updates on a
-> ~30s lag instead of instantly. Turn it on: **Database → Replication → Enable
-> Realtime**, then tick `users` and `quarterly_summaries` at minimum (all 9 for
-> full effect). The polling interval itself is hardcoded; making it configurable
-> is not implemented.
+**The publication is configured by the schema, not by hand.** `supabase-schema.sql`
+§6b creates the `supabase_realtime` publication and adds all 8 tables, re-runnably.
+See [§14](#14-realtime) and [REALTIME_GUIDE.md](./REALTIME_GUIDE.md) for how to
+verify it and what the Dashboard toggles do.
 
 ### One effect loads everything
 
-`src/App.tsx:566-706`, keyed on `[user]`:
+`src/App.tsx:617-751`, keyed on `[user]`:
 
 - **Bypass mode** → read from localStorage, no network at all.
 - **Real mode** → register the subscriptions above.
@@ -512,10 +527,10 @@ protected by the policies either way.
 ## 12. Bypass / Demo mode
 
 The login screen has three one-click buttons: **Platform Owner**, **Team
-Leader**, and **Member** (`src/App.tsx:2575-2614`), plus a mock-data toggle.
+Leader**, and **Member** (`src/App.tsx:2420-2459`), plus a mock-data toggle.
 
 Pressing one builds a fake profile entirely in the browser
-(`handleBypassLogin`, `src/App.tsx:1373-1392`):
+(`handleBypassLogin`, `src/App.tsx:1391-1410`):
 
 ```ts
 uid: "bypass_" + email.replace(/[@.]/g, "_"),   // → "bypass_lewikb13_gmail_com"
@@ -523,7 +538,7 @@ isAdmin: isAdminPriv || email === "lewikb13@gmail.com",
 ```
 
 and writes it to `localStorage.staff_review_bypass_user`. Everywhere else,
-bypass mode is detected by the uid prefix `bypass_` (24 checks in `App.tsx`).
+bypass mode is detected by the uid prefix `bypass_` (18 checks in `App.tsx`).
 No network request is made, and the real Supabase session is never touched.
 
 ### Is it available in production? Yes.
@@ -543,7 +558,7 @@ This distinction matters, so be precise:
   with a `bypass_*` uid exists in the `users` table. The admin screens render
   empty.
 - **Also not cleaned up:** `staff_review_bypass_user` is checked at
-  `src/App.tsx:482` *before* `getSession()`, so a bypassed visitor is never
+  `src/App.tsx:524` *before* `getSession()`, so a bypassed visitor is never
   re-validated against Supabase on reload.
 
 So it is a **UI exposure, not a data breach**. If that trade-off is not
@@ -715,11 +730,11 @@ know before you rely on a behaviour.
 | `users_select_authenticated` uses `USING (true)` | Any signed-in user can read every name, email, and role flag in `users`. Intentional, but it is real PII exposure. |
 | `supabaseGetUser` returns `null` on any error | A permission failure is indistinguishable from a missing row, so the app logs you in as a fabricated unprivileged profile instead of showing an error. |
 | Leader promotion happens in a trigger, not a client call | The client cannot grant itself leadership, and cannot fake a promotion. `src/App.tsx` re-reads its own row from the live staff list so the new `is_leader` shows up without a reload. |
-| Two empty `catch` blocks (`src/App.tsx:522`, `:741`) | A rejected profile write is completely silent. |
+| Two empty `catch` blocks (`src/App.tsx:564`, `:809`) | A rejected profile write is completely silent. |
 | Activity-log failures only reach the console | The UI can report success while the audit trail write was denied. |
-| Realtime disabled in this project | ~30s update lag instead of live updates. |
-| `App.tsx` is 5,763 lines | Hard to review; slow to change safely. |
-| `sessionStorage` key `has_init_session` | Written once, never read. Dead code. |
+| Realtime unverified against the live project | The publication is set up by `supabase-schema.sql` §6b, but has not been confirmed end-to-end in a browser. Until it is, the app falls back to ~30s polling rather than breaking. |
+| `App.tsx` is 5,482 lines | Hard to review; slow to change safely. |
+| `sessionStorage` key `has_init_session` | Read and written, but behaviourally inert — the real guard uses `staff_review_session_marker`. Effectively dead. |
 
 ---
 

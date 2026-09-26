@@ -344,6 +344,9 @@ tests: 25 search assertions, an i18n audit, and SQL tests for the database
 rules. *PG*
 
 #### L25. `npm audit`: 1 high, 4 moderate
+*Counted locally with `npm audit` on 2026-09-26. GitHub's security banner reports
+2 high / 3 moderate for the same commit — the two tools classify overlapping
+advisories differently. Re-run `npm audit` rather than trusting the banner.*
 `browserslist` (high, build-time); `express`, `body-parser`, `qs`,
 `baseline-browser-mapping` (moderate). The `qs` chain reaches `express`, a
 **direct runtime dependency** of `server.ts`. Not reachable from browser code

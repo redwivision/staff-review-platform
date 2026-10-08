@@ -7,6 +7,9 @@ replaces the scattered "known gaps" lists that used to sit in three different
 files and occasionally contradict each other.
 
 - **Last verified:** 2026-09-26, against commit `039c9ee`
+- **Client answers recorded:** 2026-10-08 — five questions answered or parked
+  by Roza Wesene, quoted in [CLIENT_QUESTIONS.md](./CLIENT_QUESTIONS.md).
+  **Q1 answered means the RLS rewrite (L2) is ready to start.**
 - **How to re-verify:** see [How to re-check this document](#how-to-re-check-this-document)
 
 Other docs and what they are for:
@@ -29,9 +32,10 @@ quarter, their **coach** completes a **Quarterly Summary** evaluation, and an
 **administrator** signs it off. It is built and working for a small
 organisation, and has been hardened for a **5,000-user** roster. The access
 model is confirmed by the client (admins see everything; a coach sees only
-their trainees; a member sees only their own forms and their own coach), but
-**the database does not yet enforce that model** — that is the main outstanding
-piece of work.
+their trainees; a member sees only their own forms and their own coach — and
+as of 2026-10-08, the staff directory is **admin-only**), but **the database
+does not yet enforce that model** — that is the main outstanding piece of
+work, and it is no longer waiting on the client.
 
 ---
 
@@ -65,14 +69,15 @@ The client has confirmed:
 
 | Role | What they should see |
 |---|---|
-| **Administrator** | Everything |
+| **Administrator** | Everything, including the staff directory. Named: Bayush (active), Nati (planned, added once the admin-role split is shaped). |
 | **Coach** | Only their own trainees' submitted work, plus their own draft |
-| **Member** | Only their own forms, plus their own coach's contact details |
-| **Coach assignment** | Fixed structure. Members do not choose and know they cannot. |
+| **Member** | Only their own forms, plus their own coach's contact details — **not** the staff directory (2026-10-08) |
+| **Coach assignment** | Fixed structure. Members do not choose and know they cannot. Admin makes every change. |
 
 **The database does not currently enforce this.** `users_select_authenticated`
 is `USING (true)`, so any signed-in user can still read every profile. This is
-[L2](#l2-everyone-can-read-every-profile), and it is the top outstanding item.
+[L2](#l2-everyone-can-read-every-profile), and it is the top outstanding item —
+**ready to start now that Q1 is answered.**
 
 ---
 
@@ -220,9 +225,12 @@ Default or a Custom Selection, with per-section include toggles.
   derived rows.
 - `localStorage` bypass mode would hold a ~5 MB roster.
 
-**The fix is a schema change**, gated on
-[CLIENT_QUESTIONS.md](./CLIENT_QUESTIONS.md) Q1–Q3: a `search_users` RPC that
-filters and pages server-side, with RLS narrowed to self / self+trainees / admin.
+**The fix is a schema change**, gated on the client answers recorded
+2026-10-08 in [CLIENT_QUESTIONS.md](./CLIENT_QUESTIONS.md): Q1 is answered
+(admin-only directory), so the strictest RLS shape is settled; Q14/Q15 are
+deferred to a meeting with Sean and the DS team but the design is the same
+either way — a `search_users` RPC that filters and pages server-side, with RLS
+narrowed to self / self+trainees / admin.
 
 ---
 
@@ -312,9 +320,12 @@ Hard to review and unsafe to change. *ARH §15*
 `review_schedules.notificationMessage` is stored and **never sent**, while the
 UI implies notification. *`App.tsx:2107-2146`*
 
-#### L17. Single admin flag, not split roles
+#### L17. Single admin flag — client has asked for a split
 One `is_admin` boolean covers platform owner, review administrator and
-people/HR admin. Fine for a small trusted group. *client Q3*
+people/HR admin. The client answered **"separate role is good"** (2026-10-08),
+so the split is now confirmed scope, not a maybe — waiting only on which
+permissions Nati gets vs Bayush. Schema + RLS + UI change; do it before
+5,000 people have data behind one flag. *client Q3*
 
 #### L18. Hybrid staff + coach roles DO work — earlier docs said they didn't
 `is_leader`, `is_admin` and `coach_uid` are independent, and a member who is
@@ -372,16 +383,19 @@ So nobody mistakes these for bugs:
 
 ## 8. Open questions for the client
 
-See [CLIENT_QUESTIONS.md](./CLIENT_QUESTIONS.md) for all 22. The ones that gate
-code:
+See [CLIENT_QUESTIONS.md](./CLIENT_QUESTIONS.md) for all 22. As of 2026-10-08
+the gating ones stand as follows:
 
-| # | Question | Blocks |
-|---|---|---|
-| Q1 | What may a member see besides their own coach? | L2 — the RLS rewrite |
-| Q7 | What happens to an in-progress review when the coach changes mid-quarter? | Assignment-history schema |
-| Q14 | How many concurrent users? | Realtime architecture |
-| Q15 | Will an admin ever need 5,000 rows on one screen? | Server-side paging |
-| Q17 | Should bypass mode be disabled in production? | L1 |
+| # | Question | Status | Blocks / unblocks |
+|---|---|---|---|
+| Q1 | What may a member see besides their own coach? | **ANSWERED 2026-10-08** — directory is admin-only | L2 (the RLS rewrite) **ready to start** |
+| Q3 | One admin role or several? | **ANSWERED 2026-10-08** — split wanted; shape TBC (Nati vs Bayush permissions) | New scope: admin-role split before scale |
+| Q7 | What happens to an in-progress review when the coach changes mid-quarter? | **PARTLY — default recorded:** admin changes it, previous coach loses access, no history table | Assignment-history schema — default is "don't build it" unless objected to |
+| Q10 | Is coach-submitted the final step? | **ANSWERED 2026-10-08** — member → coach → admin approve, as built | Nothing — confirms current flow |
+| Q14 | How many concurrent users? | **DEFERRED** to the Sean/DS meeting | Realtime architecture; server-side design built regardless |
+| Q15 | Will an admin ever need 5,000 rows on one screen? | **DEFERRED** to the Sean/DS meeting | Server-side paging; built regardless |
+| Q17 | Should bypass mode be disabled in production? | **STILL OPEN** — not asked on 2026-10-08 | L1 — recommend off in production |
+| Q16 | Is 5,000 real, or a pilot first? | **STILL OPEN** — not asked on 2026-10-08 | How urgently the performance work matters |
 
 ---
 

@@ -1,7 +1,26 @@
 # Top 5 questions for the client
 
-**Purpose:** these are the five answers that would let me finish the security work
-and lock in the right approach for 5,000 users. Everything else can wait.
+**Status as of 2026-10-08: four of these are answered or parked. One is still
+open.**
+
+| # | Question | Status |
+|---|---|---|
+| 1 | Who can see the staff directory? | **ANSWERED** — admins only (Bayush now, Nati planned). |
+| 2 | One admin flag, or separate roles? | **ANSWERED** — separate roles; shape is the follow-up. |
+| 3 | What happens if the coach changes mid-quarter? | **PARTLY** — admin makes the change; default recorded (previous coach loses access, no history). |
+| 4 | Concurrency / 5,000 on screen? | **DEFERRED** — decided at the meeting with Sean and the DS team. |
+| 5 | Should demo mode be off on the live site? | **STILL OPEN** — this was the one not asked on 2026-10-08 (the workflow question Q10 took its place, and that one is answered). Needs a yes/no. |
+
+So the only blocker-question left from this set is **#5**. The remaining
+follow-ups (exact admin-role shape for Nati, Q16 pilot-vs-5,000) ride along
+with the Sean/DS meeting or the next message.
+
+---
+
+**Purpose:** these are the five answers that would let me finish the security
+work and lock in the right approach for 5,000 users. Everything else can wait.
+The message below is what was sent; it stays here as the record of what was
+asked and how it was phrased.
 
 Copy the block below and send it as-is. Each question is phrased so it can be
 answered in a sentence or two. If an answer is "not sure", that is a useful
@@ -59,15 +78,26 @@ answer too — it tells me what to build defensively.
 
 ---
 
-## Why these five
+## Why these five — and what came back
 
-| # | What it unblocks | If unanswered |
+| # | What it unblocks | Outcome (2026-10-08) |
 |---|---|---|
-| 1 | The access rules in the database. This is the main outstanding item — right now anyone signed in can technically read every profile, which is more access than we agreed. | I build the strictest version (own data + coach + trainees only), which is what the confirmed model describes. |
-| 2 | Whether `is_admin` stays one flag. | Keep one flag. Fine for a small trusted group. |
-| 3 | Whether coaching assignments need a history table. | I store history but show only the current coach's feedback. |
-| 4 | Whether to add server-side search and paging for 5,000 users. | I add it anyway — it is the only approach that holds up at that size. |
-| 5 | Whether the demo/bypass screen is reachable on the live site. | I turn it off in production and keep it locally. |
+| 1 | The access rules in the database. This is the main outstanding item — right now anyone signed in can technically read every profile, which is more access than we agreed. | **Answered: admins only.** Strictest model confirmed, RLS rewrite ready to start. |
+| 2 | Whether `is_admin` stays one flag. | **Answered: separate roles.** New scope — schema + RLS + UI split; shape is the follow-up. |
+| 3 | Whether coaching assignments need a history table. | **Partly:** admin makes the change. Default: no history table, previous coach loses access. |
+| 4 | Whether to add server-side search and paging for 5,000 users. | **Deferred** to the Sean/DS meeting. Built anyway — it's the only approach that holds at that size. |
+| 5 | Whether the demo/bypass screen is reachable on the live site. | **Not asked.** Still open — see the follow-up message below. |
+
+## Follow-up still to send (question 5 + two ride-alongs)
+
+> One thing we didn't cover last time: the app has a built-in **demo mode**
+> on the live site — anyone with the URL can click through as a fake
+> administrator (it touches no real data). Should I switch it off on the live
+> site and keep it only for internal testing? I'd recommend yes.
+>
+> And whenever convenient, two small ones: is this starting as a **pilot with
+> a few hundred people**, or 5,000 from day one? And do exported **PDFs need
+> to be in Amharic** as well as English?
 
 ## Notes
 
@@ -78,3 +108,5 @@ answer too — it tells me what to build defensively.
   why they lead.
 - No question here needs a technical answer. If the client answers in plain
   language, that is enough.
+- Answers are quoted verbatim in [CLIENT_QUESTIONS.md](./CLIENT_QUESTIONS.md);
+  the interpretations there are what STATUS.md and the backlog use.
